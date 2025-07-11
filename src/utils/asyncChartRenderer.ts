@@ -321,8 +321,6 @@ export class AsyncChartRenderer {
           errorMessage = '网络连接已断开，请检查网络设置'
         } else if (imageUrl.includes('kroki.io')) {
           errorMessage = '无法连接到Kroki服务器，请检查网络连接或稍后重试'
-        } else if (imageUrl.startsWith('https://via.placeholder.com')) {
-          errorMessage = 'Placeholder图片服务不可用，请检查网络连接'
         } else {
           errorMessage = '图片加载失败，可能是网络问题或图表语法错误'
         }

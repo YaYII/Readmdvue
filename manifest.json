@@ -11,14 +11,13 @@
   "host_permissions": [
     "<all_urls>",
     "https://kroki.io/*",
-    "https://via.placeholder.com/*",
     "https://*.githubusercontent.com/*",
     "https://*.github.com/*",
     "https://*.gitlab.com/*",
     "https://*.bitbucket.org/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://kroki.io https://via.placeholder.com https://*.githubusercontent.com https://*.github.com https://*.gitlab.com https://*.bitbucket.org; connect-src 'self' https://kroki.io https://via.placeholder.com https://*.githubusercontent.com https://*.github.com https://*.gitlab.com https://*.bitbucket.org;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://kroki.io https://*.githubusercontent.com https://*.github.com https://*.gitlab.com https://*.bitbucket.org; connect-src 'self' https://kroki.io https://*.githubusercontent.com https://*.github.com https://*.gitlab.com https://*.bitbucket.org;"
   },
   "content_scripts": [
     {

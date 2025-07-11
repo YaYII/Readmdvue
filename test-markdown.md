@@ -89,7 +89,9 @@ $$\begin{align}
 
 ### 链接和图片
 [GitHub](https://github.com)
-![示例图片](https://via.placeholder.com/300x200)
+
+<!-- 图片示例：如果有真实图片地址，可以在这里添加 -->
+<!-- ![示例图片](真实图片地址) -->
 
 ### 代码块测试
 
