@@ -2485,7 +2485,7 @@ export function onExecute() {
   // 防止重复初始化
   if (window.__markdownReaderInitialized) {
     console.log('Markdown Reader 已经初始化，跳过重复初始化')
-    this.isActive = false;
+
     return
   }
 
