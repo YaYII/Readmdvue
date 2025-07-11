@@ -1,6 +1,43 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="48" height="48" rx="8" fill="#007AFF"/>
-  <path d="M8 12h32v3H8v-3zm0 6h32v3H8v-3zm0 6h22v3H8v-3zm0 6h26v3H8v-3z" fill="white"/>
-  <circle cx="34" cy="28" r="4" fill="white"/>
-  <path d="M32 28l2 2 4-4" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="gradient48" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#5856D6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#AF52DE;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow48" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/> 
+      </feMerge>
+    </filter>
+    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1"/>
+      <feOffset dx="0" dy="1" result="offset"/>
+      <feFlood flood-color="#000000" flood-opacity="0.1"/>
+      <feComposite in2="offset" operator="in"/>
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/> 
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆角矩形 -->
+  <rect x="3" y="3" width="42" height="42" rx="9" ry="9" fill="url(#gradient48)" filter="url(#glow48)"/>
+  
+  <!-- 内阴影效果 -->
+  <rect x="3" y="3" width="42" height="42" rx="9" ry="9" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" filter="url(#innerShadow)"/>
+  
+  <!-- Markdown 符号 M -->
+  <path d="M12 15h6l4.5 7.5L27 15h6v18h-4.5V22.5L24 30l-4.5-7.5V33H15V15z" fill="white" fill-opacity="0.95" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+  
+  <!-- 装饰元素 -->
+  <circle cx="36" cy="12" r="2.5" fill="white" fill-opacity="0.8"/>
+  <circle cx="36" cy="36" r="1.5" fill="white" fill-opacity="0.6"/>
+  <circle cx="12" cy="36" r="1" fill="white" fill-opacity="0.4"/>
+  
+  <!-- 高光效果 -->
+  <ellipse cx="18" cy="12" rx="8" ry="3" fill="rgba(255,255,255,0.3)" transform="rotate(-15 18 12)"/>
 </svg>
