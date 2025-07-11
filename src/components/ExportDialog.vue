@@ -31,22 +31,22 @@
           <h3 class="section-title">导出格式</h3>
           <div class="format-grid">
             <button 
-              v-for="format in exportFormats"
-              :key="format.type"
+              v-for="format in formatOptions"
+              :key="format.value"
               :class="[
                 'format-option',
-                { 'active': selectedFormat === format.type }
+                { 'active': selectedFormat === format.value }
               ]"
-              @click="selectedFormat = format.type"
+              @click="selectedFormat = format.value"
             >
-              <div class="format-icon" :style="{ background: format.color }">
-                <component :is="format.icon" />
+              <div class="format-icon">
+                {{ format.icon }}
               </div>
               <div class="format-info">
-                <span class="format-name">{{ format.name }}</span>
+                <span class="format-name">{{ format.label }}</span>
                 <span class="format-desc">{{ format.description }}</span>
               </div>
-              <div class="format-check" v-if="selectedFormat === format.type">
+              <div class="format-check" v-if="selectedFormat === format.value">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -209,18 +209,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineComponent } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import type { ExportOptions } from '../types'
+import { showNotification } from '../utils/appleNotification'
+import { exportDocument, getCurrentPageContent, generateDefaultFilename } from '../utils/exportUtils'
 
-// 定义事件
-defineEmits<{
+interface Props {
+  visible: boolean
+  content: string
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
   close: []
   export: [options: ExportOptions]
-}>()
-
-// 定义props
-defineProps<{
-  documentTitle?: string
 }>()
 
 // 响应式数据
@@ -230,7 +233,7 @@ const isExporting = ref(false)
 // 导出选项
 const exportOptions = ref<ExportOptions>({
   format: 'html',
-  filename: 'document',
+  filename: 'document.html',
   includeStyles: true,
   includeImages: true,
   includeCharts: true,
@@ -240,92 +243,50 @@ const exportOptions = ref<ExportOptions>({
   quality: 0.9
 })
 
-// 图标组件
-const HtmlIcon = defineComponent({
-  template: `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M13 12h7l-2 8H6l-2-8h7V4h2v8z" fill="currentColor"/>
-      <path d="M5 4h14M7 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-  `
-})
-
-const PdfIcon = defineComponent({
-  template: `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" fill="currentColor" opacity="0.3"/>
-      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `
-})
-
-const MarkdownIcon = defineComponent({
-  template: `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M3 5h18v14H3zM7 15V9l2 2 2-2v6M17 11h-2v4h2v-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `
-})
-
-const ImageIcon = defineComponent({
-  template: `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
-      <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2"/>
-      <path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `
-})
-
-// 导出格式配置
-const exportFormats = [
-  {
-    type: 'html',
-    name: 'HTML',
-    description: '网页格式，保留所有样式',
+// 格式选项
+const formatOptions = [
+  { 
+    value: 'html', 
+    label: 'HTML', 
+    icon: '🌐', 
+    description: '网页格式，保持完整样式',
     extension: 'html',
-    color: 'linear-gradient(135deg, #FF6B35, #F7931E)',
-    icon: HtmlIcon,
     supportsCharts: true,
     supportsMath: true
   },
-  {
-    type: 'pdf',
-    name: 'PDF',
-    description: '便携式文档格式',
+  { 
+    value: 'pdf', 
+    label: 'PDF', 
+    icon: '📄', 
+    description: '便携文档格式，适合打印',
     extension: 'pdf',
-    color: 'linear-gradient(135deg, #DC143C, #B22222)',
-    icon: PdfIcon,
     supportsCharts: true,
     supportsMath: true
   },
-  {
-    type: 'markdown',
-    name: 'Markdown',
-    description: '原始Markdown格式',
+  { 
+    value: 'markdown', 
+    label: 'Markdown', 
+    icon: '📝', 
+    description: '纯文本标记格式',
     extension: 'md',
-    color: 'linear-gradient(135deg, #4A90E2, #357ABD)',
-    icon: MarkdownIcon,
     supportsCharts: false,
     supportsMath: false
   },
-  {
-    type: 'png',
-    name: 'PNG图片',
+  { 
+    value: 'png', 
+    label: 'PNG', 
+    icon: '🖼️', 
     description: '高质量图片格式',
     extension: 'png',
-    color: 'linear-gradient(135deg, #50C878, #228B22)',
-    icon: ImageIcon,
     supportsCharts: true,
     supportsMath: true
   },
-  {
-    type: 'jpeg',
-    name: 'JPEG图片',
+  { 
+    value: 'jpeg', 
+    label: 'JPEG', 
+    icon: '📷', 
     description: '压缩图片格式',
     extension: 'jpg',
-    color: 'linear-gradient(135deg, #FFD700, #FFA500)',
-    icon: ImageIcon,
     supportsCharts: true,
     supportsMath: true
   }
@@ -333,54 +294,67 @@ const exportFormats = [
 
 // 计算属性
 const selectedFormatConfig = computed(() => {
-  return exportFormats.find(format => format.type === selectedFormat.value)
+  return formatOptions.find(format => format.value === selectedFormat.value)
 })
 
-// 方法
+// 处理导出
 const handleExport = async () => {
   if (isExporting.value) return
   
   isExporting.value = true
   
   try {
+    // 构建导出选项
     const options: ExportOptions = {
       ...exportOptions.value,
       format: selectedFormat.value as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
     }
+
+    console.log('开始导出:', options)
     
-    // 这里应该调用实际的导出逻辑
-    await new Promise(resolve => setTimeout(resolve, 2000)) // 模拟导出过程
+    // 获取当前页面内容
+    const contentToExport = props.content || getCurrentPageContent()
     
-    // 触发导出事件
-    console.log('导出选项:', options)
-    // emit('export', options)
+    // 执行导出
+    await exportDocument(contentToExport, options)
     
-    // 关闭对话框
-    // emit('close')
+    console.log('导出完成')
+    emit('close')
   } catch (error) {
     console.error('导出失败:', error)
+    showNotification({
+      title: '导出失败',
+      message: '导出过程中发生错误，请重试',
+      type: 'error'
+    })
   } finally {
     isExporting.value = false
   }
 }
 
-// 监听格式变化，更新文件扩展名
+// 更新文件名扩展名
 const updateFilename = () => {
-  if (selectedFormatConfig.value) {
-    // 保持文件名，只更新扩展名
-    const baseName = exportOptions.value.filename.replace(/\.[^/.]+$/, '')
-    exportOptions.value.filename = baseName
-  }
+  const baseName = exportOptions.value.filename.replace(/\.[^/.]+$/, '')
+  exportOptions.value.filename = baseName
 }
 
-// 监听选中格式变化
-const watchSelectedFormat = () => {
+// 生成默认文件名
+const generateFilename = () => {
+  const filename = generateDefaultFilename(selectedFormat.value)
+  exportOptions.value.filename = filename
+}
+
+// 监听格式变化
+watch(selectedFormat, (newFormat) => {
   exportOptions.value.format = selectedFormat.value as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
   updateFilename()
-}
+  exportOptions.value.filename += `.${newFormat}`
+})
 
-// 初始化
-watchSelectedFormat()
+// 初始化时生成默认文件名
+onMounted(() => {
+  generateFilename()
+})
 </script>
 
 <style scoped>

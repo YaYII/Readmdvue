@@ -18,17 +18,6 @@
           
           <button 
             class="toolbar-btn"
-            @click="toggleSearch"
-            title="搜索 (Ctrl+F)"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
-              <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-          
-          <button 
-            class="toolbar-btn"
             @click="toggleExport"
             title="导出 (Ctrl+E)"
           >
@@ -104,14 +93,6 @@
           @close="showSettings = false"
         />
       </transition>
-      
-      <!-- 搜索面板 -->
-      <transition name="slide-left">
-        <SearchPanel 
-          v-if="showSearch"
-          @close="showSearch = false"
-        />
-      </transition>
     </div>
     
     <!-- 模态对话框 -->
@@ -120,6 +101,8 @@
       <transition name="modal">
         <ExportDialog 
           v-if="showExport"
+          :visible="showExport"
+          :content="''"
           @close="showExport = false"
           @export="handleExport"
         />
@@ -218,7 +201,6 @@ import { useMarkdownStore } from './stores/markdown'
 import { useAccentColor } from './composables/useAccentColor'
 import { logger } from './utils'
 import SettingsPanel from './components/SettingsPanel.vue'
-import SearchPanel from './components/SearchPanel.vue'
 import ExportDialog from './components/ExportDialog.vue'
 import PerformanceMonitor from './components/PerformanceMonitor.vue'
 
@@ -234,7 +216,6 @@ const { loadAccentColor } = useAccentColor()
 
 // 响应式数据
 const showSettings = ref(false)
-const showSearch = ref(false)
 const showExport = ref(false)
 
 const notifications = ref<Notification[]>([])
@@ -256,16 +237,6 @@ const handleClearError = () => {
 // 方法
 const toggleSettings = () => {
   showSettings.value = !showSettings.value
-  if (showSettings.value) {
-    showSearch.value = false
-  }
-}
-
-const toggleSearch = () => {
-  showSearch.value = !showSearch.value
-  if (showSearch.value) {
-    showSettings.value = false
-  }
 }
 
 const toggleExport = () => {
@@ -337,12 +308,6 @@ const handleKeydown = (event: KeyboardEvent) => {
     toggleSettings()
   }
   
-  // Ctrl+F 打开搜索
-  if (event.ctrlKey && event.key === 'f') {
-    event.preventDefault()
-    toggleSearch()
-  }
-  
   // Ctrl+E 打开导出
   if (event.ctrlKey && event.key === 'e') {
     event.preventDefault()
@@ -358,7 +323,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   // Escape 关闭所有面板
   if (event.key === 'Escape') {
     showSettings.value = false
-    showSearch.value = false
     showExport.value = false
   }
 }
@@ -386,7 +350,7 @@ onMounted(async () => {
   showNotification({
     type: 'info',
     title: '欢迎使用 Markdown Reader',
-    message: '使用 Ctrl+, 打开设置，Ctrl+F 搜索内容'
+    message: '使用 Ctrl+, 打开设置，目录中可搜索标题'
   })
 })
 

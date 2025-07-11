@@ -246,9 +246,10 @@ export interface LogEntry {
 
 // 浏览器插件消息类型
 export interface ExtensionMessage {
-  type: 'GET_STATE' | 'UPDATE_CONFIG' | 'UPDATE_STYLE_CONFIG' | 'RENDER_MARKDOWN' | 'LOG_EVENT' | 'PING' | 'EXPORT_HTML' | 'PRINT_PAGE'
+  type: 'GET_STATE' | 'UPDATE_CONFIG' | 'UPDATE_STYLE_CONFIG' | 'RENDER_MARKDOWN' | 'LOG_EVENT' | 'PING' | 'EXPORT_HTML' | 'PRINT_PAGE' | 'SEARCH' | 'JUMP_TO_RESULT'
   payload?: any
   config?: MarkdownConfig
+  options?: SearchOptions
 }
 
 export interface ExtensionResponse {

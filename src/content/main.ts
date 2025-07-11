@@ -1853,10 +1853,7 @@ class ContentScriptApp {
       this.showExportDialog()
     })
 
-    // 搜索面板显示事件
-    this.addEventListenerManaged('showSearchPanel', window, 'showSearchPanel', () => {
-      this.showSearchPanel()
-    })
+
 
     // 切换原始内容事件
     this.addEventListenerManaged('toggleOriginalContent', window, 'toggleOriginalContent', () => {
@@ -1889,20 +1886,41 @@ class ContentScriptApp {
     })
   }
 
-  /**
-   * 显示搜索面板
-   */
-  private showSearchPanel(): void {
-    vueComponentManager.showSearchPanel((query, options) => {
-      this.handleSearch(query, options)
-    })
-  }
+
 
   /**
    * 处理导出操作
    */
-  private handleExport(format: string, _options?: any): void {
+  private async handleExport(format: string, options?: any): Promise<void> {
     try {
+      // 动态导入导出工具
+      const { exportDocument, getCurrentPageContent } = await import('../utils/exportUtils')
+      
+      // 获取当前页面内容
+      const content = getCurrentPageContent()
+      
+      // 构建导出选项
+      const exportOptions = {
+        format: format as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg',
+        filename: `document.${format}`,
+        includeStyles: true,
+        includeImages: true,
+        includeCharts: true,
+        includeMath: true,
+        pageSize: 'A4',
+        orientation: 'portrait' as const,
+        quality: 0.9,
+        ...options
+      }
+      
+      // 执行导出
+      await exportDocument(content, exportOptions)
+      
+      logger.info(`导出完成: ${format}`)
+    } catch (error) {
+      logger.error('导出失败:', error)
+      
+      // 降级处理
       switch (format) {
         case 'html':
           this.exportAsHtml()
@@ -1913,101 +1931,12 @@ class ContentScriptApp {
         default:
           logger.warn('不支持的导出格式:', format)
       }
-    } catch (error) {
-      logger.error('导出失败:', error)
     }
   }
 
-  /**
-   * 处理搜索操作
-   */
-  private handleSearch(query: string, options?: any): void {
-    try {
-      if (!query.trim()) {
-        logger.warn('搜索查询为空')
-        return
-      }
 
-      // 获取渲染后的内容容器
-      const contentContainer = document.querySelector('.markdown-content') || document.body
 
-      // 清除之前的搜索高亮
-      this.clearSearchHighlights(contentContainer)
 
-      if (query.trim()) {
-        // 执行搜索并高亮结果
-        const results = this.searchInContent(contentContainer, query, options)
-        logger.info(`搜索完成，找到 ${results} 个结果`)
-
-        // 滚动到第一个结果
-        const firstHighlight = document.querySelector('.search-highlight')
-        if (firstHighlight) {
-          firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }
-    } catch (error) {
-      logger.error('搜索失败:', error)
-    }
-  }
-
-  /**
-   * 在内容中搜索并高亮
-   */
-  private searchInContent(container: Element, query: string, _options?: any): number {
-    let resultCount = 0
-    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
-
-    const walker = document.createTreeWalker(
-      container,
-      NodeFilter.SHOW_TEXT,
-      null
-    )
-
-    const textNodes: Text[] = []
-    let node: Node | null
-
-    // 收集所有文本节点
-    while (node = walker.nextNode()) {
-      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-        textNodes.push(node as Text)
-      }
-    }
-
-    // 在文本节点中搜索并高亮
-    textNodes.forEach(textNode => {
-      const text = textNode.textContent || ''
-      if (regex.test(text)) {
-        const highlightedText = text.replace(regex, '<span class="search-highlight">$&</span>')
-        const wrapper = document.createElement('span')
-        wrapper.innerHTML = highlightedText
-
-        // 计算匹配数量
-        const matches = text.match(regex)
-        if (matches) {
-          resultCount += matches.length
-        }
-
-        // 替换原文本节点
-        textNode.parentNode?.replaceChild(wrapper, textNode)
-      }
-    })
-
-    return resultCount
-  }
-
-  /**
-   * 清除搜索高亮
-   */
-  private clearSearchHighlights(container: Element): void {
-    const highlights = container.querySelectorAll('.search-highlight')
-    highlights.forEach(highlight => {
-      const parent = highlight.parentNode
-      if (parent) {
-        parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight)
-        parent.normalize() // 合并相邻的文本节点
-      }
-    })
-  }
 
   private setupMessageListener(): void {
     if (!this.checkExtensionContext()) {

@@ -2,7 +2,6 @@ import { createApp, type App } from 'vue'
 import { createPinia } from 'pinia'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import ExportDialog from '../components/ExportDialog.vue'
-import SearchPanel from '../components/SearchPanel.vue'
 import PerformanceMonitor from '../components/PerformanceMonitor.vue'
 import TableOfContents from '../components/TableOfContents.vue'
 import type { MarkdownConfig } from '../types'
@@ -58,15 +57,7 @@ class VueComponentManager {
     })
   }
 
-  /**
-   * 显示搜索面板
-   */
-  showSearchPanel(onSearch: (query: string, options: any) => void): void {
-    this.createComponent('search', SearchPanel, {
-      onClose: () => this.hideComponent('search'),
-      onSearch
-    })
-  }
+
 
   /**
    * 显示性能监控
@@ -104,10 +95,6 @@ class VueComponentManager {
       onExportClick: () => {
         // 触发导出对话框显示事件
         window.dispatchEvent(new CustomEvent('showExportDialog'))
-      },
-      onSearchClick: () => {
-        // 触发搜索面板显示事件
-        window.dispatchEvent(new CustomEvent('showSearchPanel'))
       },
       onToggleOriginal: () => {
         // 触发切换原始内容事件

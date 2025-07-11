@@ -31,6 +31,19 @@
         </svg>
       </button>
 
+      <!-- 搜索按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        :class="{ 'active': showSearchBox }"
+        @click="toggleSearch"
+        title="搜索目录"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="M21 21l-4.35-4.35"></path>
+        </svg>
+      </button>
+
       <!-- 导出按钮 -->
       <button 
         class="toc-toolbar-btn" 
@@ -41,18 +54,6 @@
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7,10 12,15 17,10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-      </button>
-
-      <!-- 搜索按钮 -->
-      <button 
-        class="toc-toolbar-btn" 
-        @click="openSearch"
-        title="搜索"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="M21 21l-4.35-4.35"></path>
         </svg>
       </button>
 
@@ -98,34 +99,78 @@
       </button>
     </div>
 
+    <!-- 搜索框区域 -->
+    <div class="toc-search-container" v-show="showSearchBox && !isCollapsed">
+      <div class="toc-search-wrapper">
+        <div class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="M21 21l-4.35-4.35"></path>
+          </svg>
+        </div>
+        <input 
+          ref="searchInput"
+          v-model="searchQuery"
+          type="text" 
+          class="toc-search-input"
+          placeholder="搜索目录标题..."
+          @input="handleSearchInput"
+          @keydown.escape="clearSearch"
+        />
+        <button 
+          v-if="searchQuery"
+          class="clear-search-btn"
+          @click="clearSearch"
+          title="清除搜索"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="search-stats" v-if="searchQuery">
+        找到 {{ filteredTocItems.length }} / {{ tocItems.length }} 个标题
+      </div>
+    </div>
+
     <!-- 目录标题区域 -->
     <div class="toc-header" v-show="!isCollapsed">
       <h3>目录导航</h3>
-      <div class="toc-stats">{{ tocItems.length }} 个标题</div>
+      <div class="toc-stats">
+        <span v-if="!searchQuery">{{ tocItems.length }} 个标题</span>
+        <span v-else>{{ filteredTocItems.length }} / {{ tocItems.length }} 个标题</span>
+      </div>
     </div>
 
     <!-- 目录内容区域 -->
     <div class="toc-content" v-show="!isCollapsed">
-      <ul class="toc-list" v-if="tocItems.length > 0">
+      <ul class="toc-list" v-if="displayTocItems.length > 0">
         <li 
-          v-for="item in tocItems" 
+          v-for="item in displayTocItems" 
           :key="item.id"
           :class="[
             'toc-item', 
             `toc-level-${item.level}`,
-            { 'active': activeId === item.id }
+            { 'active': activeId === item.id },
+            { 'search-highlight': searchQuery && item.isHighlighted }
           ]"
         >
           <a 
             :href="`#${item.id}`" 
             @click="scrollToHeading(item.id, $event)"
             :title="item.text"
+            v-html="item.highlightedText || item.text"
           >
-            {{ item.text }}
           </a>
         </li>
       </ul>
-      <div v-else class="toc-empty">
+      <div v-else-if="searchQuery && filteredTocItems.length === 0" class="toc-empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">未找到匹配的标题</div>
+        <div class="empty-hint">尝试使用其他关键词搜索</div>
+      </div>
+      <div v-else-if="tocItems.length === 0" class="toc-empty">
         <div class="empty-icon">📄</div>
         <div class="empty-text">暂无目录</div>
         <div class="empty-hint">页面中没有找到标题</div>
@@ -159,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { TocItem } from '../utils/markdownRenderer'
 
 interface Props {
@@ -179,6 +224,61 @@ const activeId = ref<string>('')
 const readingProgress = ref(0)
 const isHovering = ref(false)
 const hideTimer = ref<number | null>(null)
+
+// 搜索相关状态
+const showSearchBox = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement>()
+
+// 计算属性：过滤后的目录项
+const filteredTocItems = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return props.tocItems
+  }
+  
+  const query = searchQuery.value.toLowerCase().trim()
+  return props.tocItems.filter(item => 
+    item.text.toLowerCase().includes(query)
+  )
+})
+
+// 计算属性：显示的目录项（带高亮）
+const displayTocItems = computed(() => {
+  const items = filteredTocItems.value
+  
+  if (!searchQuery.value.trim()) {
+    return items.map(item => ({
+      ...item,
+      highlightedText: undefined,
+      isHighlighted: false
+    }))
+  }
+  
+  const query = searchQuery.value.toLowerCase().trim()
+  return items.map(item => {
+    const text = item.text
+    const lowerText = text.toLowerCase()
+    const index = lowerText.indexOf(query)
+    
+    if (index === -1) {
+      return {
+        ...item,
+        highlightedText: text,
+        isHighlighted: false
+      }
+    }
+    
+    const before = text.substring(0, index)
+    const match = text.substring(index, index + query.length)
+    const after = text.substring(index + query.length)
+    
+    return {
+      ...item,
+      highlightedText: `${before}<mark class="search-highlight-text">${match}</mark>${after}`,
+      isHighlighted: true
+    }
+  })
+})
 
 // 触发区域和面板的鼠标事件处理
 const handleTriggerEnter = () => {
@@ -235,10 +335,27 @@ const openExport = () => {
   window.dispatchEvent(event)
 }
 
-const openSearch = () => {
-  // 触发全局搜索事件
-  const event = new CustomEvent('showSearchPanel')
-  window.dispatchEvent(event)
+// 搜索功能
+const toggleSearch = async () => {
+  showSearchBox.value = !showSearchBox.value
+  
+  if (showSearchBox.value) {
+    // 展开搜索框时，自动聚焦输入框
+    await nextTick()
+    searchInput.value?.focus()
+  } else {
+    // 关闭搜索框时，清除搜索内容
+    clearSearch()
+  }
+}
+
+const handleSearchInput = () => {
+  // 搜索输入处理，响应式数据会自动更新过滤结果
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  searchInput.value?.focus()
 }
 
 const toggleOriginalContent = () => {
@@ -261,12 +378,21 @@ const togglePin = () => {
 const hidePanel = () => {
   isVisible.value = false
   isPinned.value = false
+  showSearchBox.value = false
+  clearSearch()
   localStorage.setItem('toc-pinned', 'false')
   clearHideTimer()
 }
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
+  
+  // 如果折叠了，也要关闭搜索框
+  if (isCollapsed.value) {
+    showSearchBox.value = false
+    clearSearch()
+  }
+  
   // 保存折叠状态到本地存储
   localStorage.setItem('toc-collapsed', isCollapsed.value.toString())
 }
@@ -387,5 +513,5 @@ watch(() => props.visible, (newValue) => {
 
 <style scoped>
 /* 引入目录组件专用样式文件 */
-/* @import '../styles/table-of-contents.css'; */
+@import '../styles/table-of-contents.css';
 </style>
