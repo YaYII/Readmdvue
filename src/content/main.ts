@@ -33,7 +33,7 @@ class ContentScriptApp {
   // 事件监听器管理 - 防止内存泄漏
   private eventListeners: Map<string, { element: EventTarget; event: string; handler: EventListener; options?: AddEventListenerOptions }> = new Map()
   private abortController: AbortController = new AbortController()
-  
+
   // 主题状态存储 - 用于打印前后的主题恢复
   private savedThemeState: {
     theme?: string
@@ -42,7 +42,7 @@ class ContentScriptApp {
     dataActualTheme?: string
     liquidGlassTheme?: string
   } = {}
-  
+
   // 性能监控
   private performanceMetrics: {
     initTime: number
@@ -55,11 +55,11 @@ class ContentScriptApp {
       limit: number
     }
   } = {
-    initTime: 0,
-    renderTime: 0,
-    configLoadTime: 0,
-    lastUpdate: Date.now()
-  }
+      initTime: 0,
+      renderTime: 0,
+      configLoadTime: 0,
+      lastUpdate: Date.now()
+    }
 
   constructor() {
     this.init()
@@ -188,29 +188,32 @@ class ContentScriptApp {
       if (this.isMarkdownFile()) {
         this.debugLog('检测到Markdown文件，开始设置渲染器')
         await this.setupMarkdownRenderer()
+
+        // 设置消息监听
+        this.setupMessageListener()
+
+        // 设置主题监听
+        this.setupThemeWatcher()
+
+        // 设置扩展上下文监听
+        this.setupExtensionWatcher()
+
+        // 设置打印事件监听
+        this.setupPrintEventListeners()
+
+        // 设置图片事件委托
+        this.setupImageEventDelegation()
+
+        // 设置页面卸载清理机制
+        this.setupPageUnloadCleanup()
+
+        this.debugLog('Content Script 初始化完成')
       } else {
         this.debugLog('未检测到Markdown文件，Content Script 不激活')
+        errorHandler.handle(null, 'ContentScript.init')
+        return;
       }
 
-      // 设置消息监听
-      this.setupMessageListener()
-
-      // 设置主题监听
-      this.setupThemeWatcher()
-
-      // 设置扩展上下文监听
-      this.setupExtensionWatcher()
-
-      // 设置打印事件监听
-      this.setupPrintEventListeners()
-
-      // 设置图片事件委托
-      this.setupImageEventDelegation()
-
-      // 设置页面卸载清理机制
-      this.setupPageUnloadCleanup()
-
-      this.debugLog('Content Script 初始化完成')
     } catch (error) {
       this.debugLog('Content Script 初始化失败', error, 'error')
       errorHandler.handle(error, 'ContentScript.init')
@@ -365,23 +368,23 @@ class ContentScriptApp {
    * @param options 事件选项
    */
   private addEventListenerManaged(
-    id: string, 
-    element: EventTarget, 
-    event: string, 
-    handler: EventListener, 
+    id: string,
+    element: EventTarget,
+    event: string,
+    handler: EventListener,
     options?: AddEventListenerOptions
   ): void {
     // 如果已存在同ID的监听器，先移除
     this.removeEventListenerManaged(id)
-    
+
     // 添加新的监听器
-    const managedOptions = { 
-      ...options, 
-      signal: this.abortController.signal 
+    const managedOptions = {
+      ...options,
+      signal: this.abortController.signal
     }
-    
+
     element.addEventListener(event, handler, managedOptions)
-    
+
     // 记录监听器信息
     this.eventListeners.set(id, {
       element,
@@ -389,7 +392,7 @@ class ContentScriptApp {
       handler,
       options: managedOptions
     })
-    
+
     this.debugLog(`事件监听器已添加: ${id}`, { event, element: element.constructor.name })
   }
 
@@ -414,13 +417,13 @@ class ContentScriptApp {
   private cleanupEventListeners(): void {
     // 使用AbortController一次性取消所有监听器
     this.abortController.abort()
-    
+
     // 清空记录
     this.eventListeners.clear()
-    
+
     // 重新创建AbortController以备后用
     this.abortController = new AbortController()
-    
+
     this.debugLog('所有事件监听器已清理')
   }
 
@@ -432,7 +435,7 @@ class ContentScriptApp {
     // 使用事件委托处理图片点击
     this.addEventListenerManaged('imageClick', document, 'click', (event: Event) => {
       const target = event.target as HTMLElement
-      
+
       // 检查是否是可点击的图片
       if (target.tagName === 'IMG' && target.hasAttribute('data-clickable')) {
         event.preventDefault()
@@ -443,7 +446,7 @@ class ContentScriptApp {
     // 处理图片加载完成
     this.addEventListenerManaged('imageLoad', document, 'load', (event: Event) => {
       const target = event.target as HTMLElement
-      
+
       if (target.tagName === 'IMG' && target.hasAttribute('data-image-id')) {
         const imageId = target.getAttribute('data-image-id')
         if (imageId) {
@@ -455,7 +458,7 @@ class ContentScriptApp {
     // 处理图片加载错误
     this.addEventListenerManaged('imageError', document, 'error', (event: Event) => {
       const target = event.target as HTMLElement
-      
+
       if (target.tagName === 'IMG' && target.hasAttribute('data-image-id')) {
         const imageId = target.getAttribute('data-image-id')
         if (imageId) {
@@ -494,9 +497,9 @@ class ContentScriptApp {
     if (container) {
       const loading = container.querySelector('.image-loading')
       const img = container.querySelector('img')
-      
+
       if (loading) loading.remove()
-      
+
       if (img) {
         img.style.display = 'none'
         const errorDiv = document.createElement('div')
@@ -517,13 +520,13 @@ class ContentScriptApp {
     // 打印前事件 - 设置打印信息
     this.addEventListenerManaged('beforeprint', window, 'beforeprint', () => {
       this.debugLog('打印前事件触发，设置打印信息')
-      
+
       // 保存当前主题状态
       this.saveCurrentThemeState()
-      
+
       // 强制显示所有图片，确保打印时图片可见
       this.ensureImagesVisibleForPrint()
-      
+
       // 设置打印页眉页脚信息
       this.setPrintHeaderFooterInfo()
       this.debugLog('打印信息已设置')
@@ -535,11 +538,11 @@ class ContentScriptApp {
       // 清理打印时添加的临时属性
       document.documentElement.removeAttribute('data-document-title')
       document.documentElement.removeAttribute('data-file-name')
-      
+
       // 恢复主题设置，防止打印样式影响页面主题
       // 重新加载持久化配置确保完全恢复用户设置
       await this.restoreThemeAfterPrint()
-      
+
       this.debugLog('打印信息已清理，主题已恢复')
     })
 
@@ -554,36 +557,36 @@ class ContentScriptApp {
     try {
       // 获取所有图片元素
       const images = document.querySelectorAll('img.markdown-image, .image-container img')
-      
+
       images.forEach((img: Element) => {
         const imageElement = img as HTMLImageElement
-        
+
         // 强制显示图片
         imageElement.style.opacity = '1'
         imageElement.style.visibility = 'visible'
         imageElement.style.display = 'block'
-        
+
         // 确保图片尺寸适合打印
         imageElement.style.maxWidth = '100%'
         imageElement.style.height = 'auto'
-        
+
         // 移除可能影响打印的变换
         imageElement.style.transform = 'none'
         imageElement.style.transition = 'none'
-        
+
         // 如果图片还没有加载完成，设置一个默认的最小高度
         if (!imageElement.complete) {
           imageElement.style.minHeight = '100px'
           imageElement.style.background = '#f5f5f5'
         }
       })
-      
+
       // 移除所有图片加载状态元素
       const loadingElements = document.querySelectorAll('.image-loading')
       loadingElements.forEach(loading => {
         (loading as HTMLElement).style.display = 'none'
       })
-      
+
       // 确保图片容器可见
       const imageContainers = document.querySelectorAll('.image-container')
       imageContainers.forEach((container: Element) => {
@@ -592,9 +595,9 @@ class ContentScriptApp {
         containerElement.style.visibility = 'visible'
         containerElement.style.pageBreakInside = 'avoid'
       })
-      
+
       this.debugLog(`已强制显示 ${images.length} 个图片用于打印`)
-      
+
     } catch (error) {
       this.debugLog('强制显示图片失败', error, 'error')
     }
@@ -608,40 +611,40 @@ class ContentScriptApp {
    */
   private setPrintHeaderFooterInfo(): boolean {
     const startTime = performance.now()
-    
+
     try {
       // 性能监控：记录开始时间
       this.debugLog('开始设置打印页眉页脚信息')
-      
+
       // 获取文档标题 - 增强容错性
       const documentTitle = this.getDocumentTitle()
-      
+
       // 获取文件名 - 优化提取逻辑
       const fileName = this.extractFileName()
-      
+
       // 验证数据有效性
       if (!documentTitle || !fileName) {
         throw new Error('打印信息数据无效')
       }
-      
+
       // 设置data属性 - 增强错误处理
       this.setDocumentAttributes({
         'data-document-title': documentTitle,
         'data-file-name': fileName
       })
-      
+
       // 性能监控：记录完成时间
       const endTime = performance.now()
       this.performanceMetrics.lastUpdate = Date.now()
-      
+
       this.debugLog('打印页眉页脚信息设置成功', {
         documentTitle,
         fileName,
         duration: `${(endTime - startTime).toFixed(2)}ms`
       })
-      
+
       return true
-      
+
     } catch (error) {
       const endTime = performance.now()
       this.debugLog('设置打印页眉页脚信息失败', {
@@ -649,7 +652,7 @@ class ContentScriptApp {
         duration: `${(endTime - startTime).toFixed(2)}ms`,
         stack: error instanceof Error ? error.stack : undefined
       })
-      
+
       // 设置默认值以确保打印功能不完全失败
       this.setFallbackPrintInfo()
       return false
@@ -667,22 +670,22 @@ class ContentScriptApp {
       if (document.title && document.title.trim()) {
         return document.title.trim()
       }
-      
+
       // 尝试从meta标签获取
       const metaTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
       if (metaTitle && metaTitle.trim()) {
         return metaTitle.trim()
       }
-      
+
       // 尝试从h1标签获取
       const h1Element = document.querySelector('h1')
       if (h1Element && h1Element.textContent && h1Element.textContent.trim()) {
         return h1Element.textContent.trim()
       }
-      
+
       // 最后使用URL作为标题
       return window.location.href
-      
+
     } catch (error) {
       this.debugLog('获取文档标题失败', error)
       return '无标题文档'
@@ -697,22 +700,22 @@ class ContentScriptApp {
   private extractFileName(): string {
     try {
       const pathname = window.location.pathname
-      
+
       // 处理根路径
       if (!pathname || pathname === '/') {
         return window.location.hostname || '本地文件'
       }
-      
+
       // 分割路径并过滤空值
       const pathParts = pathname.split('/').filter(part => part.trim() !== '')
-      
+
       if (pathParts.length === 0) {
         return window.location.hostname || '本地文件'
       }
-      
+
       // 获取最后一个路径部分
       let fileName = pathParts[pathParts.length - 1]
-      
+
       try {
         // 尝试URL解码
         fileName = decodeURIComponent(fileName)
@@ -720,14 +723,14 @@ class ContentScriptApp {
         // 解码失败时使用原始值
         this.debugLog('URL解码失败，使用原始文件名', decodeError)
       }
-      
+
       // 如果文件名为空或只包含特殊字符，使用域名
       if (!fileName || !/[a-zA-Z0-9\u4e00-\u9fa5]/.test(fileName)) {
         return window.location.hostname || '本地文件'
       }
-      
+
       return fileName
-      
+
     } catch (error) {
       this.debugLog('提取文件名失败', error)
       return window.location.hostname || '未知文件'
@@ -744,16 +747,16 @@ class ContentScriptApp {
       if (!document.documentElement) {
         throw new Error('document.documentElement 不可用')
       }
-      
+
       Object.entries(attributes).forEach(([key, value]) => {
         if (!key || value === undefined || value === null) {
           this.debugLog(`跳过无效属性: ${key} = ${value}`)
           return
         }
-        
+
         document.documentElement.setAttribute(key, String(value))
       })
-      
+
     } catch (error) {
       this.debugLog('设置文档属性失败', error)
       throw error
@@ -770,10 +773,10 @@ class ContentScriptApp {
         'data-document-title': '文档',
         'data-file-name': window.location.hostname || '本地文件'
       }
-      
+
       this.setDocumentAttributes(fallbackInfo)
       this.debugLog('已设置备用打印信息', fallbackInfo)
-      
+
     } catch (error) {
       this.debugLog('设置备用打印信息也失败', error)
     }
@@ -787,22 +790,22 @@ class ContentScriptApp {
   private async restoreThemeAfterPrint(): Promise<void> {
     try {
       this.debugLog('开始恢复打印后的主题设置')
-      
+
       // 重新加载持久化配置，确保使用最新的用户设置
       await this.reloadPersistedConfig()
-      
+
       // 重新应用当前配置的主题
       if (this.config.theme) {
         cssVariableManager.setTheme(this.config.theme)
         this.debugLog('已恢复主题设置', { theme: this.config.theme })
       }
-      
+
       // 重新应用强调色
       if (this.config.accentColor) {
         cssVariableManager.setAccentColor(this.config.accentColor)
         this.debugLog('已恢复强调色设置', { accentColor: this.config.accentColor })
       }
-      
+
       // 恢复保存的DOM属性（作为备用机制）
       if (this.savedThemeState.dataTheme) {
         document.documentElement.setAttribute('data-theme', this.savedThemeState.dataTheme)
@@ -813,15 +816,15 @@ class ContentScriptApp {
       if (this.savedThemeState.liquidGlassTheme) {
         document.documentElement.setAttribute('data-liquid-glass-theme', this.savedThemeState.liquidGlassTheme)
       }
-      
+
       // 确保主题相关的CSS变量正确设置
       this.applyConfigToStyles()
-      
-      this.debugLog('主题状态已完全恢复', { 
-        config: this.config, 
-        savedState: this.savedThemeState 
+
+      this.debugLog('主题状态已完全恢复', {
+        config: this.config,
+        savedState: this.savedThemeState
       })
-      
+
     } catch (error) {
       this.debugLog('恢复主题设置失败', error)
       // 如果重新加载配置失败，使用保存的状态作为备用方案
@@ -862,7 +865,7 @@ class ContentScriptApp {
   private fallbackRestoreTheme(): void {
     try {
       this.debugLog('使用备用方案恢复主题')
-      
+
       // 使用保存的状态恢复主题
       if (this.savedThemeState.theme) {
         cssVariableManager.setTheme(this.savedThemeState.theme as Theme)
@@ -870,7 +873,7 @@ class ContentScriptApp {
       if (this.savedThemeState.accentColor) {
         cssVariableManager.setAccentColor(this.savedThemeState.accentColor as AccentColor)
       }
-      
+
       // 恢复DOM属性
       if (this.savedThemeState.dataTheme) {
         document.documentElement.setAttribute('data-theme', this.savedThemeState.dataTheme)
@@ -881,9 +884,9 @@ class ContentScriptApp {
       if (this.savedThemeState.liquidGlassTheme) {
         document.documentElement.setAttribute('data-liquid-glass-theme', this.savedThemeState.liquidGlassTheme)
       }
-      
+
       this.debugLog('备用主题恢复完成')
-      
+
     } catch (error) {
       this.debugLog('备用主题恢复也失败', error)
     }
@@ -898,14 +901,14 @@ class ContentScriptApp {
       // 保存配置中的主题设置
       this.savedThemeState.theme = this.config.theme
       this.savedThemeState.accentColor = this.config.accentColor
-      
+
       // 保存DOM元素上的主题属性
       this.savedThemeState.dataTheme = document.documentElement.getAttribute('data-theme') || undefined
       this.savedThemeState.dataActualTheme = document.documentElement.getAttribute('data-actual-theme') || undefined
       this.savedThemeState.liquidGlassTheme = document.documentElement.getAttribute('data-liquid-glass-theme') || undefined
-      
+
       this.debugLog('当前主题状态已保存', this.savedThemeState)
-      
+
     } catch (error) {
       this.debugLog('保存主题状态失败', error)
     }
@@ -946,6 +949,8 @@ class ContentScriptApp {
     if (/\.(md|markdown)$/i.test(url) || /\.(md|markdown)$/i.test(pathname)) {
       console.log('通过文件扩展名识别为Markdown文件')
       return true
+    } else {
+      return false;
     }
 
     // 2. GitHub/GitLab等平台特殊路径检测
@@ -1476,7 +1481,7 @@ class ContentScriptApp {
     enablePerformanceTracking: true,
     enableMemoryTracking: true
   }
-  
+
   // 日志存储
   private logEntries: Array<{
     timestamp: number
@@ -1660,7 +1665,7 @@ class ContentScriptApp {
       link.download = `markdown-reader-debug-${Date.now()}.json`
       link.click()
       URL.revokeObjectURL(url)
-      
+
       this.debugLog('调试信息已导出到文件', undefined, 'info')
     } catch (error) {
       this.debugLog('导出调试信息到文件失败', error, 'error')
@@ -1722,6 +1727,9 @@ class ContentScriptApp {
       // 动态渲染图表 - 这是关键的修复
       await this.renderChartsInContainer(container)
 
+      // 创建目录组件
+      this.setupTableOfContents()
+
       performanceMonitor.end('renderMarkdown')
       logger.info('Markdown渲染完成')
     } catch (error) {
@@ -1733,8 +1741,8 @@ class ContentScriptApp {
   // applyStyles方法已废弃，样式现在通过CSS文件和CSS变量自动应用
 
   private setupInteractions(): void {
-    // 初始化Vue组件工具栏
-    this.setupVueToolbar()
+    // 禁用Vue组件工具栏初始化，因为目录工具栏已提供相同功能
+    // this.setupVueToolbar()
 
     // 主题切换 - 支持四种模式循环切换
     const themeBtn = document.getElementById('toggleTheme')
@@ -1795,101 +1803,98 @@ class ContentScriptApp {
   }
 
   /**
-   * 设置Vue组件工具栏
+   * 设置目录组件
    */
-  private setupVueToolbar(): void {
+  private setupTableOfContents(): void {
     try {
-      // 创建工具栏容器
-      const toolbar = domUtils.createElement('div', {
-        id: 'markdown-vue-toolbar',
-        className: 'markdown-vue-toolbar',
-        innerHTML: `
-          <div class="toolbar-section">
-            <button id="vue-settings-btn" class="toolbar-btn" title="设置">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            </button>
-            <button id="vue-export-btn" class="toolbar-btn" title="导出">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7,10 12,15 17,10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </button>
-            <button id="vue-search-btn" class="toolbar-btn" title="搜索">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="M21 21l-4.35-4.35"></path>
-              </svg>
-            </button>
-            <button id="vue-performance-btn" class="toolbar-btn" title="性能监控">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
-              </svg>
-            </button>
-          </div>
-        `
-      })
+      // 检查是否有渲染器和目录数据
+      if (!this.renderer) {
+        logger.warn('渲染器不存在，无法创建目录')
+        return
+      }
 
-      // 添加工具栏到页面
-      document.body.appendChild(toolbar)
+      const tocItems = this.renderer.getTocItems()
+      if (!tocItems || tocItems.length === 0) {
+        logger.info('没有找到标题，跳过目录创建')
+        return
+      }
 
-      // 初始化智能工具栏管理器
-      smartToolbarManager.initialize(toolbar)
+      logger.info(`找到 ${tocItems.length} 个标题，创建目录组件`)
 
-      // 绑定事件处理器
-      this.bindVueToolbarEvents()
+      // 移除旧的目录容器（如果存在）
+      const oldTocContainer = document.getElementById('vue-table-of-contents')
+      if (oldTocContainer) {
+        oldTocContainer.remove()
+      }
 
-      logger.info('Vue工具栏初始化完成')
+      // 使用 Vue 组件管理器创建目录组件（新版本不需要容器参数）
+      vueComponentManager.createTableOfContents(tocItems)
+
+      // 设置目录工具栏事件监听器
+      this.setupTocToolbarListeners()
+
+      logger.info('目录组件创建成功')
     } catch (error) {
-      logger.error('Vue工具栏初始化失败:', error)
+      logger.error('创建目录组件失败:', error)
     }
   }
 
   /**
-   * 绑定Vue工具栏事件
+   * 设置目录工具栏事件监听器
    */
-  private bindVueToolbarEvents(): void {
-    // 设置按钮
-    document.getElementById('vue-settings-btn')?.addEventListener('click', () => {
-      // 通知智能工具栏管理器设置面板即将打开
-      smartToolbarManager.setSettingsPanelOpen(true)
-
-      vueComponentManager.showSettingsPanel(this.config, (newConfig) => {
-        this.updateConfig(newConfig)
-      }, () => {
-        // 设置面板关闭回调
-        smartToolbarManager.setSettingsPanelOpen(false)
-      })
+  private setupTocToolbarListeners(): void {
+    // 设置面板显示事件
+    this.addEventListenerManaged('showSettingsPanel', window, 'showSettingsPanel', () => {
+      this.showSettingsPanel()
     })
 
-    // 导出按钮
-    document.getElementById('vue-export-btn')?.addEventListener('click', () => {
-      const content = document.querySelector('.markdown-content')?.innerHTML || ''
-      vueComponentManager.showExportDialog(content, this.config, (format, options) => {
-        this.handleExport(format, options)
-      })
+    // 导出对话框显示事件
+    this.addEventListenerManaged('showExportDialog', window, 'showExportDialog', () => {
+      this.showExportDialog()
     })
 
-    // 搜索按钮
-    document.getElementById('vue-search-btn')?.addEventListener('click', () => {
-      vueComponentManager.showSearchPanel((query, options) => {
-        this.handleSearch(query, options)
-      })
+    // 搜索面板显示事件
+    this.addEventListenerManaged('showSearchPanel', window, 'showSearchPanel', () => {
+      this.showSearchPanel()
     })
 
-    // 性能监控按钮
-    document.getElementById('vue-performance-btn')?.addEventListener('click', () => {
-      // 获取基本性能信息
-      const metrics = {
-        timing: performance.timing,
-        memory: (performance as any).memory || null,
-        navigation: performance.navigation,
-        timestamp: Date.now()
-      }
-      vueComponentManager.showPerformanceMonitor(metrics)
+    // 切换原始内容事件
+    this.addEventListenerManaged('toggleOriginalContent', window, 'toggleOriginalContent', () => {
+      this.toggleOriginalContent()
+    })
+  }
+
+  /**
+   * 显示设置面板
+   */
+  private showSettingsPanel(): void {
+    // 通知智能工具栏管理器设置面板即将打开
+    smartToolbarManager.setSettingsPanelOpen(true)
+
+    vueComponentManager.showSettingsPanel(this.config, (newConfig) => {
+      this.updateConfig(newConfig)
+    }, () => {
+      // 设置面板关闭回调
+      smartToolbarManager.setSettingsPanelOpen(false)
+    })
+  }
+
+  /**
+   * 显示导出对话框
+   */
+  private showExportDialog(): void {
+    const content = document.querySelector('.markdown-content')?.innerHTML || ''
+    vueComponentManager.showExportDialog(content, this.config, (format, options) => {
+      this.handleExport(format, options)
+    })
+  }
+
+  /**
+   * 显示搜索面板
+   */
+  private showSearchPanel(): void {
+    vueComponentManager.showSearchPanel((query, options) => {
+      this.handleSearch(query, options)
     })
   }
 
@@ -2273,7 +2278,8 @@ class ContentScriptApp {
     }
 
     // 添加一个恢复按钮，允许用户查看原始内容
-    this.addRestoreButton(originalBody)
+    // 注释：右上角的原始页面按钮已被目录工具栏替代，避免功能重复
+    // this.addRestoreButton(originalBody)
   }
 
   /**
@@ -2299,48 +2305,12 @@ class ContentScriptApp {
   }
 
   /**
-   * 添加恢复原始内容的按钮
-   */
-  private addRestoreButton(_originalBody: HTMLElement): void {
-    // 检查是否已经存在恢复按钮，避免重复创建
-    const existingBtn = document.querySelector('.md-restore-button')
-    if (existingBtn) {
-      console.log('恢复按钮已存在，跳过创建')
-      return
-    }
-
-    const restoreBtn = domUtils.createElement('button', {
-      className: 'restore-original-btn',
-      innerHTML: `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"></path>
-          <polyline points="8,1 16,1 16,7 8,7 8,1"></polyline>
-        </svg>
-        查看原始页面
-      `
-    })
-
-    // 使用CSS类设置按钮样式，避免内联样式注入
-    restoreBtn.classList.add('md-restore-button')
-
-    restoreBtn.addEventListener('click', () => {
-      this.toggleOriginalContent()
-    })
-
-    // 悬停效果现在通过CSS处理，无需JavaScript设置内联样式
-
-    document.body.appendChild(restoreBtn)
-    console.log('恢复按钮创建成功')
-  }
-
-  /**
    * 切换显示原始内容和渲染内容
    */
   private toggleOriginalContent(): void {
     const markdownContainer = document.querySelector('.markdown-reader-container') as HTMLElement
-    const restoreBtn = document.querySelector('.md-restore-button') as HTMLElement
 
-    if (!markdownContainer || !restoreBtn) return
+    if (!markdownContainer) return
 
     const isShowingMarkdown = !markdownContainer.classList.contains('md-content-hidden')
 
@@ -2362,16 +2332,6 @@ class ContentScriptApp {
           element.classList.add('md-content-restored')
         })
       }
-
-      restoreBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14,2 14,8 20,8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-        查看Markdown渲染
-      `
     } else {
       // 显示Markdown渲染，隐藏原始内容
       markdownContainer.classList.remove('md-content-hidden')
@@ -2390,14 +2350,6 @@ class ContentScriptApp {
           element.classList.add('md-original-content-hidden')
         })
       }
-
-      restoreBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"></path>
-          <polyline points="8,1 16,1 16,7 8,7 8,1"></polyline>
-        </svg>
-        查看原始页面
-      `
     }
   }
 
@@ -2589,7 +2541,7 @@ export function onExecute() {
       const isVisible = sourceElement.style.display !== 'none'
       sourceElement.style.display = isVisible ? 'none' : 'block'
       button.textContent = isVisible ? '查看源码' : '隐藏源码'
-      
+
       // 应用苹果风格的按钮状态切换
       if (isVisible) {
         // 隐藏状态 - 恢复默认样式
@@ -2610,12 +2562,12 @@ export function onExecute() {
   // 添加事件委托来处理图表按钮点击
   document.addEventListener('click', (event) => {
     const target = event.target as HTMLElement
-    
+
     // 处理查看源码按钮点击
     if (target.classList.contains('view-source-btn') && target.hasAttribute('data-action') && target.hasAttribute('data-chart-id')) {
       const action = target.getAttribute('data-action')
       const chartId = target.getAttribute('data-chart-id')
-      
+
       if (action === 'toggle-source' && chartId) {
         event.preventDefault()
         event.stopPropagation()

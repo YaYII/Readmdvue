@@ -4,7 +4,9 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import SearchPanel from '../components/SearchPanel.vue'
 import PerformanceMonitor from '../components/PerformanceMonitor.vue'
+import TableOfContents from '../components/TableOfContents.vue'
 import type { MarkdownConfig } from '../types'
+import type { TocItem } from '../utils/markdownRenderer'
 
 /**
  * Vue组件管理器
@@ -74,6 +76,70 @@ class VueComponentManager {
       metrics,
       onClose: () => this.hideComponent('performance')
     })
+  }
+
+  /**
+   * 创建目录组件
+   */
+  createTableOfContents(tocItems: TocItem[]): void {
+    // 如果目录组件已存在，先销毁
+    if (this.apps.has('toc')) {
+      this.hideTableOfContents()
+    }
+
+    // 创建容器，直接添加到body
+    const container = document.createElement('div')
+    container.id = 'vue-table-of-contents'
+    container.className = 'vue-toc-container'
+    document.body.appendChild(container)
+
+    // 创建Vue应用，传递必要的回调函数
+    const app = createApp(TableOfContents, {
+      tocItems,
+      // 传递工具栏按钮的回调函数
+      onSettingsClick: () => {
+        // 触发设置面板显示事件
+        window.dispatchEvent(new CustomEvent('showSettingsPanel'))
+      },
+      onExportClick: () => {
+        // 触发导出对话框显示事件
+        window.dispatchEvent(new CustomEvent('showExportDialog'))
+      },
+      onSearchClick: () => {
+        // 触发搜索面板显示事件
+        window.dispatchEvent(new CustomEvent('showSearchPanel'))
+      },
+      onToggleOriginal: () => {
+        // 触发切换原始内容事件
+        window.dispatchEvent(new CustomEvent('toggleOriginalContent'))
+      }
+    })
+    app.use(createPinia())
+
+    // 挂载应用
+    app.mount(container)
+
+    // 保存引用
+    this.apps.set('toc', app)
+    this.containers.set('toc', container)
+  }
+
+  /**
+   * 隐藏目录组件
+   */
+  hideTableOfContents(): void {
+    const app = this.apps.get('toc')
+    const container = this.containers.get('toc')
+
+    if (app) {
+      app.unmount()
+      this.apps.delete('toc')
+    }
+
+    if (container) {
+      container.remove()
+      this.containers.delete('toc')
+    }
   }
 
   /**

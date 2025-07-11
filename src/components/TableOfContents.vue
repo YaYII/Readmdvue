@@ -1,0 +1,391 @@
+<template>
+  <!-- 左侧触发区域 -->
+  <div 
+    class="toc-trigger-zone"
+    @mouseenter="handleTriggerEnter"
+    @mouseleave="handleTriggerLeave"
+  ></div>
+
+  <!-- 目录面板 -->
+  <div 
+    class="toc-panel" 
+    :class="{ 
+      'show': isVisible, 
+      'collapsed': isCollapsed,
+      'pinned': isPinned 
+    }"
+    @mouseenter="handlePanelEnter"
+    @mouseleave="handlePanelLeave"
+  >
+    <!-- 顶部工具栏区域 -->
+    <div class="toc-toolbar">
+      <!-- 设置按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="openSettings"
+        title="设置"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+
+      <!-- 导出按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="openExport"
+        title="导出"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7,10 12,15 17,10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
+
+      <!-- 搜索按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="openSearch"
+        title="搜索"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="M21 21l-4.35-4.35"></path>
+        </svg>
+      </button>
+
+      <!-- 查看原始页面按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="toggleOriginalContent"
+        title="查看原始页面"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"></path>
+          <polyline points="8,1 16,1 16,7 8,7 8,1"></polyline>
+        </svg>
+      </button>
+
+      <!-- 分隔线 -->
+      <div class="toc-toolbar-divider"></div>
+
+      <!-- 固定/取消固定按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="togglePin"
+        :title="isPinned ? '取消固定' : '固定面板'"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path v-if="!isPinned" d="M9 9V5a3 3 0 0 1 6 0v4"></path>
+          <path v-if="!isPinned" d="M8 9h8l-1 9H9L8 9z"></path>
+          <path v-if="isPinned" d="M12 17v5"></path>
+          <path v-if="isPinned" d="M9 7.5l3-3 3 3"></path>
+          <path v-if="isPinned" d="M6 13.5h12"></path>
+        </svg>
+      </button>
+
+      <!-- 隐藏按钮 -->
+      <button 
+        class="toc-toolbar-btn toc-hide-btn" 
+        @click="hidePanel"
+        title="隐藏面板"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15,18 9,12 15,6"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 目录标题区域 -->
+    <div class="toc-header" v-show="!isCollapsed">
+      <h3>目录导航</h3>
+      <div class="toc-stats">{{ tocItems.length }} 个标题</div>
+    </div>
+
+    <!-- 目录内容区域 -->
+    <div class="toc-content" v-show="!isCollapsed">
+      <ul class="toc-list" v-if="tocItems.length > 0">
+        <li 
+          v-for="item in tocItems" 
+          :key="item.id"
+          :class="[
+            'toc-item', 
+            `toc-level-${item.level}`,
+            { 'active': activeId === item.id }
+          ]"
+        >
+          <a 
+            :href="`#${item.id}`" 
+            @click="scrollToHeading(item.id, $event)"
+            :title="item.text"
+          >
+            {{ item.text }}
+          </a>
+        </li>
+      </ul>
+      <div v-else class="toc-empty">
+        <div class="empty-icon">📄</div>
+        <div class="empty-text">暂无目录</div>
+        <div class="empty-hint">页面中没有找到标题</div>
+      </div>
+    </div>
+
+    <!-- 阅读进度指示器 -->
+    <div class="toc-progress" v-show="!isCollapsed">
+      <div class="progress-label">阅读进度</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" :style="{ width: `${readingProgress}%` }"></div>
+        <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
+      </div>
+    </div>
+
+    <!-- 折叠/展开按钮 -->
+    <div class="toc-collapse-toggle" @click="toggleCollapse">
+      <svg 
+        width="16" 
+        height="16" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        stroke-width="2"
+        :class="{ 'rotated': isCollapsed }"
+      >
+        <polyline points="6,9 12,15 18,9"></polyline>
+      </svg>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import type { TocItem } from '../utils/markdownRenderer'
+
+interface Props {
+  tocItems: TocItem[]
+  visible?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  visible: false
+})
+
+// 响应式状态
+const isVisible = ref(false)
+const isCollapsed = ref(false)
+const isPinned = ref(false)
+const activeId = ref<string>('')
+const readingProgress = ref(0)
+const isHovering = ref(false)
+const hideTimer = ref<number | null>(null)
+
+// 触发区域和面板的鼠标事件处理
+const handleTriggerEnter = () => {
+  if (!isPinned.value) {
+    clearHideTimer()
+    isVisible.value = true
+  }
+}
+
+const handleTriggerLeave = () => {
+  if (!isPinned.value && !isHovering.value) {
+    scheduleHide()
+  }
+}
+
+const handlePanelEnter = () => {
+  isHovering.value = true
+  clearHideTimer()
+}
+
+const handlePanelLeave = () => {
+  isHovering.value = false
+  if (!isPinned.value) {
+    scheduleHide()
+  }
+}
+
+const clearHideTimer = () => {
+  if (hideTimer.value) {
+    clearTimeout(hideTimer.value)
+    hideTimer.value = null
+  }
+}
+
+const scheduleHide = () => {
+  clearHideTimer()
+  hideTimer.value = window.setTimeout(() => {
+    if (!isPinned.value && !isHovering.value) {
+      isVisible.value = false
+    }
+  }, 300) // 300ms 延迟隐藏
+}
+
+// 工具栏按钮事件处理
+const openSettings = () => {
+  // 触发全局设置事件
+  const event = new CustomEvent('showSettingsPanel')
+  window.dispatchEvent(event)
+}
+
+const openExport = () => {
+  // 触发全局导出事件
+  const event = new CustomEvent('showExportDialog')
+  window.dispatchEvent(event)
+}
+
+const openSearch = () => {
+  // 触发全局搜索事件
+  const event = new CustomEvent('showSearchPanel')
+  window.dispatchEvent(event)
+}
+
+const toggleOriginalContent = () => {
+  // 触发全局切换原始内容事件
+  const event = new CustomEvent('toggleOriginalContent')
+  window.dispatchEvent(event)
+}
+
+const togglePin = () => {
+  isPinned.value = !isPinned.value
+  // 保存固定状态到本地存储
+  localStorage.setItem('toc-pinned', isPinned.value.toString())
+  
+  if (isPinned.value) {
+    isVisible.value = true
+    clearHideTimer()
+  }
+}
+
+const hidePanel = () => {
+  isVisible.value = false
+  isPinned.value = false
+  localStorage.setItem('toc-pinned', 'false')
+  clearHideTimer()
+}
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+  // 保存折叠状态到本地存储
+  localStorage.setItem('toc-collapsed', isCollapsed.value.toString())
+}
+
+const scrollToHeading = (id: string, event: Event) => {
+  event.preventDefault()
+  
+  const element = document.getElementById(id)
+  if (element) {
+    // 平滑滚动到目标元素
+    element.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start',
+      inline: 'nearest'
+    })
+    
+    // 更新活跃状态
+    activeId.value = id
+    
+    // 添加高亮效果
+    element.classList.add('heading-highlight')
+    setTimeout(() => {
+      element.classList.remove('heading-highlight')
+    }, 2000)
+  }
+}
+
+// 监听滚动事件，更新活跃标题和阅读进度
+const handleScroll = () => {
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+  const documentHeight = document.documentElement.scrollHeight - window.innerHeight
+  
+  // 计算阅读进度
+  readingProgress.value = Math.min((scrollTop / documentHeight) * 100, 100)
+  
+  // 查找当前可见的标题
+  let currentActiveId = ''
+  const headings = props.tocItems.map(item => ({
+    id: item.id,
+    element: document.getElementById(item.id),
+    level: item.level
+  })).filter(item => item.element)
+  
+  for (let i = headings.length - 1; i >= 0; i--) {
+    const heading = headings[i]
+    if (heading.element) {
+      const rect = heading.element.getBoundingClientRect()
+      if (rect.top <= 100) { // 标题距离顶部100px以内时认为是活跃的
+        currentActiveId = heading.id
+        break
+      }
+    }
+  }
+  
+  if (currentActiveId !== activeId.value) {
+    activeId.value = currentActiveId
+  }
+}
+
+// 节流函数
+const throttle = <T extends (...args: any[]) => void>(func: T, delay: number): T => {
+  let timeoutId: number | null = null
+  let lastExecTime = 0
+  
+  return ((...args: any[]) => {
+    const currentTime = Date.now()
+    
+    if (currentTime - lastExecTime > delay) {
+      func(...args)
+      lastExecTime = currentTime
+    } else {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = window.setTimeout(() => {
+        func(...args)
+        lastExecTime = Date.now()
+      }, delay - (currentTime - lastExecTime))
+    }
+  }) as T
+}
+
+const throttledHandleScroll = throttle(handleScroll, 100)
+
+// 生命周期
+onMounted(() => {
+  // 恢复保存的状态
+  const savedCollapsed = localStorage.getItem('toc-collapsed')
+  if (savedCollapsed !== null) {
+    isCollapsed.value = savedCollapsed === 'true'
+  }
+  
+  const savedPinned = localStorage.getItem('toc-pinned')
+  if (savedPinned !== null) {
+    isPinned.value = savedPinned === 'true'
+    if (isPinned.value) {
+      isVisible.value = true
+    }
+  }
+  
+  // 添加滚动监听
+  window.addEventListener('scroll', throttledHandleScroll, { passive: true })
+  
+  // 初始化活跃标题
+  handleScroll()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', throttledHandleScroll)
+  clearHideTimer()
+})
+
+// 监听props变化
+watch(() => props.visible, (newValue) => {
+  if (newValue && !isPinned.value) {
+    isVisible.value = newValue
+  }
+})
+</script>
+
+<style scoped>
+/* 引入目录组件专用样式文件 */
+/* @import '../styles/table-of-contents.css'; */
+</style>

@@ -10,10 +10,8 @@ export class SmartToolbarManager {
   private isVisible = false
   private isSettingsPanelOpen = false
   private hideTimer: NodeJS.Timeout | null = null
-  private mouseTracker: { x: number; y: number } = { x: 0, y: 0 }
   
   // 配置参数
-  private readonly TRIGGER_ZONE_HEIGHT = 60 // 触发区域高度
   private readonly HIDE_DELAY = 2000 // 隐藏延迟时间（毫秒）
   private readonly ANIMATION_DURATION = 300 // 动画持续时间
 
@@ -102,44 +100,14 @@ export class SmartToolbarManager {
   }
 
   /**
-   * 检查鼠标是否在触发区域
-   */
-  private isInTriggerZone(y: number): boolean {
-    return y <= this.TRIGGER_ZONE_HEIGHT
-  }
-
-  /**
-   * 检查鼠标是否在工具栏区域
-   */
-  private isInToolbarZone(x: number, y: number): boolean {
-    if (!this.toolbar) return false
-
-    const rect = this.toolbar.getBoundingClientRect()
-    return (
-      x >= rect.left &&
-      x <= rect.right &&
-      y >= rect.top &&
-      y <= rect.bottom
-    )
-  }
-
-  /**
    * 设置事件监听器
    */
   private setupEventListeners(): void {
-    // 鼠标移动监听
-    document.addEventListener('mousemove', (e) => {
-      this.mouseTracker.x = e.clientX
-      this.mouseTracker.y = e.clientY
-
-      if (this.isInTriggerZone(e.clientY)) {
-        this.show()
-      } else if (!this.isInToolbarZone(e.clientX, e.clientY) && !this.isSettingsPanelOpen) {
-        this.scheduleHide()
-      }
-    })
-
-    // 工具栏鼠标进入/离开
+    // 禁用鼠标移动触发显示功能
+    // 因为目录组件上方的工具栏已经替代了顶部工具栏的功能
+    // 保留其他事件监听器以支持程序化控制
+    
+    // 工具栏鼠标进入/离开（保留，用于程序化显示时的交互）
     if (this.toolbar) {
       this.toolbar.addEventListener('mouseenter', () => {
         this.clearHideTimer()
@@ -152,30 +120,16 @@ export class SmartToolbarManager {
       })
     }
 
-    // 页面滚动时隐藏（可选）
-    let scrollTimer: NodeJS.Timeout | null = null
-    document.addEventListener('scroll', () => {
-      if (this.isVisible && !this.isSettingsPanelOpen) {
-        this.hide()
-        
-        // 滚动停止后重新检查鼠标位置
-        if (scrollTimer) clearTimeout(scrollTimer)
-        scrollTimer = setTimeout(() => {
-          if (this.isInTriggerZone(this.mouseTracker.y)) {
-            this.show()
-          }
-        }, 150)
-      }
-    })
-
-    // 窗口失焦时隐藏
+    // 窗口失焦时隐藏（保留）
     window.addEventListener('blur', () => {
       if (!this.isSettingsPanelOpen) {
         this.hide()
       }
     })
 
-    // 键盘快捷键支持（可选）
+    // 键盘快捷键支持（保留，但禁用）
+    // 注释掉键盘快捷键，避免意外显示
+    /*
     document.addEventListener('keydown', (e) => {
       // Ctrl/Cmd + Shift + S 显示/隐藏工具栏
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
@@ -187,6 +141,7 @@ export class SmartToolbarManager {
         }
       }
     })
+    */
   }
 
   /**
@@ -282,20 +237,6 @@ export class SmartToolbarManager {
 
       .smart-toolbar .toolbar-btn:active {
         transform: scale(0.95);
-      }
-
-      /* 触发区域指示器（开发模式） */
-      .smart-toolbar-debug::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: ${this.TRIGGER_ZONE_HEIGHT}px;
-        background: rgba(0, 122, 255, 0.1);
-        border-bottom: 2px dashed rgba(0, 122, 255, 0.3);
-        pointer-events: none;
-        z-index: 999998;
       }
     `
 

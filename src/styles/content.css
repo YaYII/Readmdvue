@@ -4,6 +4,9 @@
  * 这样可以避免重复加载和样式注入问题
  */
 
+/* 引入目录组件样式 */
+@import './table-of-contents.css';
+
 /* 基本数学公式字体支持 - 无需外部KaTeX CSS */
 .katex,
 .katex * {
@@ -59,7 +62,7 @@
 /* Markdown 容器基础样式 - 应用Liquid Glass效果 */
 .markdown-reader-container {
   max-width: var(--md-max-width);
-  margin: 0 auto;
+  /* margin: 0 auto; */
   padding: var(--md-spacing-2xl) var(--md-spacing-lg);
   font-family: var(--md-font-family);
   font-size: var(--md-font-size);
@@ -67,6 +70,7 @@
   color: var(--md-text-primary);
   background: var(--md-bg-primary);
   min-height: 100vh;
+  margin-left: 400px;
 
   /* Liquid Glass 背景效果 */
   position: relative;
@@ -101,10 +105,7 @@
 
 /* 恢复按钮样式 - 苹果Liquid Glass悬浮设计 */
 .md-restore-button {
-  position: fixed !important;
-  top: 20px !important;
-  right: 20px !important;
-  z-index: 10000 !important;
+  display: none;
 
   /* Liquid Glass材质效果 */
   background: rgba(255, 255, 255, 0.8) !important;
@@ -237,6 +238,8 @@
 
 .md-content-restored {
   display: block !important;
+  margin-top: 40px;
+  margin-left: 400px;
 }
 
 .markdown-reader-container::before {
@@ -1132,6 +1135,65 @@
   color: var(--md-text-primary);
 }
 
+/* 目录容器样式 - 苹果Liquid Glass设计 */
+.markdown-toc-container {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 280px;
+  max-height: calc(100vh - 40px);
+  z-index: 1001;
+
+  /* Liquid Glass材质效果 */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  /* 边框和阴影 */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  /* 动画过渡 */
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* 防止选中 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .markdown-toc-container {
+    background: rgba(28, 28, 30, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .markdown-toc-container {
+    width: 260px;
+    left: 10px;
+    top: 10px;
+    max-height: calc(100vh - 20px);
+  }
+}
+
+@media (max-width: 480px) {
+  .markdown-toc-container {
+    width: calc(100vw - 20px);
+    left: 10px;
+    right: 10px;
+    max-height: 50vh;
+  }
+}
+
 /* 目录样式 */
 .markdown-toc {
   position: fixed;
@@ -1678,6 +1740,10 @@
       font-size: 9pt;
       color: #888;
     }
+
+    .markdown-toc-container {
+      display: none;
+    }
   }
 
   /* 基础容器样式 */
@@ -2108,4 +2174,8 @@
 .markdown-reader-container ::-moz-selection {
   background: var(--md-accent-light);
   color: var(--md-accent-primary);
+}
+
+.restore-original-btn {
+  display: none;
 }

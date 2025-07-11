@@ -363,14 +363,40 @@ renderer.table = function (header: string, body: string) {
   `
 }
 
+// 自定义标题渲染器 - 添加ID和锚点
+renderer.heading = function (text: string, level: number) {
+  // 生成标题ID
+  const headingId = text
+    .toLowerCase()
+    .replace(/[^\w\s\u4e00-\u9fff-]/g, '') // 保留中文字符
+    .replace(/\s+/g, '-')
+    .replace(/^-+|-+$/g, '') // 移除开头和结尾的连字符
+  
+  // 如果ID为空，使用随机ID
+  const finalId = headingId || `heading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  
+  return `<h${level} id="${finalId}" class="markdown-heading" data-level="${level}">${text}</h${level}>`
+}
+
 // 设置自定义渲染器
 marked.use({ renderer })
+
+/**
+ * 目录项接口
+ */
+export interface TocItem {
+  id: string
+  text: string
+  level: number
+  children?: TocItem[]
+}
 
 /**
  * Markdown渲染器类 - 简化版
  */
 export class MarkdownRenderer {
   private config: MarkdownConfig
+  private tocItems: TocItem[] = []
 
   constructor(config: MarkdownConfig) {
     this.config = config
@@ -380,10 +406,49 @@ export class MarkdownRenderer {
     this.config = config
   }
 
+  /**
+   * 获取目录数据
+   */
+  getTocItems(): TocItem[] {
+    return this.tocItems
+  }
+
+  /**
+   * 从内容中提取标题并生成目录
+   */
+  private extractTocFromContent(content: string): TocItem[] {
+    const headingRegex = /^(#{1,6})\s+(.+)$/gm
+    const tocItems: TocItem[] = []
+    let match
+
+    while ((match = headingRegex.exec(content)) !== null) {
+      const level = match[1].length
+      const text = match[2].trim()
+      const id = text
+        .toLowerCase()
+        .replace(/[^\w\s\u4e00-\u9fff-]/g, '') // 保留中文字符
+        .replace(/\s+/g, '-')
+        .replace(/^-+|-+$/g, '') // 移除开头和结尾的连字符
+      
+      const finalId = id || `heading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      
+      tocItems.push({
+        id: finalId,
+        text,
+        level
+      })
+    }
+
+    return tocItems
+  }
+
   async render(content: string): Promise<RenderResult> {
     try {
       let processedContent = content
       const warnings: string[] = []
+
+      // 提取目录
+      this.tocItems = this.extractTocFromContent(processedContent)
 
       // 预处理数学公式
       if (this.config.enableMath) {
