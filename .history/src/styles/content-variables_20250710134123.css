@@ -1,0 +1,376 @@
+/* Markdown Reader Vue - 非注入式CSS架构 */
+/* 基于CSS变量和属性选择器的动态样式系统 */
+
+/* ===== 基础CSS变量定义 ===== */
+:root {
+  /* 默认字体配置 */
+  --md-font-size: 16px;
+  --md-line-height: 1.6;
+  --md-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  /* 间距系统 */
+  --md-spacing-xs: 4px;
+  --md-spacing-sm: 8px;
+  --md-spacing-md: 16px;
+  --md-spacing-lg: 24px;
+  --md-spacing-xl: 32px;
+  --md-spacing-2xl: 48px;
+  
+  /* 圆角系统 */
+  --md-radius-sm: 6px;
+  --md-radius-md: 8px;
+  --md-radius-lg: 12px;
+  --md-radius-xl: 16px;
+  
+  /* 阴影系统 */
+  --md-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --md-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --md-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --md-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== 主题变量 - 基于data-theme属性 ===== */
+
+/* 浅色主题 */
+:root,
+:root[data-theme="light"],
+:root[data-theme="auto"][data-system-theme="light"] {
+  --md-bg-primary: #ffffff;
+  --md-bg-secondary: #f8f9fa;
+  --md-bg-tertiary: #e9ecef;
+  --md-bg-code: #f6f8fa;
+  --md-bg-blockquote: rgba(0, 122, 255, 0.05);
+  
+  --md-text-primary: #1d1d1f;
+  --md-text-secondary: #6e6e73;
+  --md-text-tertiary: #8e8e93;
+  --md-text-inverse: #ffffff;
+  
+  --md-border-primary: #d2d2d7;
+  --md-border-secondary: #e5e5ea;
+  --md-border-tertiary: #f2f2f7;
+  
+  --md-surface-primary: rgba(255, 255, 255, 0.8);
+  --md-surface-secondary: rgba(248, 249, 250, 0.8);
+  --md-surface-glass: rgba(255, 255, 255, 0.7);
+}
+
+/* 深色主题 */
+:root[data-theme="dark"],
+:root[data-theme="auto"][data-system-theme="dark"] {
+  --md-bg-primary: #000000;
+  --md-bg-secondary: #1c1c1e;
+  --md-bg-tertiary: #2c2c2e;
+  --md-bg-code: #1e1e20;
+  --md-bg-blockquote: rgba(0, 122, 255, 0.1);
+  
+  --md-text-primary: #ffffff;
+  --md-text-secondary: #ebebf5;
+  --md-text-tertiary: #ebebf5;
+  --md-text-quaternary: #ebebf5;
+  --md-text-inverse: #000000;
+  
+  --md-border-primary: #38383a;
+  --md-border-secondary: #48484a;
+  --md-border-tertiary: #58585a;
+  
+  --md-surface-primary: rgba(28, 28, 30, 0.8);
+  --md-surface-secondary: rgba(44, 44, 46, 0.8);
+  --md-surface-glass: rgba(0, 0, 0, 0.7);
+}
+
+/* 护眼模式 - 专为长时间阅读设计 */
+:root[data-theme="eyecare"] {
+  /* 护眼模式基础色彩 - 温暖的米黄色调 */
+  --md-bg-primary: #FDF6E3;           /* 温暖的米黄色背景 */
+  --md-bg-secondary: #F7F0D7;         /* 稍深的米黄色 */
+  --md-bg-tertiary: #F0E9C7;          /* 更深的米黄色 */
+  --md-bg-code: #F0E9C7;              /* 代码块背景 */
+  --md-bg-blockquote: rgba(107, 142, 35, 0.1); /* 引用块背景 */
+  
+  /* 文字颜色 - 深棕色系，减少对比度 */
+  --md-text-primary: #5D4E37;         /* 深棕色主文字 */
+  --md-text-secondary: #8B7355;       /* 中等棕色次要文字 */
+  --md-text-tertiary: #A0916B;        /* 浅棕色辅助文字 */
+  --md-text-quaternary: #B8A882;      /* 最浅棕色说明文字 */
+  --md-text-inverse: #FDF6E3;         /* 反色文字 */
+  
+  /* 边框颜色 */
+  --md-border-primary: rgba(93, 78, 55, 0.2);
+  --md-border-secondary: rgba(93, 78, 55, 0.15);
+  --md-border-tertiary: rgba(93, 78, 55, 0.1);
+  
+  /* 表面颜色 */
+  --md-surface-primary: rgba(247, 240, 215, 0.8);
+  --md-surface-secondary: rgba(240, 233, 199, 0.8);
+  --md-surface-glass: rgba(253, 246, 227, 0.7);
+  
+  /* 护眼模式阴影 - 更柔和 */
+  --md-shadow-sm: 0 1px 3px rgba(93, 78, 55, 0.08);
+  --md-shadow-md: 0 4px 12px rgba(93, 78, 55, 0.12);
+  --md-shadow-lg: 0 8px 25px rgba(93, 78, 55, 0.12);
+  --md-shadow-xl: 0 16px 40px rgba(93, 78, 55, 0.15);
+}
+
+/* ===== 强调色变量 - 基于data-accent属性 ===== */
+
+/* 蓝色强调色 */
+:root,
+:root[data-accent="blue"] {
+  --md-accent-primary: #007AFF;
+  --md-accent-secondary: rgba(0, 122, 255, 0.8);
+  --md-accent-tertiary: rgba(0, 122, 255, 0.6);
+  --md-accent-hover: #0056CC;
+  --md-accent-active: #004499;
+  --md-accent-light: rgba(0, 122, 255, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+}
+
+/* 紫色强调色 */
+:root[data-accent="purple"] {
+  --md-accent-primary: #AF52DE;
+  --md-accent-secondary: rgba(175, 82, 222, 0.8);
+  --md-accent-tertiary: rgba(175, 82, 222, 0.6);
+  --md-accent-hover: #9542BE;
+  --md-accent-active: #7B329E;
+  --md-accent-light: rgba(175, 82, 222, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #AF52DE 0%, #DA70D6 100%);
+}
+
+/* 粉色强调色 */
+:root[data-accent="pink"] {
+  --md-accent-primary: #FF2D92;
+  --md-accent-secondary: rgba(255, 45, 146, 0.8);
+  --md-accent-tertiary: rgba(255, 45, 146, 0.6);
+  --md-accent-hover: #E5197A;
+  --md-accent-active: #CC0962;
+  --md-accent-light: rgba(255, 45, 146, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #FF2D92 0%, #FF69B4 100%);
+}
+
+/* 红色强调色 */
+:root[data-accent="red"] {
+  --md-accent-primary: #FF3B30;
+  --md-accent-secondary: rgba(255, 59, 48, 0.8);
+  --md-accent-tertiary: rgba(255, 59, 48, 0.6);
+  --md-accent-hover: #E5251A;
+  --md-accent-active: #CC1504;
+  --md-accent-light: rgba(255, 59, 48, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #FF3B30 0%, #FF6B5A 100%);
+}
+
+/* 橙色强调色 */
+:root[data-accent="orange"] {
+  --md-accent-primary: #FF9500;
+  --md-accent-secondary: rgba(255, 149, 0, 0.8);
+  --md-accent-tertiary: rgba(255, 149, 0, 0.6);
+  --md-accent-hover: #E5850A;
+  --md-accent-active: #CC7500;
+  --md-accent-light: rgba(255, 149, 0, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #FF9500 0%, #FFAD33 100%);
+}
+
+/* 黄色强调色 */
+:root[data-accent="yellow"] {
+  --md-accent-primary: #FFCC00;
+  --md-accent-secondary: rgba(255, 204, 0, 0.8);
+  --md-accent-tertiary: rgba(255, 204, 0, 0.6);
+  --md-accent-hover: #E5B800;
+  --md-accent-active: #CCA400;
+  --md-accent-light: rgba(255, 204, 0, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #FFCC00 0%, #FFD633 100%);
+}
+
+/* 绿色强调色 */
+:root[data-accent="green"] {
+  --md-accent-primary: #30D158;
+  --md-accent-secondary: rgba(48, 209, 88, 0.8);
+  --md-accent-tertiary: rgba(48, 209, 88, 0.6);
+  --md-accent-hover: #28B946;
+  --md-accent-active: #20A134;
+  --md-accent-light: rgba(48, 209, 88, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #30D158 0%, #5DE67A 100%);
+}
+
+/* 石墨色强调色 */
+:root[data-accent="graphite"] {
+  --md-accent-primary: #8E8E93;
+  --md-accent-secondary: rgba(142, 142, 147, 0.8);
+  --md-accent-tertiary: rgba(142, 142, 147, 0.6);
+  --md-accent-hover: #7A7A7F;
+  --md-accent-active: #66666B;
+  --md-accent-light: rgba(142, 142, 147, 0.1);
+  --md-accent-gradient: linear-gradient(135deg, #8E8E93 0%, #A8A8AD 100%);
+}
+
+/* ===== 基础容器样式 ===== */
+.markdown-reader-container {
+  font-family: var(--md-font-family);
+  font-size: var(--md-font-size);
+  line-height: var(--md-line-height);
+  color: var(--md-text-primary);
+  background: var(--md-bg-primary);
+  min-height: 100vh;
+  padding: var(--md-spacing-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== 标题样式 ===== */
+.markdown-reader-container h1,
+.markdown-reader-container h2,
+.markdown-reader-container h3,
+.markdown-reader-container h4,
+.markdown-reader-container h5,
+.markdown-reader-container h6 {
+  color: var(--md-accent-primary);
+  font-weight: 600;
+  margin: var(--md-spacing-xl) 0 var(--md-spacing-md) 0;
+  line-height: 1.3;
+  transition: color 0.3s ease;
+}
+
+.markdown-reader-container h1 { font-size: 2.5em; }
+.markdown-reader-container h2 { font-size: 2em; }
+.markdown-reader-container h3 { font-size: 1.5em; }
+.markdown-reader-container h4 { font-size: 1.25em; }
+.markdown-reader-container h5 { font-size: 1.1em; }
+.markdown-reader-container h6 { font-size: 1em; }
+
+/* ===== 链接样式 ===== */
+.markdown-reader-container a {
+  color: var(--md-accent-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.markdown-reader-container a:hover {
+  color: var(--md-accent-hover);
+  border-bottom-color: var(--md-accent-hover);
+  transform: translateY(-1px);
+}
+
+/* ===== 按钮样式 ===== */
+.btn-primary,
+.action-btn:hover {
+  background: var(--md-accent-gradient);
+  color: var(--md-text-inverse);
+  border: none;
+  border-radius: var(--md-radius-md);
+  padding: var(--md-spacing-sm) var(--md-spacing-md);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover,
+.action-btn:hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-shadow-lg);
+}
+
+/* ===== 代码块样式 ===== */
+.markdown-reader-container pre {
+  background: var(--md-bg-code);
+  border: 1px solid var(--md-border-secondary);
+  border-radius: var(--md-radius-lg);
+  padding: var(--md-spacing-md);
+  overflow-x: auto;
+  font-family: var(--md-font-family-mono);
+  font-size: 0.9em;
+}
+
+.markdown-reader-container code {
+  background: var(--md-bg-code);
+  color: var(--md-accent-primary);
+  padding: 2px 6px;
+  border-radius: var(--md-radius-sm);
+  font-family: var(--md-font-family-mono);
+  font-size: 0.9em;
+}
+
+/* ===== 引用块样式 ===== */
+.markdown-reader-container blockquote {
+  background: var(--md-bg-blockquote);
+  border-left: 4px solid var(--md-accent-primary);
+  margin: var(--md-spacing-md) 0;
+  padding: var(--md-spacing-md);
+  border-radius: 0 var(--md-radius-md) var(--md-radius-md) 0;
+  backdrop-filter: blur(10px);
+}
+
+/* ===== 表格样式 ===== */
+.markdown-reader-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--md-spacing-md) 0;
+  background: var(--md-surface-primary);
+  border-radius: var(--md-radius-md);
+  overflow: hidden;
+  box-shadow: var(--md-shadow-sm);
+}
+
+.markdown-reader-container th,
+.markdown-reader-container td {
+  padding: var(--md-spacing-sm) var(--md-spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--md-border-secondary);
+}
+
+.markdown-reader-container th {
+  background: var(--md-accent-light);
+  color: var(--md-accent-primary);
+  font-weight: 600;
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+  .markdown-reader-container {
+    padding: var(--md-spacing-md);
+    font-size: calc(var(--md-font-size) * 0.9);
+  }
+  
+  .markdown-reader-container h1 { font-size: 2em; }
+  .markdown-reader-container h2 { font-size: 1.75em; }
+  .markdown-reader-container h3 { font-size: 1.5em; }
+}
+
+/* ===== 动画和过渡效果 ===== */
+.markdown-reader-container * {
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ===== 滚动条样式 ===== */
+.markdown-reader-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.markdown-reader-container ::-webkit-scrollbar-track {
+  background: var(--md-bg-secondary);
+  border-radius: var(--md-radius-sm);
+}
+
+.markdown-reader-container ::-webkit-scrollbar-thumb {
+  background: var(--md-accent-tertiary);
+  border-radius: var(--md-radius-sm);
+}
+
+.markdown-reader-container ::-webkit-scrollbar-thumb:hover {
+  background: var(--md-accent-secondary);
+}
+
+/* ===== 打印样式 ===== */
+@media print {
+  .markdown-reader-container {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+  }
+  
+  .action-toolbar {
+    display: none !important;
+  }
+}

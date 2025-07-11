@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>苹果设计系统测试 - Markdown Reader Vue</title>
+    <link rel="stylesheet" href="dist/assets/content.css">
+    <style>
+        /* 导入苹果设计系统 */
+        @import url('./src/styles/apple-design-system.css');
+        @import url('./src/styles/content.css');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--apple-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'PingFang SC', 'Microsoft YaHei UI', sans-serif);
+            background: var(--apple-background, #FFFFFF);
+            color: var(--apple-label, #1D1D1F);
+        }
+        
+        .demo-header {
+            background: var(--liquid-glass-light, rgba(255, 255, 255, 0.8));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 24px;
+            text-align: center;
+            border-bottom: 1px solid var(--apple-gray-5, rgba(0, 0, 0, 0.1));
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .demo-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--apple-blue, #007AFF), var(--apple-purple, #AF52DE));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .demo-header p {
+            margin: 8px 0 0 0;
+            color: var(--apple-secondary-label, #8E8E93);
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <h1>🍎 苹果设计系统 + Liquid Glass 材质</h1>
+        <p>Markdown Reader Vue - 基于苹果设计哲学的现代化阅读体验</p>
+    </div>
+
+    <div class="markdown-reader-container">
+        <h1>苹果设计系统演示</h1>
+        <p>这是一个展示苹果设计系统和Liquid Glass材质效果的测试页面。我们融合了苹果的视觉美学和微软的交互理念，创造出优雅而现代的用户界面。</p>
+
+        <h2>🎨 色彩系统</h2>
+        <p>我们采用了苹果官方的8种强调色系统，每种颜色都有其特定的使用场景：</p>
+        <ul>
+            <li><strong style="color: var(--apple-blue, #007AFF);">蓝色 (Blue)</strong> - 默认系统色，用于链接、按钮、选中状态</li>
+            <li><strong style="color: var(--apple-purple, #AF52DE);">紫色 (Purple)</strong> - 用于创意、艺术类功能</li>
+            <li><strong style="color: var(--apple-pink, #FF2D92);">粉色 (Pink)</strong> - 用于社交、情感类功能</li>
+            <li><strong style="color: var(--apple-red, #FF3B30);">红色 (Red)</strong> - 用于警告、错误、删除操作</li>
+            <li><strong style="color: var(--apple-orange, #FF9500);">橙色 (Orange)</strong> - 用于提醒、通知、活跃状态</li>
+            <li><strong style="color: var(--apple-yellow, #FFCC00);">黄色 (Yellow)</strong> - 用于警示、高亮、重要信息</li>
+            <li><strong style="color: var(--apple-green, #30D158);">绿色 (Green)</strong> - 用于成功、确认、环保主题</li>
+            <li><strong style="color: var(--apple-graphite, #8E8E93);">石墨色 (Graphite)</strong> - 用于中性、专业、商务场景</li>
+        </ul>
+
+        <h3>🔗 链接效果</h3>
+        <p>这是一个 <a href="#">带有Liquid Glass效果的链接</a>，当你悬停时会看到优雅的过渡动画。</p>
+
+        <h3>💻 代码展示</h3>
+        <p>行内代码：<code>const message = "Hello, Apple Design!"</code></p>
+
+        <pre><code>// 代码块示例 - 带有Liquid Glass背景效果
+function createAppleDesign() {
+  const colors = {
+    blue: '#007AFF',
+    purple: '#AF52DE',
+    green: '#30D158'
+  };
+  
+  return {
+    philosophy: 'Simplicity is the ultimate sophistication',
+    materials: 'Liquid Glass',
+    experience: 'Intuitive and Delightful'
+  };
+}</code></pre>
+
+        <h3>📝 引用块</h3>
+        <blockquote>
+            <p>"设计不仅仅是外观和感觉。设计是它如何工作的。"</p>
+            <p>— 史蒂夫·乔布斯</p>
+        </blockquote>
+
+        <h3>✅ 任务列表</h3>
+        <ul class="task-list">
+            <li class="task-list-item">
+                <input type="checkbox" class="task-list-item-checkbox" checked disabled>
+                实现苹果设计系统
+            </li>
+            <li class="task-list-item">
+                <input type="checkbox" class="task-list-item-checkbox" checked disabled>
+                集成Liquid Glass材质
+            </li>
+            <li class="task-list-item">
+                <input type="checkbox" class="task-list-item-checkbox" disabled>
+                优化响应式设计
+            </li>
+            <li class="task-list-item">
+                <input type="checkbox" class="task-list-item-checkbox" disabled>
+                添加动画过渡效果
+            </li>
+        </ul>
+
+        <h3>📊 表格展示</h3>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>设计原则</th>
+                        <th>苹果理念</th>
+                        <th>实现方式</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>简约性</td>
+                        <td>少即是多</td>
+                        <td>精简界面元素，突出核心功能</td>
+                    </tr>
+                    <tr>
+                        <td>一致性</td>
+                        <td>统一体验</td>
+                        <td>标准化组件和交互模式</td>
+                    </tr>
+                    <tr>
+                        <td>可访问性</td>
+                        <td>人人可用</td>
+                        <td>遵循WCAG 2.1 AA标准</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>🌟 Liquid Glass 材质系统</h2>
+        <p>Liquid Glass是苹果2025年最新的设计语言，具有以下特性：</p>
+        <ol>
+            <li><strong>半透明材质</strong> - 能够反射和折射周围环境</li>
+            <li><strong>实时渲染</strong> - 动态适应明暗环境变化</li>
+            <li><strong>镜面高光</strong> - 营造真实的物理质感</li>
+            <li><strong>环境适应</strong> - 根据周围内容智能调整颜色</li>
+        </ol>
+
+        <h3>🎯 强调文本</h3>
+        <p>这段文字包含了各种强调效果：<strong>粗体文字</strong>、<em>斜体文字</em>、<mark>高亮文字</mark>和<del>删除文字</del>。</p>
+
+        <h2>📱 响应式设计</h2>
+        <p>我们的设计系统完全支持响应式布局，在不同设备上都能提供最佳的用户体验：</p>
+        <ul>
+            <li>桌面端：完整的功能和视觉效果</li>
+            <li>平板端：优化的触控交互</li>
+            <li>移动端：简化的界面和手势操作</li>
+        </ul>
+
+        <h2>🚀 性能优化</h2>
+        <p>在保证视觉效果的同时，我们也注重性能优化：</p>
+        <blockquote>
+            <p>通过合理使用CSS变量、backdrop-filter和硬件加速，确保流畅的用户体验。</p>
+        </blockquote>
+
+        <h2>🎨 设计哲学</h2>
+        <p>我们的设计哲学融合了苹果和微软两大公司的精髓：</p>
+        <ul>
+            <li><strong>苹果的视觉美学</strong>：极简主义、视觉层次、材质感知</li>
+            <li><strong>微软的交互理念</strong>：用户为第一、流畅设计、可预测性</li>
+            <li><strong>创新的设计灵魂</strong>：情感化设计、细节决定品质</li>
+        </ul>
+
+        <p style="text-align: center; margin-top: 48px; color: var(--apple-secondary-label, #8E8E93);">
+            <em>— 让每一次交互都成为愉悦的体验 —</em>
+        </p>
+    </div>
+
+    <script>
+        // 添加一些交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为链接添加点击效果
+            const links = document.querySelectorAll('a');
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                });
+            });
+
+            // 为代码块添加复制按钮
+            const codeBlocks = document.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                const button = document.createElement('button');
+                button.className = 'code-copy-button';
+                button.textContent = '复制';
+                button.addEventListener('click', function() {
+                    const code = block.querySelector('code').textContent;
+                    navigator.clipboard.writeText(code).then(() => {
+                        this.textContent = '已复制';
+                        this.classList.add('copied');
+                        setTimeout(() => {
+                            this.textContent = '复制';
+                            this.classList.remove('copied');
+                        }, 2000);
+                    });
+                });
+                block.appendChild(button);
+            });
+
+            console.log('🍎 苹果设计系统已加载完成！');
+        });
+    </script>
+</body>
+</html>

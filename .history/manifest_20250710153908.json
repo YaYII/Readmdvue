@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "Markdown Reader Vue",
+  "version": "2.0.0",
+  "description": "基于Vue.js 3.0的现代化Markdown阅读器浏览器插件",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://kroki.io/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline';"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/main.ts"],
+      "css": [
+        "src/styles/apple-design-system.css",
+        "src/styles/content-variables.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Markdown Reader Vue",
+    "default_icon": {
+      "16": "src/assets/icons/icon16.svg",
+      "48": "src/assets/icons/icon48.svg",
+      "128": "src/assets/icons/icon128.svg"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/main.ts",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/assets/*",
+        "src/styles/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "16": "src/assets/icons/icon16.svg",
+    "48": "src/assets/icons/icon48.svg",
+    "128": "src/assets/icons/icon128.svg"
+  }
+}
