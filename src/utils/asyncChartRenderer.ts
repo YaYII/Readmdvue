@@ -1,4 +1,5 @@
 import { showSuccess, showError } from './appleNotification'
+import { localMermaidRenderer } from './localMermaidRenderer'
 
 // 统一的图表渲染选项
 export interface ChartRenderOptions {
@@ -25,7 +26,7 @@ export interface ChartRenderResult {
  */
 export class AsyncChartRenderer {
   private renderCache = new Map<string, string>()
-  private defaultTimeout = 15000
+  private defaultTimeout = 30000 // 增加到30秒
   private defaultRetryCount = 3
 
   // Kroki支持的所有图表类型
@@ -57,13 +58,37 @@ export class AsyncChartRenderer {
         throw new Error(`不支持的图表类型: ${type}`)
       }
 
-      console.log(`开始渲染${type}图表 (Kroki):`, content.substring(0, 50) + '...')
-
       // 获取容器元素
       const container = document.getElementById(containerId)
       if (!container) {
         throw new Error(`找不到容器元素: ${containerId}`)
       }
+
+      // 对于 Mermaid 图表，优先使用本地渲染
+      if (type.toLowerCase() === 'mermaid') {
+        console.log('使用本地 Mermaid 渲染器')
+        
+        try {
+          const result = await localMermaidRenderer.renderMermaid(content, containerId)
+          
+          if (result.success) {
+            const renderTime = Date.now() - startTime
+            return {
+              success: true,
+              content: 'local-mermaid-rendered',
+              renderTime,
+              cached: false
+            }
+          } else {
+            // 本地渲染失败，回退到 Kroki
+            console.warn('本地 Mermaid 渲染失败，回退到 Kroki 服务')
+          }
+        } catch (error) {
+          console.warn('本地 Mermaid 渲染异常，回退到 Kroki 服务:', error)
+        }
+      }
+
+      console.log(`开始渲染${type}图表 (Kroki):`, content.substring(0, 50) + '...')
 
       // 尝试渲染，支持重试机制
       let lastError: Error | null = null
@@ -146,7 +171,7 @@ export class AsyncChartRenderer {
   }
 
   /**
-   * 使用Kroki渲染图表
+   * 使用 Kroki POST API 渲染图表 - 简化方案
    */
   private async renderWithKroki(
     type: string, 
@@ -166,35 +191,71 @@ export class AsyncChartRenderer {
       return { content: cachedUrl, cached: true }
     }
 
-    // 生成Kroki图表URL
-    const imageUrl = this.generateKrokiUrl(type, content)
-    
-    // 异步加载图表
-    await this.loadImageWithTimeout(imageUrl, timeout)
-    
-    // 缓存结果
-    this.renderCache.set(cacheKey, imageUrl)
-    
-    // 显示结果
-    this.displayResult(container, imageUrl)
-    
-    console.log(`${type}图表渲染成功 (Kroki)`)
-    return { content: imageUrl, cached: false }
+    try {
+      // 使用 POST 方式直接发送图表代码
+      const response = await fetch(`https://kroki.io/${type.toLowerCase()}/svg`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        body: content.trim(),
+        signal: AbortSignal.timeout(timeout)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Kroki API 错误: ${response.status} ${response.statusText}`)
+      }
+
+      // 获取 SVG 内容
+      const svgContent = await response.text()
+      
+      // 创建 Blob URL 用于显示
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+      const imageUrl = URL.createObjectURL(blob)
+      
+      // 缓存结果
+      if (useCache) {
+        this.renderCache.set(cacheKey, imageUrl)
+      }
+      
+      // 显示图表
+      this.displayResult(container, imageUrl)
+      console.log(`${type}图表渲染成功 (Kroki POST API)`)
+      
+      return { content: imageUrl, cached: false }
+      
+    } catch (error) {
+      console.error(`${type}图表渲染失败:`, error)
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`图表渲染超时（${(timeout/1000).toFixed(1)}秒），请检查网络连接`)
+        } else if (error.message.includes('Failed to fetch')) {
+          throw new Error('无法连接到 Kroki 服务器，请检查网络连接')
+        } else {
+          throw new Error(`图表渲染失败: ${error.message}`)
+        }
+      } else {
+        throw new Error('图表渲染过程中发生未知错误')
+      }
+    }
   }
 
-  /**
-   * 生成Kroki URL
-   */
-  private generateKrokiUrl(type: string, content: string): string {
-    const encodedContent = btoa(unescape(encodeURIComponent(content)))
-    return `https://kroki.io/${type.toLowerCase()}/svg/${encodedContent}`
-  }
+
 
   /**
-   * 生成缓存键
+   * 简化的缓存键生成
    */
   private generateCacheKey(type: string, content: string): string {
-    return btoa(unescape(encodeURIComponent(`${type}:${content}`)))
+    // 使用简单的哈希方法生成缓存键
+    const combined = `${type}:${content.trim()}`
+    let hash = 0
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // 转换为32位整数
+    }
+    return `kroki_${Math.abs(hash).toString(36)}`
   }
 
   /**
@@ -213,6 +274,8 @@ export class AsyncChartRenderer {
       container.appendChild(contentElement)
     }
 
+    // 保留data-content属性，只更新显示内容
+    const dataContent = contentElement.getAttribute('data-content')
     contentElement.innerHTML = `
       <img 
         src="${imageUrl}" 
@@ -222,6 +285,11 @@ export class AsyncChartRenderer {
         loading="lazy"
       />
     `
+    
+    // 恢复data-content属性
+    if (dataContent) {
+      contentElement.setAttribute('data-content', dataContent)
+    }
 
     // 隐藏错误信息
     const errorElement = container.querySelector('.chart-error')
@@ -278,77 +346,6 @@ export class AsyncChartRenderer {
       return (contentElement.textContent || '').replace(/`/g, '\\`')
     }
     return ''
-  }
-
-  /**
-   * 加载图片并设置超时 - 改进版本
-   */
-  private async loadImageWithTimeout(imageUrl: string, timeout: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // 检查网络连接
-      if (!navigator.onLine) {
-        reject(new Error('网络连接不可用，请检查网络设置'))
-        return
-      }
-
-      const img = new Image()
-      let timeoutId: NodeJS.Timeout
-      let startTime = Date.now()
-
-      const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId)
-        img.onload = null
-        img.onerror = null
-        img.onabort = null
-      }
-
-      img.onload = () => {
-        cleanup()
-        const loadTime = Date.now() - startTime
-        console.log(`图表加载成功，耗时: ${loadTime}ms`)
-        resolve()
-      }
-
-      img.onerror = (event) => {
-        cleanup()
-        console.error('图表加载失败:', event)
-        
-        // 提供更详细的错误信息
-        let errorMessage = '图表加载失败'
-        
-        // 检查是否是网络错误
-        if (!navigator.onLine) {
-          errorMessage = '网络连接已断开，请检查网络设置'
-        } else if (imageUrl.includes('kroki.io')) {
-          errorMessage = '无法连接到Kroki服务器，请检查网络连接或稍后重试'
-        } else {
-          errorMessage = '图片加载失败，可能是网络问题或图表语法错误'
-        }
-        
-        reject(new Error(errorMessage))
-      }
-
-      img.onabort = () => {
-        cleanup()
-        reject(new Error('图表加载被中断'))
-      }
-
-      timeoutId = setTimeout(() => {
-        cleanup()
-        const loadTime = Date.now() - startTime
-        console.warn(`图表加载超时，已等待: ${loadTime}ms`)
-        reject(new Error(`图表加载超时（${(timeout/1000).toFixed(1)}秒），请检查网络连接或稍后重试`))
-      }, timeout)
-
-      // 设置图片源，开始加载
-      try {
-        img.src = imageUrl
-        console.log(`开始加载图表: ${imageUrl.substring(0, 100)}...`)
-      } catch (error) {
-        cleanup()
-        reject(new Error('图表URL格式错误'))
-      }
-    })
   }
 
   /**

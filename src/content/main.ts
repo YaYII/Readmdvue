@@ -727,8 +727,118 @@ class ContentScriptApp {
   }
 
   /**
-   * 调试日志方法
+   * 动态渲染容器中的所有图表
    */
+  private async renderChartsInContainer(container: HTMLElement): Promise<void> {
+    try {
+      // 导入异步图表渲染器
+      const { asyncChartRenderer } = await import('../utils/asyncChartRenderer')
+      
+      // 查找所有图表容器
+      const chartContainers = container.querySelectorAll('.chart-container[data-chart-type][data-chart-id]')
+      
+      this.debugLog(`查找图表容器结果: 找到 ${chartContainers.length} 个`)
+      
+      // 如果没有找到，尝试查找所有.chart-container
+      if (chartContainers.length === 0) {
+        const allChartContainers = container.querySelectorAll('.chart-container')
+        this.debugLog(`所有.chart-container元素: ${allChartContainers.length} 个`)
+        
+        allChartContainers.forEach((element, index) => {
+          const chartType = element.getAttribute('data-chart-type')
+          const chartId = element.getAttribute('data-chart-id')
+          this.debugLog(`图表容器 ${index}: type=${chartType}, id=${chartId}`)
+        })
+        
+        this.debugLog('未找到需要渲染的图表')
+        return
+      }
+
+      this.debugLog(`找到 ${chartContainers.length} 个图表需要渲染`)
+
+      // 并行渲染所有图表
+      const renderPromises = Array.from(chartContainers).map(async (chartContainer, index) => {
+        const chartElement = chartContainer as HTMLElement
+        const chartType = chartElement.getAttribute('data-chart-type')
+        const chartId = chartElement.getAttribute('data-chart-id')
+        
+        this.debugLog(`处理图表 ${index}: type=${chartType}, id=${chartId}`)
+        
+        if (!chartType || !chartId) {
+          this.debugLog('图表容器缺少必要属性', { chartType, chartId })
+          return
+        }
+
+        // 从data-content属性获取图表内容
+        const contentElement = chartElement.querySelector('.chart-content[data-content]') as HTMLElement
+        if (!contentElement) {
+          this.debugLog('未找到图表内容元素', chartId)
+          // 尝试查找所有.chart-content元素
+          const allContentElements = chartElement.querySelectorAll('.chart-content')
+          this.debugLog(`图表 ${chartId} 中的.chart-content元素: ${allContentElements.length} 个`)
+          return
+        }
+
+        const encodedContent = contentElement.getAttribute('data-content')
+        if (!encodedContent) {
+          this.debugLog('图表内容为空', chartId)
+          return
+        }
+
+        try {
+          const chartContent = decodeURIComponent(encodedContent)
+          this.debugLog(`开始渲染图表: ${chartType} (${chartId})`, chartContent.substring(0, 100) + '...')
+
+          // 使用异步图表渲染器渲染图表
+          const result = await asyncChartRenderer.renderChart({
+            type: chartType as any,
+            content: chartContent,
+            containerId: chartId,
+            timeout: 15000,
+            retryCount: 3,
+            cacheEnabled: true
+          })
+
+          if (result.success) {
+            this.debugLog(`图表渲染成功: ${chartType} (${chartId})`)
+          } else {
+            this.debugLog(`图表渲染失败: ${chartType} (${chartId})`, result.error)
+          }
+        } catch (error) {
+          this.debugLog(`图表渲染失败: ${chartType} (${chartId})`, error)
+          
+          // 显示错误信息
+          const errorElement = chartElement.querySelector('.chart-error') as HTMLElement
+          if (errorElement) {
+            errorElement.style.display = 'block'
+            errorElement.innerHTML = `
+              <div class="error-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+                  <path d="M16 16l16 16M32 16l-16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="error-title">图表渲染失败</div>
+              <div class="error-message">${error instanceof Error ? error.message : '未知错误'}</div>
+              <div class="error-message">请检查图表语法是否正确或网络连接</div>
+              <button class="retry-btn" onclick="window.retryChartRender('${chartId}', '${chartType}', '${encodedContent}')">
+                重试渲染
+              </button>
+            `
+          }
+        }
+      })
+
+      // 等待所有图表渲染完成
+      await Promise.allSettled(renderPromises)
+      this.debugLog('所有图表渲染任务完成')
+
+    } catch (error) {
+      this.debugLog('图表渲染过程出错', error)
+      errorHandler.handle(error, 'renderChartsInContainer')
+    }
+  }
+
   private debugLog(message: string, data?: any): void {
     console.log(`[ContentScript] ${message}`, data || '')
   }
@@ -785,7 +895,8 @@ class ContentScriptApp {
       // 智能替换页面内容
       this.replaceContentIntelligently(container)
 
-      // 图表渲染现在由markdownRenderer自动处理
+      // 动态渲染图表 - 这是关键的修复
+      await this.renderChartsInContainer(container)
 
       performanceMonitor.end('renderMarkdown')
       logger.info('Markdown渲染完成')
@@ -1538,6 +1649,7 @@ class ContentScriptApp {
 declare global {
   interface Window {
     toggleImageZoom: (img: HTMLImageElement) => void
+    retryChartRender: (chartId: string, chartType: string, encodedContent: string) => Promise<void>
     __markdownReaderInitialized?: boolean
   }
 }
@@ -1552,6 +1664,76 @@ export function onExecute() {
 
   // 标记为已初始化
   window.__markdownReaderInitialized = true
+
+  // 添加全局重试图表渲染函数
+  window.retryChartRender = async (chartId: string, chartType: string, encodedContent: string) => {
+    try {
+      const { asyncChartRenderer } = await import('../utils/asyncChartRenderer')
+      const chartContent = decodeURIComponent(encodedContent)
+      
+      console.log(`重试渲染图表: ${chartType} (${chartId})`)
+      
+      // 清除错误状态
+      const chartContainer = document.getElementById(chartId)
+      if (chartContainer) {
+        const errorElement = chartContainer.querySelector('.chart-error') as HTMLElement
+        const loadingElement = chartContainer.querySelector('.chart-loading') as HTMLElement
+        
+        if (errorElement) errorElement.style.display = 'none'
+        if (loadingElement) {
+          loadingElement.style.display = 'block'
+          loadingElement.innerHTML = `
+            <div class="loading-spinner">
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+            </div>
+            <div class="loading-text">重新渲染 ${chartType.toUpperCase()} 图表 (Kroki)...</div>
+          `
+        }
+      }
+
+      // 重新渲染图表
+      await asyncChartRenderer.renderChart({
+        type: chartType as any,
+        content: chartContent,
+        containerId: chartId,
+        timeout: 15000,
+        retryCount: 3,
+        cacheEnabled: false // 重试时不使用缓存
+      })
+
+      console.log(`图表重试渲染成功: ${chartType} (${chartId})`)
+    } catch (error) {
+      console.error(`图表重试渲染失败: ${chartType} (${chartId})`, error)
+      
+      // 显示重试失败的错误信息
+      const chartContainer = document.getElementById(chartId)
+      if (chartContainer) {
+        const errorElement = chartContainer.querySelector('.chart-error') as HTMLElement
+        const loadingElement = chartContainer.querySelector('.chart-loading') as HTMLElement
+        
+        if (loadingElement) loadingElement.style.display = 'none'
+        if (errorElement) {
+          errorElement.style.display = 'block'
+          errorElement.innerHTML = `
+            <div class="error-icon">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+                <path d="M16 16l16 16M32 16l-16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="error-title">图表重试失败</div>
+            <div class="error-message">${error instanceof Error ? error.message : '未知错误'}</div>
+            <div class="error-message">请检查图表语法是否正确或网络连接</div>
+            <button class="retry-btn" onclick="window.retryChartRender('${chartId}', '${chartType}', '${encodedContent}')">
+              再次重试
+            </button>
+          `
+        }
+      }
+    }
+  }
 
   // 初始化Content Script
   if (document.readyState === 'loading') {

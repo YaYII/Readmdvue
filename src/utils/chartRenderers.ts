@@ -150,44 +150,63 @@ export class UnifiedKrokiRenderer extends BaseChartRenderer {
         return
       }
       
-      // 生成Kroki图表URL
-      const imageUrl = this.generateKrokiUrl(content)
-      
-      // 创建图片元素进行预加载
-      const img = new Image()
-      
-      // 设置超时处理
-      const timeoutId = setTimeout(() => {
-        this.showAsyncError(loadingElement, errorElement, '图表加载超时，请稍后重试')
-      }, 15000) // 15秒超时
-      
-      // 设置加载成功回调
-      img.onload = () => {
-        clearTimeout(timeoutId)
-        // 缓存成功的URL
-        UnifiedKrokiRenderer.renderCache.set(cacheKey, imageUrl)
-        this.displayImage(contentElement, imageUrl, loadingElement)
-        console.log(`${this.currentChartType}图表渲染成功 (Kroki)`)
+      // 使用 POST 方式直接发送图表代码到 Kroki
+      const response = await fetch(`https://kroki.io/${this.currentChartType}/svg`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        body: content.trim(),
+        signal: AbortSignal.timeout(15000) // 15秒超时
+      })
+
+      if (!response.ok) {
+        throw new Error(`Kroki API 错误: ${response.status} ${response.statusText}`)
       }
+
+      // 获取 SVG 内容
+      const svgContent = await response.text()
       
-      // 设置加载失败回调
-      img.onerror = () => {
-        clearTimeout(timeoutId)
-        this.showAsyncError(loadingElement, errorElement, `${this.currentChartType}图表加载失败，请检查网络连接或图表语法`)
-      }
+      // 创建 Blob URL 用于显示
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+      const imageUrl = URL.createObjectURL(blob)
       
-      // 开始加载图片
-      img.src = imageUrl
+      // 缓存成功的URL
+      UnifiedKrokiRenderer.renderCache.set(cacheKey, imageUrl)
+      this.displayImage(contentElement, imageUrl, loadingElement)
+      console.log(`${this.currentChartType}图表渲染成功 (Kroki POST API)`)
       
     } catch (err) {
-      this.showAsyncError(loadingElement, errorElement, err instanceof Error ? err.message : '渲染过程中发生未知错误')
+      console.error(`${this.currentChartType}图表渲染失败:`, err)
+      let errorMessage = '图表渲染失败'
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          errorMessage = '图表渲染超时，请检查网络连接'
+        } else if (err.message.includes('Failed to fetch')) {
+          errorMessage = '无法连接到 Kroki 服务器，请检查网络连接'
+        } else {
+          errorMessage = `图表渲染失败: ${err.message}`
+        }
+      }
+      
+      this.showAsyncError(loadingElement, errorElement, errorMessage)
     }
   }
 
-  private generateKrokiUrl(content: string): string {
-    // 使用Kroki API生成图表
-    const encodedContent = btoa(unescape(encodeURIComponent(content)))
-    return `https://kroki.io/${this.currentChartType}/svg/${encodedContent}`
+  /**
+   * 简化的缓存键生成
+   */
+  protected generateCacheKey(content: string): string {
+    // 使用简单的哈希方法生成缓存键
+    const combined = `${this.currentChartType}:${content.trim()}`
+    let hash = 0
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // 转换为32位整数
+    }
+    return `kroki_${Math.abs(hash).toString(36)}`
   }
 
   // 设置当前图表类型
