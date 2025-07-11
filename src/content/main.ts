@@ -210,7 +210,8 @@ class ContentScriptApp {
         this.debugLog('Content Script 初始化完成')
       } else {
         this.debugLog('未检测到Markdown文件，Content Script 不激活')
-        errorHandler.handle(null, 'ContentScript.init')
+        // 静默退出，不激活插件功能
+        this.isActive = false
         return;
       }
 
@@ -281,7 +282,12 @@ class ContentScriptApp {
     try {
       // 检查扩展上下文是否仍然有效
       if (!this.checkExtensionContext()) {
-        this.debugLog('页面可见时发现扩展上下文无效，尝试重连', undefined, 'warn')
+        // 在开发环境中显示详细信息，生产环境中静默处理
+        if (import.meta.env.DEV) {
+          this.debugLog('页面可见时发现扩展上下文无效，尝试重连', undefined, 'warn')
+        } else {
+          this.debugLog('扩展上下文检查中，尝试重连', undefined, 'info')
+        }
         this.attemptReconnect()
         return
       }
@@ -318,26 +324,40 @@ class ContentScriptApp {
 
       return true
     } catch (error) {
-      logger.warn('检查扩展上下文失败:', error)
+      // 在开发环境中显示详细错误，生产环境中静默处理
+      if (import.meta.env.DEV) {
+        logger.warn('检查扩展上下文失败:', error)
+      }
       return false
     }
   }
 
   private async attemptReconnect(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.error('达到最大重连次数，停止重连')
+      // 在生产环境中使用更友好的日志级别
+      if (import.meta.env.DEV) {
+        logger.error('达到最大重连次数，停止重连')
+      } else {
+        logger.info('扩展连接已停止')
+      }
       this.isExtensionValid = false
       return
     }
 
     this.reconnectAttempts++
-    logger.info(`尝试重连扩展上下文 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+
+    // 在开发环境中显示详细的重连信息
+    if (import.meta.env.DEV) {
+      logger.info(`尝试重连扩展上下文 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    }
 
     // 等待一段时间后重试
     await new Promise(resolve => setTimeout(resolve, 1000 * this.reconnectAttempts))
 
     if (this.checkExtensionContext()) {
-      logger.info('扩展上下文重连成功')
+      if (import.meta.env.DEV) {
+        logger.info('扩展上下文重连成功')
+      }
       this.isExtensionValid = true
       this.reconnectAttempts = 0
       await this.init()
@@ -350,7 +370,10 @@ class ContentScriptApp {
     // 定期检查扩展上下文
     setInterval(() => {
       if (!this.checkExtensionContext() && this.isExtensionValid) {
-        logger.warn('检测到扩展上下文失效')
+        // 在开发环境中显示详细警告，生产环境中静默处理
+        if (import.meta.env.DEV) {
+          logger.warn('检测到扩展上下文失效')
+        }
         this.isExtensionValid = false
         this.attemptReconnect()
       }
@@ -1476,10 +1499,11 @@ class ContentScriptApp {
   // 调试系统配置
   private debugConfig = {
     enabled: true,
-    level: 'info' as 'debug' | 'info' | 'warn' | 'error',
-    maxLogEntries: 1000,
-    enablePerformanceTracking: true,
-    enableMemoryTracking: true
+    // 生产环境只显示错误，开发环境显示所有信息
+    level: (import.meta.env.PROD ? 'error' : 'info') as 'debug' | 'info' | 'warn' | 'error',
+    maxLogEntries: import.meta.env.PROD ? 100 : 1000, // 生产环境减少日志存储
+    enablePerformanceTracking: !import.meta.env.PROD, // 生产环境关闭性能跟踪
+    enableMemoryTracking: !import.meta.env.PROD // 生产环境关闭内存跟踪
   }
 
   // 日志存储
@@ -1504,6 +1528,12 @@ class ContentScriptApp {
    */
   private debugLog(message: string, data?: any, level: 'debug' | 'info' | 'warn' | 'error' = 'info'): void {
     if (!this.debugConfig.enabled) return
+
+    // 日志级别过滤
+    const levelPriority = { debug: 0, info: 1, warn: 2, error: 3 }
+    if (levelPriority[level] < levelPriority[this.debugConfig.level]) {
+      return // 跳过低于配置级别的日志
+    }
 
     const timestamp = Date.now()
     const logEntry: any = {
@@ -1895,10 +1925,10 @@ class ContentScriptApp {
     try {
       // 动态导入导出工具
       const { exportDocument, getCurrentPageContent } = await import('../utils/exportUtils')
-      
+
       // 获取当前页面内容
       const content = getCurrentPageContent()
-      
+
       // 构建导出选项
       const exportOptions = {
         format: format as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg',
@@ -1912,14 +1942,14 @@ class ContentScriptApp {
         quality: 0.9,
         ...options
       }
-      
+
       // 执行导出
       await exportDocument(content, exportOptions)
-      
+
       logger.info(`导出完成: ${format}`)
     } catch (error) {
       logger.error('导出失败:', error)
-      
+
       // 降级处理
       switch (format) {
         case 'html':
@@ -2455,6 +2485,7 @@ export function onExecute() {
   // 防止重复初始化
   if (window.__markdownReaderInitialized) {
     console.log('Markdown Reader 已经初始化，跳过重复初始化')
+    this.isActive = false;
     return
   }
 

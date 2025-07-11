@@ -179,10 +179,22 @@
 
     <!-- 阅读进度指示器 -->
     <div class="toc-progress" v-show="!isCollapsed">
-      <div class="progress-label">阅读进度</div>
+      <div class="progress-label">
+        阅读进度
+        <button 
+          @click="handleScroll" 
+          style="margin-left: 8px; padding: 2px 6px; font-size: 10px; background: rgba(0,122,255,0.1); border: 1px solid rgba(0,122,255,0.3); border-radius: 4px; cursor: pointer;"
+          title="手动更新进度"
+        >
+          🔄
+        </button>
+      </div>
       <div class="progress-bar-container">
         <div class="progress-bar" :style="{ width: `${readingProgress}%` }"></div>
         <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
+      </div>
+      <div style="font-size: 10px; color: #8e8e93; margin-top: 4px;">
+        当前进度: {{ readingProgress.toFixed(1) }}% ({{ Math.round(readingProgress) }}%)
       </div>
     </div>
 
@@ -422,11 +434,38 @@ const scrollToHeading = (id: string, event: Event) => {
 
 // 监听滚动事件，更新活跃标题和阅读进度
 const handleScroll = () => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  const documentHeight = document.documentElement.scrollHeight - window.innerHeight
+  console.log('🔄 handleScroll 被调用了！')
+  
+  // 获取滚动信息 - 兼容不同的滚动容器
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0
+  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0
+  const clientHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0
+  const documentHeight = scrollHeight - clientHeight
+  
+  console.log('📊 滚动数据:', {
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    documentHeight,
+    '页面是否可滚动': documentHeight > 0
+  })
   
   // 计算阅读进度
-  readingProgress.value = Math.min((scrollTop / documentHeight) * 100, 100)
+  if (documentHeight <= 0 || scrollHeight <= clientHeight) {
+    // 如果页面内容不足一屏，进度为100%
+    readingProgress.value = 100
+    console.log('📄 页面内容不足一屏，进度设为100%')
+  } else {
+    // 正常计算进度百分比
+    const progress = Math.min(Math.max((scrollTop / documentHeight) * 100, 0), 100)
+    readingProgress.value = progress
+    
+    console.log('📈 阅读进度更新:', {
+      '原始进度': (scrollTop / documentHeight) * 100,
+      '最终进度': Math.round(progress),
+      'readingProgress.value': readingProgress.value
+    })
+  }
   
   // 查找当前可见的标题
   let currentActiveId = ''
@@ -477,6 +516,15 @@ const throttledHandleScroll = throttle(handleScroll, 100)
 
 // 生命周期
 onMounted(() => {
+  console.log('🚀 TableOfContents 组件已挂载，开始初始化滚动监听')
+  console.log('📋 当前目录项数量:', props.tocItems.length)
+  console.log('🌐 当前环境信息:', {
+    'window存在': typeof window !== 'undefined',
+    'document存在': typeof document !== 'undefined',
+    '页面标题': document.title,
+    '页面URL': window.location.href
+  })
+  
   // 恢复保存的状态
   const savedCollapsed = localStorage.getItem('toc-collapsed')
   if (savedCollapsed !== null) {
@@ -491,15 +539,56 @@ onMounted(() => {
     }
   }
   
-  // 添加滚动监听
-  window.addEventListener('scroll', throttledHandleScroll, { passive: true })
+  // 添加滚动监听 - 使用多种方式确保监听成功
+  const addScrollListener = () => {
+    console.log('🎯 正在添加滚动监听器...')
+    
+    // 监听window滚动
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true })
+    console.log('✅ window滚动监听器已添加')
+    
+    // 监听document滚动
+    document.addEventListener('scroll', throttledHandleScroll, { passive: true })
+    console.log('✅ document滚动监听器已添加')
+    
+    // 监听document.documentElement滚动
+    if (document.documentElement) {
+      document.documentElement.addEventListener('scroll', throttledHandleScroll, { passive: true })
+      console.log('✅ documentElement滚动监听器已添加')
+    }
+    
+    console.log('🎉 所有滚动监听器添加完成')
+  }
   
-  // 初始化活跃标题
+  // 立即添加监听器
+  addScrollListener()
+  
+  // 延迟再次添加，确保页面完全加载后也能监听
+  setTimeout(() => {
+    console.log('⏰ 延迟初始化开始...')
+    addScrollListener()
+    // 初始化活跃标题和进度
+    handleScroll()
+    console.log('✨ 延迟初始化完成，当前阅读进度:', readingProgress.value)
+  }, 1000)
+  
+  // 立即初始化一次
+  console.log('🔥 立即执行初始化...')
   handleScroll()
+  console.log('🎯 初始化完成，当前阅读进度:', readingProgress.value)
 })
 
 onUnmounted(() => {
+  console.log('TableOfContents 组件卸载，清理滚动监听器')
+  
+  // 清理所有滚动监听器
   window.removeEventListener('scroll', throttledHandleScroll)
+  document.removeEventListener('scroll', throttledHandleScroll)
+  if (document.documentElement) {
+    document.documentElement.removeEventListener('scroll', throttledHandleScroll)
+  }
+  
+  // 清理定时器
   clearHideTimer()
 })
 
