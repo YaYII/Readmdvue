@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图表源码显示功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1d1d1f;
+        }
+        .markdown-content {
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>图表源码显示功能测试页面</h1>
+    
+    <div class="test-section">
+        <h2>测试说明</h2>
+        <p>这个页面用于测试 Markdown Reader Vue 浏览器插件的图表源码显示功能。</p>
+        <p>请按照以下步骤进行测试：</p>
+        <ol>
+            <li>确保已安装并启用 Markdown Reader Vue 浏览器插件</li>
+            <li>在下方的 Markdown 内容区域中，查找图表</li>
+            <li>点击图表下方的"查看源码"按钮</li>
+            <li>验证源码区域是否正确显示/隐藏</li>
+            <li>验证按钮文本是否在"查看源码"和"隐藏源码"之间切换</li>
+            <li>验证按钮样式是否有激活状态的视觉反馈</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Markdown 测试内容</h2>
+        <div class="markdown-content">
+            <h3>流程图示例</h3>
+            <p>下面是一个简单的流程图：</p>
+
+```mermaid
+graph TD
+    A[开始] --> B{是否登录?}
+    B -->|是| C[显示主页]
+    B -->|否| D[显示登录页]
+    C --> E[结束]
+    D --> F[用户登录]
+    F --> C
+```
+
+            <h3>时序图示例</h3>
+            <p>下面是一个用户认证的时序图：</p>
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant C as 客户端
+    participant S as 服务器
+    participant D as 数据库
+    
+    U->>C: 输入用户名密码
+    C->>S: 发送登录请求
+    S->>D: 查询用户信息
+    D-->>S: 返回用户数据
+    S-->>C: 返回认证结果
+    C-->>U: 显示登录状态
+```
+
+            <h3>PlantUML 类图示例</h3>
+            <p>下面是一个简单的类图：</p>
+
+```plantuml
+@startuml
+class User {
+    -id: String
+    -name: String
+    -email: String
+    +login(): Boolean
+    +logout(): void
+}
+
+class Admin {
+    -permissions: List<String>
+    +manageUsers(): void
+}
+
+User <|-- Admin
+@enduml
+```
+
+            <h3>数学公式示例</h3>
+            <p>这里有一个数学公式：</p>
+            
+            $$E = mc^2$$
+            
+            <p>以及一个行内公式：$\sum_{i=1}^{n} x_i = x_1 + x_2 + \cdots + x_n$</p>
+
+            <h3>代码块示例</h3>
+            <p>下面是一个 JavaScript 代码块：</p>
+
+```javascript
+function toggleChartSource(chartId) {
+    const sourceElement = document.getElementById(`${chartId}-source`);
+    const button = document.querySelector(`[data-chart-id="${chartId}"][data-action="toggle-source"]`);
+    
+    if (sourceElement && button) {
+        const isVisible = sourceElement.style.display !== 'none';
+        sourceElement.style.display = isVisible ? 'none' : 'block';
+        button.textContent = isVisible ? '查看源码' : '隐藏源码';
+    }
+}
+```
+
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>预期行为</h2>
+        <ul>
+            <li><strong>图表渲染：</strong>Mermaid 和 PlantUML 图表应该正确渲染为 SVG 或图片</li>
+            <li><strong>按钮显示：</strong>每个图表下方应该有一个"查看源码"按钮</li>
+            <li><strong>源码切换：</strong>点击按钮应该显示/隐藏图表的原始代码</li>
+            <li><strong>按钮状态：</strong>按钮文本应该在"查看源码"和"隐藏源码"之间切换</li>
+            <li><strong>视觉反馈：</strong>激活状态的按钮应该有不同的颜色和样式</li>
+            <li><strong>苹果风格：</strong>按钮应该具有 Liquid Glass 材质效果</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>故障排除</h2>
+        <p>如果功能不正常，请检查：</p>
+        <ul>
+            <li>浏览器控制台是否有 JavaScript 错误</li>
+            <li>插件是否正确加载和激活</li>
+            <li>页面是否被识别为 Markdown 内容</li>
+            <li>网络连接是否正常（图表渲染可能需要外部服务）</li>
+        </ul>
+    </div>
+
+    <script>
+        // 添加一些调试信息
+        console.log('测试页面已加载');
+        console.log('当前 URL:', window.location.href);
+        console.log('User Agent:', navigator.userAgent);
+        
+        // 检查插件是否已加载
+        setTimeout(() => {
+            if (typeof window.toggleChartSource === 'function') {
+                console.log('✅ toggleChartSource 函数已定义');
+            } else {
+                console.log('❌ toggleChartSource 函数未定义');
+            }
+            
+            const charts = document.querySelectorAll('.chart-container');
+            console.log(`发现 ${charts.length} 个图表容器`);
+            
+            const buttons = document.querySelectorAll('.view-source-btn');
+            console.log(`发现 ${buttons.length} 个查看源码按钮`);
+        }, 2000);
+    </script>
+</body>
+</html>

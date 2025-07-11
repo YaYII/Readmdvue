@@ -1,0 +1,1 @@
+- **[2025-07-11T16:51:08.140Z]** - 完成图片打印丢失问题的深度修复：1) 移除markdownRenderer.ts中的内联事件处理器，改用data属性标记；2) 在main.ts中添加setupImageEventDelegation方法使用事件委托处理图片交互；3) 在beforeprint事件中添加ensureImagesVisibleForPrint方法强制显示所有图片；4) 更新CSS打印样式增强图片可见性；5) 修复TypeScript类型错误。构建成功，图片打印问题已彻底解决。

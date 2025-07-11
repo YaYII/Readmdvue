@@ -105,19 +105,19 @@
   top: 20px !important;
   right: 20px !important;
   z-index: 10000 !important;
-  
+
   /* Liquid Glass材质效果 */
   background: rgba(255, 255, 255, 0.8) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  
+
   /* 边框和阴影 */
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
-              0 2px 8px rgba(0, 0, 0, 0.05), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-  
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+
   /* 布局和字体 */
   padding: 12px 16px !important;
   cursor: pointer !important;
@@ -128,10 +128,10 @@
   gap: 8px !important;
   font-family: var(--md-font-family) !important;
   color: #1d1d1f !important;
-  
+
   /* 动画过渡 */
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-  
+
   /* 防止选中 */
   user-select: none !important;
   -webkit-user-select: none !important;
@@ -143,9 +143,9 @@
     background: rgba(28, 28, 30, 0.8) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     color: #f5f5f7 !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-                0 2px 8px rgba(0, 0, 0, 0.2), 
-                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   }
 }
 
@@ -154,20 +154,22 @@
   transform: translateY(-2px) scale(1.02) !important;
   background: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 
-              0 4px 12px rgba(0, 0, 0, 0.08), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
-  color: #007aff !important; /* 蓝色强调 */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: #007aff !important;
+  /* 蓝色强调 */
 }
 
 @media (prefers-color-scheme: dark) {
   .md-restore-button:hover {
     background: rgba(72, 72, 76, 0.9) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 
-                0 4px 12px rgba(0, 0, 0, 0.2), 
-                inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-    color: #64d2ff !important; /* 暗色模式蓝色 */
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+      0 4px 12px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    color: #64d2ff !important;
+    /* 暗色模式蓝色 */
   }
 }
 
@@ -175,15 +177,15 @@
 .md-restore-button:active {
   transform: translateY(-1px) scale(0.98) !important;
   background: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 
-              inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
 }
 
 @media (prefers-color-scheme: dark) {
   .md-restore-button:active {
     background: rgba(58, 58, 62, 0.95) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 
-                inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
   }
 }
 
@@ -214,7 +216,7 @@
     font-size: 13px !important;
     border-radius: 14px !important;
   }
-  
+
   .md-restore-button svg {
     width: 14px !important;
     height: 14px !important;
@@ -666,11 +668,17 @@
 }
 
 .markdown-reader-container tbody tr:nth-child(even) {
-  background: var(--md-bg-secondary);
+  background: rgba(var(--md-accent-primary-rgb, 0, 122, 255), 0.02);
 }
 
 .markdown-reader-container tbody tr:hover {
-  background: var(--md-accent-light);
+  background: rgba(var(--md-accent-primary-rgb, 0, 122, 255), 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.markdown-reader-container td {
+  color: var(--md-text-primary);
+  background: var(--md-bg-primary);
 }
 
 /* 水平分割线样式 */
@@ -682,28 +690,174 @@
 }
 
 /* 图片样式 */
-.markdown-reader-container img {
+.markdown-reader-container img,
+.markdown-reader-container .markdown-image {
   max-width: 100%;
-  height: auto;
+  height: 300px;
   border-radius: var(--md-radius-lg);
   box-shadow: var(--md-shadow-md);
-  margin: var(--md-spacing-xl) 0;
+  margin: 0px 0px;
   cursor: pointer;
   transition: all 0.3s ease;
+  object-fit: contain;
+  /* 确保图片等比缩放 */
+  width: auto;
+  /* 添加双击提示 */
+  position: relative;
 }
 
-.markdown-reader-container img:hover {
+.markdown-reader-container img:hover,
+.markdown-reader-container .markdown-image:hover {
   transform: scale(1.02);
   box-shadow: var(--md-shadow-lg);
 }
 
+/* 图片容器样式 */
+.markdown-reader-container .image-container {
+  margin: var(--md-spacing-xl) 0;
+  position: relative;
+}
+
+/* 图片加载状态 */
+.markdown-reader-container .image-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--md-spacing-xl);
+  background: var(--md-bg-secondary);
+  border-radius: var(--md-radius-lg);
+  border: 1px solid var(--md-border-primary);
+}
+
+.markdown-reader-container .image-loading .loading-spinner {
+  margin-bottom: var(--md-spacing-md);
+}
+
+.markdown-reader-container .image-loading .loading-text {
+  color: var(--md-text-secondary);
+  font-size: 0.9em;
+}
+
+/* 图片双击提示 */
+.markdown-reader-container img::after,
+.markdown-reader-container .markdown-image::after {
+  content: '双击放大';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  border-radius: var(--md-radius-md);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.markdown-reader-container img:hover::after,
+.markdown-reader-container .markdown-image:hover::after {
+  opacity: 1;
+}
+
+/* 图片缩放状态 */
+.markdown-reader-container img.zoomed,
+.markdown-reader-container .markdown-image.zoomed {
+  transform: scale(1.5);
+  z-index: 100;
+  position: relative;
+  box-shadow: var(--md-shadow-xl);
+}
+
+/* 图表放大模态框 */
+.chart-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.chart-modal.show {
+  opacity: 1;
+}
+
+.chart-modal-content {
+  max-width: 95%;
+  max-height: 95%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  position: relative;
+}
+
+.chart-modal-content svg,
+.chart-modal-content img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--md-radius-lg);
+  box-shadow: var(--md-shadow-xl);
+  background: var(--md-bg-primary);
+  padding: var(--md-spacing-lg);
+}
+
+.chart-modal-close {
+  position: absolute;
+  top: var(--md-spacing-xl);
+  right: var(--md-spacing-xl);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: var(--md-radius-full);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 20px;
+  color: var(--md-text-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.chart-modal-close:hover {
+  background: white;
+  transform: scale(1.1);
+  box-shadow: var(--md-shadow-md);
+}
+
+.chart-modal-close::before {
+  content: '×';
+  font-weight: bold;
+  line-height: 1;
+}
+
 /* 图片懒加载样式 */
-.markdown-reader-container img[data-src] {
+.markdown-reader-container img[data-src],
+.markdown-reader-container .markdown-image[data-src] {
   opacity: 0;
   transition: opacity 0.6s ease;
 }
 
-.markdown-reader-container img[data-src].loaded {
+.markdown-reader-container img[data-src].loaded,
+.markdown-reader-container .markdown-image[data-src].loaded {
   opacity: 1;
 }
 
@@ -722,19 +876,34 @@
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .image-modal.show {
   opacity: 1;
 }
 
+.image-modal-content {
+  max-width: 95%;
+  max-height: 95%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  position: relative;
+}
+
 .image-modal img {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: 90vw;
+  max-height: 90vh;
   object-fit: contain;
   border-radius: var(--md-radius-lg);
   box-shadow: var(--md-shadow-xl);
   cursor: default;
+  background: var(--md-bg-primary);
+  padding: var(--md-spacing-md);
+  transition: transform 0.3s ease;
 }
 
 .image-modal-close {
@@ -744,18 +913,25 @@
   background: rgba(255, 255, 255, 0.9);
   border: none;
   border-radius: var(--md-radius-full);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--md-text-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--md-shadow-md);
 }
 
 .image-modal-close:hover {
   background: white;
   transform: scale(1.1);
+  box-shadow: var(--md-shadow-lg);
 }
 
 /* Mermaid 图表样式 */
@@ -1044,50 +1220,297 @@
   padding-left: calc(var(--md-spacing-xl) + var(--md-spacing-sm));
 }
 
+/* 图表包装器样式 - 确保垂直布局 */
+.chart-wrapper {
+  margin: 0px 0px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-spacing-md);
+  width: 100%;
+}
+
 /* 图表容器样式 */
 .chart-container {
-  margin: var(--md-spacing-xl) 0;
-  padding: var(--md-spacing-lg);
+  padding: 0px;
   background: var(--md-bg-secondary);
   border: 1px solid var(--md-border-primary);
   border-radius: var(--md-radius-lg);
   box-shadow: var(--md-shadow-sm);
   position: relative;
   min-height: 200px;
+  max-height: 1000px;
+  /* 限制最大高度为600px */
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   transition: all 0.3s ease;
+  cursor: pointer;
+  /* 添加点击提示 */
 }
 
 .chart-container:hover {
   box-shadow: var(--md-shadow-md);
+  transform: translateY(-2px);
+}
+
+/* 图表操作按钮样式 - 苹果Liquid Glass设计 */
+.chart-action-btn {
+  /* 基础布局 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin: 4px;
+
+  /* Liquid Glass材质效果 */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+
+  /* 边框和圆角 */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+
+  /* 阴影效果 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+  /* 字体和颜色 */
+  font-family: var(--md-font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-text-secondary);
+  text-decoration: none;
+
+  /* 交互效果 */
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* 防止文本换行 */
+  white-space: nowrap;
+
+  /* 确保按钮在容器中正确定位 */
+  position: relative;
+  z-index: 2;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .chart-action-btn {
+    background: rgba(28, 28, 30, 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--md-text-secondary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 悬停效果 */
+.chart-action-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--md-text-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chart-action-btn:hover {
+    background: rgba(72, 72, 76, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--md-text-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* 激活效果 */
+.chart-action-btn:active {
+  transform: translateY(0) scale(0.98);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chart-action-btn:active {
+    background: rgba(58, 58, 62, 0.9);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2),
+      inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* 查看源码按钮特殊样式 */
+.view-source-btn {
+  /* 继承基础按钮样式 */
+}
+
+/* 查看源码按钮激活状态（显示源码时） */
+.view-source-btn.active,
+.view-source-btn[data-active="true"] {
+  background: var(--apple-accent-quaternary) !important;
+  border-color: var(--apple-accent-primary) !important;
+  color: var(--apple-accent-primary) !important;
+  box-shadow: 0 2px 8px rgba(var(--apple-accent-primary-rgb), 0.2),
+    0 1px 2px rgba(var(--apple-accent-primary-rgb), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  .view-source-btn.active,
+  .view-source-btn[data-active="true"] {
+    background: rgba(var(--apple-accent-primary-rgb), 0.2) !important;
+    border-color: var(--apple-accent-primary) !important;
+    color: var(--apple-accent-primary) !important;
+    box-shadow: 0 2px 8px rgba(var(--apple-accent-primary-rgb), 0.3),
+      0 1px 2px rgba(var(--apple-accent-primary-rgb), 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+/* 焦点效果（键盘导航） */
+.chart-action-btn:focus-visible {
+  outline: 2px solid var(--apple-accent-primary);
+  outline-offset: 2px;
+}
+
+/* 图表源码区域样式 */
+.chart-source {
+  width: 100%;
+  padding: 0px;
+  background: var(--md-bg-tertiary);
+  border: 1px solid var(--md-border-secondary);
+  border-radius: var(--md-radius-md);
+  font-family: var(--md-font-family-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--md-text-secondary);
+
+  /* 动画效果 */
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* 滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-text-tertiary) transparent;
+}
+
+/* 显示状态的源码区域 */
+.chart-source[style*="display: block"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 源码区域内的代码块样式 */
+.chart-source pre {
+  margin: 0;
+  padding: var(--md-spacing-sm);
+  background: var(--md-bg-primary);
+  border: 1px solid var(--md-border-primary);
+  border-radius: var(--md-radius-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chart-source::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chart-source::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-source::-webkit-scrollbar-thumb {
+  background: var(--md-text-tertiary);
+  border-radius: 3px;
+}
+
+.chart-source::-webkit-scrollbar-thumb:hover {
+  background: var(--md-text-secondary);
 }
 
 /* 图表内容区域 */
 .chart-content {
   width: 100%;
+  height: 100%;
   text-align: center;
   line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .chart-content svg {
   max-width: 100%;
+  max-height: 100%;
   height: auto;
   border-radius: var(--md-radius-md);
+  object-fit: contain;
+  /* 保持等比缩放 */
+  transition: transform 0.3s ease;
+}
+
+.chart-content svg:hover {
+  transform: scale(1.02);
 }
 
 .chart-content img.kroki-image {
   max-width: 100%;
+  max-height: 100%;
   height: auto;
   border-radius: var(--md-radius-md);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  object-fit: contain;
+  /* 保持等比缩放 */
 }
 
 .chart-content img.kroki-image:hover {
   transform: scale(1.02);
+}
+
+/* Mermaid 图表特殊处理 */
+.markdown-reader-container .mermaid {
+  text-align: center;
+  margin: var(--md-spacing-xl) 0;
+  padding: var(--md-spacing-lg);
+  background: var(--md-bg-secondary);
+  border-radius: var(--md-radius-lg);
+  border: 1px solid var(--md-border-primary);
+  box-shadow: var(--md-shadow-sm);
+  max-height: 1000px;
+  /* 限制最大高度为600px */
+  overflow: hidden;
+  cursor: pointer;
+  /* 添加点击提示 */
+  transition: all 0.3s ease;
+}
+
+.markdown-reader-container .mermaid:hover {
+  box-shadow: var(--md-shadow-md);
+  transform: translateY(-2px);
+}
+
+.markdown-reader-container .mermaid svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  object-fit: contain;
+  /* 保持等比缩放 */
 }
 
 /* 加载状态样式 */
@@ -1211,118 +1634,95 @@
   font-weight: 600;
   color: var(--md-text-secondary);
   background: var(--md-bg-primary);
-  padding: var(--md-spacing-xs) var(--md-spacing-sm);
+  padding: 0px 0px;
   border-radius: var(--md-radius-sm);
   border: 1px solid var(--md-border-primary);
   z-index: 1;
 }
 
-/* 响应式图表样式 */
-@media (max-width: 768px) {
-  .chart-container {
-    margin: var(--md-spacing-lg) 0;
-    padding: var(--md-spacing-md);
-    min-height: 150px;
-  }
 
-  .chart-loading {
-    font-size: 0.75em;
-  }
 
-  .chart-loading::before {
-    width: 16px;
-    height: 16px;
-  }
-
-  .chart-error-content {
-    padding: var(--md-spacing-md);
-    font-size: 0.75em;
-  }
-}
-
-/* 深色模式下的图表样式调整 */
-@media (prefers-color-scheme: dark) {
-  .chart-container {
-    background: var(--md-bg-secondary);
-    border-color: var(--md-border-primary);
-  }
-
-  .chart-content img.kroki-image {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .mermaid-chart {
-    background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-blue-light) 100%);
-  }
-
-  .plantuml-chart {
-    background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-purple-light) 100%);
-  }
-
-  .kroki-chart {
-    background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-green-light) 100%);
-  }
-}
-
-/* 减少动画模式下的图表样式 */
-@media (prefers-reduced-motion: reduce) {
-  .chart-loading::before {
-    animation: none;
-  }
-
-  .chart-content img.kroki-image {
-    transition: none;
-  }
-
-  .chart-content img.kroki-image:hover {
-    transform: none;
-  }
-
-  .chart-error-content button {
-    transition: none;
-  }
-
-  .chart-error-content button:hover {
-    transform: none;
-  }
-}
 
 /* 打印样式 */
 @media print {
-  .chart-container {
-    break-inside: avoid;
-    box-shadow: none;
-    border: 1px solid #ccc;
+
+  /* 页面设置 - 页眉页脚 */
+  @page {
+    margin: 2cm 1cm;
+    background-color: #eee;
+    color: #000;
+
+    /* 页眉 - 显示文档标题 */
+    @top-center {
+      content: attr(data-document-title);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 10pt;
+      color: #666;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5pt;
+      margin-bottom: 10pt;
+    }
+
+    /* 页脚左侧 - 显示文件名 */
+    @bottom-left {
+      content: attr(data-file-name);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 9pt;
+      color: #888;
+    }
+
+    /* 页脚右侧 - 显示页码 */
+    @bottom-right {
+      content: "第 " counter(page) " 页 / 共 " counter(pages) " 页";
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 9pt;
+      color: #888;
+    }
   }
 
-  .chart-loading,
-  .chart-error {
-    display: none !important;
-  }
-
-  .chart-content img {
-    max-width: 100% !important;
-    page-break-inside: avoid;
+  /* 基础容器样式 */
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', sans-serif !important;
+    line-height: 1.6 !important;
   }
 
   .markdown-reader-container {
-    max-width: none;
-    padding: 0;
-    background: white;
-    color: black;
+    max-width: none !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-family: inherit !important;
+    line-height: inherit !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
   }
 
+  .markdown-reader-content {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* 隐藏不需要打印的元素 */
   .markdown-toc,
   .code-copy-button,
-  .image-modal {
+  .code-copy-btn,
+  .image-modal,
+  .chart-modal,
+  .markdown-vue-toolbar,
+  .toolbar-btn,
+  .chart-loading,
+  .chart-error,
+  .warning-item,
+  .markdown-warnings,
+  button,
+  .btn {
     display: none !important;
   }
 
-  .markdown-reader-container pre {
-    border: 1px solid #ccc;
-    page-break-inside: avoid;
-  }
-
+  /* 标题样式 */
   .markdown-reader-container h1,
   .markdown-reader-container h2,
   .markdown-reader-container h3,
@@ -1330,27 +1730,48 @@
   .markdown-reader-container h5,
   .markdown-reader-container h6 {
     page-break-after: avoid;
-  }
-
-  /* 修复h1标题在打印时颜色透明的问题 */
-  .markdown-reader-container h1 {
+    color: #1a1a1a !important;
     background: none !important;
     -webkit-background-clip: initial !important;
     -webkit-text-fill-color: initial !important;
     background-clip: initial !important;
-    color: #1a1a1a !important; /* 深色文字确保打印清晰 */
+    margin-top: 1.5em !important;
+    margin-bottom: 0.5em !important;
+    font-weight: 600 !important;
   }
 
-  /* 确保其他标题在打印时也有合适的颜色 */
-  .markdown-reader-container h2,
-  .markdown-reader-container h3,
-  .markdown-reader-container h4,
+  .markdown-reader-container h1 {
+    font-size: 2em !important;
+    border-bottom: 2px solid #eee !important;
+    padding-bottom: 0.3em !important;
+  }
+
+  .markdown-reader-container h2 {
+    font-size: 1.5em !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.2em !important;
+  }
+
+  .markdown-reader-container h3 {
+    font-size: 1.25em !important;
+  }
+
+  .markdown-reader-container h4 {
+    font-size: 1.1em !important;
+  }
+
   .markdown-reader-container h5,
   .markdown-reader-container h6 {
-    color: #2a2a2a !important;
+    font-size: 1em !important;
   }
 
-  /* 确保强调文本在打印时也正常显示 */
+  /* 段落和文本样式 */
+  .markdown-reader-container p {
+    margin: 1em 0 !important;
+    line-height: 1.6 !important;
+    color: #333 !important;
+  }
+
   .markdown-reader-container strong {
     background: none !important;
     -webkit-background-clip: initial !important;
@@ -1360,9 +1781,230 @@
     font-weight: 700 !important;
   }
 
-  .markdown-reader-container img {
-    max-width: 100%;
+  .markdown-reader-container em {
+    font-style: italic !important;
+    color: #333 !important;
+  }
+
+  /* 列表样式 */
+  .markdown-reader-container ul,
+  .markdown-reader-container ol {
+    margin: 1em 0 !important;
+    padding-left: 2em !important;
+    color: #333 !important;
+  }
+
+  .markdown-reader-container li {
+    margin: 0.5em 0 !important;
+    line-height: 1.6 !important;
+  }
+
+  /* 代码样式 */
+  .markdown-reader-container code {
+    background: #f5f5f5 !important;
+    color: #d73a49 !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 3px !important;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+    font-size: 0.9em !important;
+  }
+
+  .markdown-reader-container pre {
+    background: #f8f8f8 !important;
+    color: #333 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 6px !important;
+    padding: 1em !important;
+    margin: 1em 0 !important;
     page-break-inside: avoid;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  .markdown-reader-container pre code {
+    background: none !important;
+    color: inherit !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: 0.85em !important;
+  }
+
+  /* 引用样式 */
+  .markdown-reader-container blockquote {
+    border-left: 4px solid #ddd !important;
+    margin: 1em 0 !important;
+    padding: 0 1em !important;
+    color: #666 !important;
+    background: #f9f9f9 !important;
+    page-break-inside: avoid;
+  }
+
+  /* 表格样式 */
+  .markdown-reader-container table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 1em 0 !important;
+    page-break-inside: avoid;
+  }
+
+  .markdown-reader-container th,
+  .markdown-reader-container td {
+    border: 1px solid #ddd !important;
+    padding: 0.5em !important;
+    text-align: left !important;
+    color: #333 !important;
+  }
+
+  .markdown-reader-container th {
+    background: #f5f5f5 !important;
+    font-weight: 600 !important;
+  }
+
+  /* 链接样式 */
+  .markdown-reader-container a {
+    color: #0066cc !important;
+    text-decoration: underline !important;
+  }
+
+  .markdown-reader-container a:after {
+    content: " (" attr(href) ")" !important;
+    font-size: 0.8em !important;
+    color: #666 !important;
+  }
+
+  /* 图片样式 - 关键修复 */
+  .markdown-reader-container img,
+  .markdown-reader-container .markdown-image {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    margin: 1em 0 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    padding: 4px !important;
+    background: white !important;
+    display: block !important;
+    /* 强制显示图片 */
+    opacity: 1 !important;
+    visibility: visible !important;
+    /* 移除可能影响打印的样式 */
+    transform: none !important;
+    transition: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    /* 确保图片内容可见 */
+    object-fit: contain !important;
+    object-position: center !important;
+    /* 确保图片加载完成 */
+    min-height: auto !important;
+    background-color: white !important;
+    /* 强制显示图片源 */
+    content: attr(src) !important;
+  }
+
+  /* 图片容器样式 */
+  .markdown-reader-container .image-container {
+    page-break-inside: avoid;
+    margin: 1em 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  /* 强制隐藏图片加载状态 */
+  .markdown-reader-container .image-loading {
+    display: none !important;
+  }
+
+  /* 移除图片的伪元素和悬停效果 */
+  .markdown-reader-container img::before,
+  .markdown-reader-container img::after,
+  .markdown-reader-container .markdown-image::before,
+  .markdown-reader-container .markdown-image::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .markdown-reader-container img:hover,
+  .markdown-reader-container .markdown-image:hover {
+    transform: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* 图片懒加载相关 - 打印时强制显示 */
+  .markdown-reader-container img[data-src],
+  .markdown-reader-container img[data-src].loaded,
+  .markdown-reader-container .markdown-image[data-src],
+  .markdown-reader-container .markdown-image[data-src].loaded {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  /* 确保所有图片元素都可见 */
+  .markdown-reader-container img[data-image-id],
+  .markdown-reader-container .markdown-image[data-image-id] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    background: white !important;
+  }
+
+  /* 图表样式 */
+  .chart-container {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    padding: 1em !important;
+    margin: 1em 0 !important;
+    background: white !important;
+  }
+
+  .chart-content {
+    background: white !important;
+  }
+
+  .chart-content img,
+  .chart-content svg {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* SVG图表特殊处理 */
+  .chart-content svg {
+    display: block !important;
+    margin: 0 auto !important;
+  }
+
+  /* 分页控制 */
+  .markdown-reader-container h1,
+  .markdown-reader-container h2 {
+    page-break-before: auto;
+  }
+
+  .markdown-reader-container h1:first-child,
+  .markdown-reader-container h2:first-child {
+    page-break-before: avoid;
+  }
+
+  /* 确保内容不被截断 */
+  .markdown-reader-container * {
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+  }
+
+  /* 移除所有动画和过渡效果 */
+  .markdown-reader-container *,
+  .markdown-reader-container *::before,
+  .markdown-reader-container *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }
 

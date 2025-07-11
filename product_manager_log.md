@@ -82,6 +82,59 @@
 - 🔧 模块化架构设计
 - 🔧 标准化的浏览器插件开发
 
+## 代码学习记录
+
+- **[2025-07-11T12:21:27.623Z]** - Vue.js 3.0研发高手开始学习项目代码结构
+- **[2025-07-11T12:21:27.623Z]** - 项目技术栈分析完成：Vue 3 + TypeScript + Pinia + Vite + Chrome Extension Manifest V3
+- **[2025-07-11T12:21:27.623Z]** - 核心模块理解完成：Content Script、Popup界面、Background Service、状态管理
+- **[2025-07-11T12:21:27.623Z]** - 设计系统学习完成：苹果Liquid Glass材质系统、8种强调色、响应式字体系统
+- **[2025-07-11T12:21:27.623Z]** - 功能特性掌握：Markdown渲染、图表支持、数学公式、代码高亮、主题切换、配置管理
+
+## 项目架构深度理解
+
+### 技术架构
+**前端框架**: Vue.js 3.0 + Composition API + TypeScript
+**状态管理**: Pinia (轻量级、类型安全)
+**构建工具**: Vite + @crxjs/vite-plugin
+**插件标准**: Chrome Extension Manifest V3
+**样式系统**: 苹果设计系统 + Liquid Glass材质
+
+### 核心模块分析
+1. **Content Script** (`src/content/main.ts`): 
+   - 智能检测Markdown文件
+   - 渲染引擎集成
+   - 样式注入和主题管理
+   - 图片模态框功能
+
+2. **Popup界面** (`src/popup/App.vue`):
+   - 插件状态显示
+   - 配置控制面板
+   - 日志查看功能
+   - 扩展上下文检查
+
+3. **状态管理** (`src/stores/plugin.ts`):
+   - 配置管理和同步
+   - 消息传递机制
+   - 错误处理和日志
+   - 节流更新机制
+
+4. **设计系统** (`src/styles/apple-design-system.css`):
+   - 8种苹果强调色系统
+   - Liquid Glass材质效果
+   - 响应式字体标准
+   - 护眼模式支持
+
+### 功能特性清单
+- ✅ **Markdown渲染**: GitHub Flavored Markdown支持
+- ✅ **图表系统**: Mermaid、PlantUML、Kroki统一支持
+- ✅ **数学公式**: KaTeX渲染引擎
+- ✅ **代码高亮**: highlight.js，180+语言支持
+- ✅ **主题系统**: 自动、浅色、深色、护眼模式
+- ✅ **强调色**: 8种苹果官方强调色动态切换
+- ✅ **图片优化**: 懒加载、点击放大、模态框
+- ✅ **配置管理**: 实时同步、节流更新、错误恢复
+- ✅ **响应式设计**: 桌面、平板、移动端完美适配
+
 ## 下一步行动计划
 
 1. **立即执行**: 修复TypeScript编译错误

@@ -4,14 +4,22 @@ import { MarkdownRenderer } from '../utils/markdownRenderer'
 import { logger, performanceMonitor, errorHandler, themeUtils, domUtils } from '../utils'
 import { cssVariableManager } from '../utils/cssVariableManager'
 import { smartToolbarManager } from '../utils/smartToolbarManager'
-import type { MarkdownConfig, ExtensionMessage, ExtensionResponse } from '../types'
+import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types'
 import { defaultConfig } from '../types'
+
 // CSS文件已通过manifest.json直接加载，无需在此导入
 // 这样可以避免Vite将CSS转换为JS注入的问题
+
+// 图表交互功能现在通过事件委托机制实现，无需外部脚本文件
 
 /**
  * Content Script 主应用类
  * 负责在网页中注入Markdown渲染功能
+ * 
+ * @class ContentScriptApp
+ * @description 基于Vue.js 3.0和苹果设计系统的Markdown渲染器
+ * @version 2.1.0
+ * @author Vue.js 3.0 研发高手
  */
 class ContentScriptApp {
   private renderer: MarkdownRenderer | null = null
@@ -21,6 +29,37 @@ class ContentScriptApp {
   private isExtensionValid = true
   private reconnectAttempts = 0
   private maxReconnectAttempts = 3
+
+  // 事件监听器管理 - 防止内存泄漏
+  private eventListeners: Map<string, { element: EventTarget; event: string; handler: EventListener; options?: AddEventListenerOptions }> = new Map()
+  private abortController: AbortController = new AbortController()
+  
+  // 主题状态存储 - 用于打印前后的主题恢复
+  private savedThemeState: {
+    theme?: string
+    accentColor?: string
+    dataTheme?: string
+    dataActualTheme?: string
+    liquidGlassTheme?: string
+  } = {}
+  
+  // 性能监控
+  private performanceMetrics: {
+    initTime: number
+    renderTime: number
+    configLoadTime: number
+    lastUpdate: number
+    memory?: {
+      used: number
+      total: number
+      limit: number
+    }
+  } = {
+    initTime: 0,
+    renderTime: 0,
+    configLoadTime: 0,
+    lastUpdate: Date.now()
+  }
 
   constructor() {
     this.init()
@@ -165,10 +204,92 @@ class ContentScriptApp {
       // 设置打印事件监听
       this.setupPrintEventListeners()
 
+      // 设置图片事件委托
+      this.setupImageEventDelegation()
+
+      // 设置页面卸载清理机制
+      this.setupPageUnloadCleanup()
+
       this.debugLog('Content Script 初始化完成')
     } catch (error) {
-      this.debugLog('Content Script 初始化失败', error)
+      this.debugLog('Content Script 初始化失败', error, 'error')
       errorHandler.handle(error, 'ContentScript.init')
+    }
+  }
+
+  /**
+   * 设置页面卸载时的清理机制
+   * 确保在页面关闭或导航时正确释放资源
+   */
+  private setupPageUnloadCleanup(): void {
+    // 页面卸载前清理
+    this.addEventListenerManaged('beforeunload', window, 'beforeunload', () => {
+      this.debugLog('页面即将卸载，开始清理资源', undefined, 'info')
+      this.cleanup()
+    })
+
+    // 页面隐藏时清理（适用于单页应用）
+    this.addEventListenerManaged('pagehide', window, 'pagehide', () => {
+      this.debugLog('页面隐藏，执行清理', undefined, 'info')
+      this.cleanup()
+    })
+
+    // 监听页面可见性变化
+    this.addEventListenerManaged('visibilitychange', document, 'visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        this.debugLog('页面变为隐藏状态，执行部分清理', undefined, 'info')
+        // 执行轻量级清理，不完全销毁
+        this.partialCleanup()
+      } else if (document.visibilityState === 'visible') {
+        this.debugLog('页面变为可见状态', undefined, 'info')
+        // 页面重新可见时，可以执行一些恢复操作
+        this.onPageVisible()
+      }
+    })
+
+    this.debugLog('页面卸载清理机制已设置')
+  }
+
+  /**
+   * 部分清理 - 页面隐藏时执行
+   * 不完全销毁，保留核心功能
+   */
+  private partialCleanup(): void {
+    try {
+      // 清理日志条目（保留最近的50条）
+      if (this.logEntries.length > 50) {
+        this.logEntries.splice(0, this.logEntries.length - 50)
+      }
+
+      // 更新性能指标
+      this.performanceMetrics.lastUpdate = Date.now()
+
+      this.debugLog('部分清理完成', this.getPerformanceMetrics())
+
+    } catch (error) {
+      this.debugLog('部分清理失败', error, 'error')
+    }
+  }
+
+  /**
+   * 页面重新可见时的恢复操作
+   */
+  private onPageVisible(): void {
+    try {
+      // 检查扩展上下文是否仍然有效
+      if (!this.checkExtensionContext()) {
+        this.debugLog('页面可见时发现扩展上下文无效，尝试重连', undefined, 'warn')
+        this.attemptReconnect()
+        return
+      }
+
+      // 更新性能指标
+      this.performanceMetrics.lastUpdate = Date.now()
+
+      this.debugLog('页面重新可见，状态正常')
+
+    } catch (error) {
+      this.debugLog('页面可见恢复操作失败', error, 'error')
     }
   }
 
@@ -234,88 +355,594 @@ class ContentScriptApp {
   }
 
   /**
-   * 设置打印事件监听器
-   * 确保打印前后样式保持一致，防止样式丢失
+   * 统一的事件监听器管理方法
+   * 防止内存泄漏，提供自动清理机制
+   * 
+   * @param id 监听器唯一标识
+   * @param element 目标元素
+   * @param event 事件类型
+   * @param handler 事件处理函数
+   * @param options 事件选项
    */
-  private setupPrintEventListeners(): void {
-    // 保存当前样式状态
-    let savedStyleState: {
-      theme: string | null
-      accent: string | null
-      fontSize: string | null
-      lineHeight: string | null
-      maxWidth: string | null
-      fontFamily: string | null
-    } | null = null
+  private addEventListenerManaged(
+    id: string, 
+    element: EventTarget, 
+    event: string, 
+    handler: EventListener, 
+    options?: AddEventListenerOptions
+  ): void {
+    // 如果已存在同ID的监听器，先移除
+    this.removeEventListenerManaged(id)
+    
+    // 添加新的监听器
+    const managedOptions = { 
+      ...options, 
+      signal: this.abortController.signal 
+    }
+    
+    element.addEventListener(event, handler, managedOptions)
+    
+    // 记录监听器信息
+    this.eventListeners.set(id, {
+      element,
+      event,
+      handler,
+      options: managedOptions
+    })
+    
+    this.debugLog(`事件监听器已添加: ${id}`, { event, element: element.constructor.name })
+  }
 
-    // 打印前事件 - 保存当前样式状态
-    window.addEventListener('beforeprint', () => {
-      this.debugLog('打印前事件触发，保存样式状态')
+  /**
+   * 移除指定的事件监听器
+   * 
+   * @param id 监听器唯一标识
+   */
+  private removeEventListenerManaged(id: string): void {
+    const listener = this.eventListeners.get(id)
+    if (listener) {
+      listener.element.removeEventListener(listener.event, listener.handler, listener.options)
+      this.eventListeners.delete(id)
+      this.debugLog(`事件监听器已移除: ${id}`)
+    }
+  }
+
+  /**
+   * 清理所有事件监听器
+   * 防止内存泄漏
+   */
+  private cleanupEventListeners(): void {
+    // 使用AbortController一次性取消所有监听器
+    this.abortController.abort()
+    
+    // 清空记录
+    this.eventListeners.clear()
+    
+    // 重新创建AbortController以备后用
+    this.abortController = new AbortController()
+    
+    this.debugLog('所有事件监听器已清理')
+  }
+
+  /**
+   * 设置图片事件委托
+   * 使用事件委托替代内联事件处理器，确保打印时不受JavaScript限制影响
+   */
+  private setupImageEventDelegation(): void {
+    // 使用事件委托处理图片点击
+    this.addEventListenerManaged('imageClick', document, 'click', (event: Event) => {
+      const target = event.target as HTMLElement
       
-      // 保存当前样式状态
-      savedStyleState = {
-        theme: document.documentElement.getAttribute('data-theme'),
-        accent: document.documentElement.getAttribute('data-accent'),
-        fontSize: document.documentElement.getAttribute('data-font-size'),
-        lineHeight: document.documentElement.getAttribute('data-line-height'),
-        maxWidth: document.documentElement.getAttribute('data-max-width'),
-        fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--md-font-family')
+      // 检查是否是可点击的图片
+      if (target.tagName === 'IMG' && target.hasAttribute('data-clickable')) {
+        event.preventDefault()
+        this.openImageModal(target as HTMLImageElement)
       }
-
-      // 确保打印样式正确应用
-      this.applyConfigToStyles()
     })
 
-    // 打印后事件 - 恢复样式状态
-    window.addEventListener('afterprint', () => {
-      this.debugLog('打印后事件触发，恢复样式状态')
+    // 处理图片加载完成
+    this.addEventListenerManaged('imageLoad', document, 'load', (event: Event) => {
+      const target = event.target as HTMLElement
       
-      // 延迟恢复样式，确保打印对话框完全关闭
-      setTimeout(() => {
-        if (savedStyleState) {
-          // 恢复保存的样式状态
-          if (savedStyleState.theme) {
-            document.documentElement.setAttribute('data-theme', savedStyleState.theme)
-          }
-          if (savedStyleState.accent) {
-            document.documentElement.setAttribute('data-accent', savedStyleState.accent)
-          }
-          if (savedStyleState.fontSize) {
-            document.documentElement.setAttribute('data-font-size', savedStyleState.fontSize)
-          }
-          if (savedStyleState.lineHeight) {
-            document.documentElement.setAttribute('data-line-height', savedStyleState.lineHeight)
-          }
-          if (savedStyleState.maxWidth) {
-            document.documentElement.setAttribute('data-max-width', savedStyleState.maxWidth)
-          }
-          if (savedStyleState.fontFamily) {
-            document.documentElement.style.setProperty('--md-font-family', savedStyleState.fontFamily)
-          }
-
-          // 重新应用完整的样式配置
-          this.applyConfigToStyles()
-          
-          this.debugLog('样式状态已恢复')
+      if (target.tagName === 'IMG' && target.hasAttribute('data-image-id')) {
+        const imageId = target.getAttribute('data-image-id')
+        if (imageId) {
+          this.handleImageLoadComplete(imageId)
         }
-      }, 100)
+      }
+    }, { capture: true }) // 使用捕获阶段
+
+    // 处理图片加载错误
+    this.addEventListenerManaged('imageError', document, 'error', (event: Event) => {
+      const target = event.target as HTMLElement
+      
+      if (target.tagName === 'IMG' && target.hasAttribute('data-image-id')) {
+        const imageId = target.getAttribute('data-image-id')
+        if (imageId) {
+          this.handleImageLoadError(imageId)
+        }
+      }
+    }, { capture: true }) // 使用捕获阶段
+
+    this.debugLog('图片事件委托已设置')
+  }
+
+  /**
+   * 处理图片加载完成
+   */
+  private handleImageLoadComplete(imageId: string): void {
+    const container = document.querySelector(`[data-image-container="${imageId}"]`)
+    if (container) {
+      const loading = container.querySelector('.image-loading')
+      if (loading) {
+        loading.remove()
+      }
+      // 确保图片在打印时可见
+      const img = container.querySelector('img')
+      if (img) {
+        img.style.opacity = '1'
+        img.style.visibility = 'visible'
+      }
+    }
+  }
+
+  /**
+   * 处理图片加载错误
+   */
+  private handleImageLoadError(imageId: string): void {
+    const container = document.querySelector(`[data-image-container="${imageId}"]`)
+    if (container) {
+      const loading = container.querySelector('.image-loading')
+      const img = container.querySelector('img')
+      
+      if (loading) loading.remove()
+      
+      if (img) {
+        img.style.display = 'none'
+        const errorDiv = document.createElement('div')
+        errorDiv.className = 'image-error'
+        errorDiv.textContent = '图片加载失败'
+        errorDiv.style.cssText = 'padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 4px;'
+        container.appendChild(errorDiv)
+      }
+    }
+  }
+
+  /**
+   * 设置打印事件监听器
+   * 只处理打印页眉页脚信息，不干预样式
+   * 使用统一的事件管理机制
+   */
+  private setupPrintEventListeners(): void {
+    // 打印前事件 - 设置打印信息
+    this.addEventListenerManaged('beforeprint', window, 'beforeprint', () => {
+      this.debugLog('打印前事件触发，设置打印信息')
+      
+      // 保存当前主题状态
+      this.saveCurrentThemeState()
+      
+      // 强制显示所有图片，确保打印时图片可见
+      this.ensureImagesVisibleForPrint()
+      
+      // 设置打印页眉页脚信息
+      this.setPrintHeaderFooterInfo()
+      this.debugLog('打印信息已设置')
+    })
+
+    // 打印后事件 - 清理打印信息并恢复主题
+    this.addEventListenerManaged('afterprint', window, 'afterprint', async () => {
+      this.debugLog('打印后事件触发，清理打印信息并恢复主题')
+      // 清理打印时添加的临时属性
+      document.documentElement.removeAttribute('data-document-title')
+      document.documentElement.removeAttribute('data-file-name')
+      
+      // 恢复主题设置，防止打印样式影响页面主题
+      // 重新加载持久化配置确保完全恢复用户设置
+      await this.restoreThemeAfterPrint()
+      
+      this.debugLog('打印信息已清理，主题已恢复')
     })
 
     this.debugLog('打印事件监听器已设置')
   }
 
   /**
+   * 确保图片在打印时可见
+   * 强制显示所有图片，移除可能影响打印的样式
+   */
+  private ensureImagesVisibleForPrint(): void {
+    try {
+      // 获取所有图片元素
+      const images = document.querySelectorAll('img.markdown-image, .image-container img')
+      
+      images.forEach((img: Element) => {
+        const imageElement = img as HTMLImageElement
+        
+        // 强制显示图片
+        imageElement.style.opacity = '1'
+        imageElement.style.visibility = 'visible'
+        imageElement.style.display = 'block'
+        
+        // 确保图片尺寸适合打印
+        imageElement.style.maxWidth = '100%'
+        imageElement.style.height = 'auto'
+        
+        // 移除可能影响打印的变换
+        imageElement.style.transform = 'none'
+        imageElement.style.transition = 'none'
+        
+        // 如果图片还没有加载完成，设置一个默认的最小高度
+        if (!imageElement.complete) {
+          imageElement.style.minHeight = '100px'
+          imageElement.style.background = '#f5f5f5'
+        }
+      })
+      
+      // 移除所有图片加载状态元素
+      const loadingElements = document.querySelectorAll('.image-loading')
+      loadingElements.forEach(loading => {
+        (loading as HTMLElement).style.display = 'none'
+      })
+      
+      // 确保图片容器可见
+      const imageContainers = document.querySelectorAll('.image-container')
+      imageContainers.forEach((container: Element) => {
+        const containerElement = container as HTMLElement
+        containerElement.style.opacity = '1'
+        containerElement.style.visibility = 'visible'
+        containerElement.style.pageBreakInside = 'avoid'
+      })
+      
+      this.debugLog(`已强制显示 ${images.length} 个图片用于打印`)
+      
+    } catch (error) {
+      this.debugLog('强制显示图片失败', error, 'error')
+    }
+  }
+
+  /**
+   * 设置打印页眉页脚信息
+   * 增强错误处理和性能监控
+   * 
+   * @returns {boolean} 是否成功设置
+   */
+  private setPrintHeaderFooterInfo(): boolean {
+    const startTime = performance.now()
+    
+    try {
+      // 性能监控：记录开始时间
+      this.debugLog('开始设置打印页眉页脚信息')
+      
+      // 获取文档标题 - 增强容错性
+      const documentTitle = this.getDocumentTitle()
+      
+      // 获取文件名 - 优化提取逻辑
+      const fileName = this.extractFileName()
+      
+      // 验证数据有效性
+      if (!documentTitle || !fileName) {
+        throw new Error('打印信息数据无效')
+      }
+      
+      // 设置data属性 - 增强错误处理
+      this.setDocumentAttributes({
+        'data-document-title': documentTitle,
+        'data-file-name': fileName
+      })
+      
+      // 性能监控：记录完成时间
+      const endTime = performance.now()
+      this.performanceMetrics.lastUpdate = Date.now()
+      
+      this.debugLog('打印页眉页脚信息设置成功', {
+        documentTitle,
+        fileName,
+        duration: `${(endTime - startTime).toFixed(2)}ms`
+      })
+      
+      return true
+      
+    } catch (error) {
+      const endTime = performance.now()
+      this.debugLog('设置打印页眉页脚信息失败', {
+        error: error instanceof Error ? error.message : String(error),
+        duration: `${(endTime - startTime).toFixed(2)}ms`,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      
+      // 设置默认值以确保打印功能不完全失败
+      this.setFallbackPrintInfo()
+      return false
+    }
+  }
+
+  /**
+   * 获取文档标题 - 增强容错性
+   * 
+   * @returns {string} 文档标题
+   */
+  private getDocumentTitle(): string {
+    try {
+      // 优先使用document.title
+      if (document.title && document.title.trim()) {
+        return document.title.trim()
+      }
+      
+      // 尝试从meta标签获取
+      const metaTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
+      if (metaTitle && metaTitle.trim()) {
+        return metaTitle.trim()
+      }
+      
+      // 尝试从h1标签获取
+      const h1Element = document.querySelector('h1')
+      if (h1Element && h1Element.textContent && h1Element.textContent.trim()) {
+        return h1Element.textContent.trim()
+      }
+      
+      // 最后使用URL作为标题
+      return window.location.href
+      
+    } catch (error) {
+      this.debugLog('获取文档标题失败', error)
+      return '无标题文档'
+    }
+  }
+
+  /**
+   * 提取文件名 - 优化提取逻辑
+   * 
+   * @returns {string} 文件名
+   */
+  private extractFileName(): string {
+    try {
+      const pathname = window.location.pathname
+      
+      // 处理根路径
+      if (!pathname || pathname === '/') {
+        return window.location.hostname || '本地文件'
+      }
+      
+      // 分割路径并过滤空值
+      const pathParts = pathname.split('/').filter(part => part.trim() !== '')
+      
+      if (pathParts.length === 0) {
+        return window.location.hostname || '本地文件'
+      }
+      
+      // 获取最后一个路径部分
+      let fileName = pathParts[pathParts.length - 1]
+      
+      try {
+        // 尝试URL解码
+        fileName = decodeURIComponent(fileName)
+      } catch (decodeError) {
+        // 解码失败时使用原始值
+        this.debugLog('URL解码失败，使用原始文件名', decodeError)
+      }
+      
+      // 如果文件名为空或只包含特殊字符，使用域名
+      if (!fileName || !/[a-zA-Z0-9\u4e00-\u9fa5]/.test(fileName)) {
+        return window.location.hostname || '本地文件'
+      }
+      
+      return fileName
+      
+    } catch (error) {
+      this.debugLog('提取文件名失败', error)
+      return window.location.hostname || '未知文件'
+    }
+  }
+
+  /**
+   * 设置文档属性 - 增强错误处理
+   * 
+   * @param attributes 要设置的属性对象
+   */
+  private setDocumentAttributes(attributes: Record<string, string>): void {
+    try {
+      if (!document.documentElement) {
+        throw new Error('document.documentElement 不可用')
+      }
+      
+      Object.entries(attributes).forEach(([key, value]) => {
+        if (!key || value === undefined || value === null) {
+          this.debugLog(`跳过无效属性: ${key} = ${value}`)
+          return
+        }
+        
+        document.documentElement.setAttribute(key, String(value))
+      })
+      
+    } catch (error) {
+      this.debugLog('设置文档属性失败', error)
+      throw error
+    }
+  }
+
+  /**
+   * 设置备用打印信息
+   * 当主要设置失败时使用
+   */
+  private setFallbackPrintInfo(): void {
+    try {
+      const fallbackInfo = {
+        'data-document-title': '文档',
+        'data-file-name': window.location.hostname || '本地文件'
+      }
+      
+      this.setDocumentAttributes(fallbackInfo)
+      this.debugLog('已设置备用打印信息', fallbackInfo)
+      
+    } catch (error) {
+      this.debugLog('设置备用打印信息也失败', error)
+    }
+  }
+
+  /**
+   * 打印后恢复主题设置
+   * 防止打印样式中的强制颜色设置影响页面主题
+   * 重新加载持久化配置确保完全恢复用户设置
+   */
+  private async restoreThemeAfterPrint(): Promise<void> {
+    try {
+      this.debugLog('开始恢复打印后的主题设置')
+      
+      // 重新加载持久化配置，确保使用最新的用户设置
+      await this.reloadPersistedConfig()
+      
+      // 重新应用当前配置的主题
+      if (this.config.theme) {
+        cssVariableManager.setTheme(this.config.theme)
+        this.debugLog('已恢复主题设置', { theme: this.config.theme })
+      }
+      
+      // 重新应用强调色
+      if (this.config.accentColor) {
+        cssVariableManager.setAccentColor(this.config.accentColor)
+        this.debugLog('已恢复强调色设置', { accentColor: this.config.accentColor })
+      }
+      
+      // 恢复保存的DOM属性（作为备用机制）
+      if (this.savedThemeState.dataTheme) {
+        document.documentElement.setAttribute('data-theme', this.savedThemeState.dataTheme)
+      }
+      if (this.savedThemeState.dataActualTheme) {
+        document.documentElement.setAttribute('data-actual-theme', this.savedThemeState.dataActualTheme)
+      }
+      if (this.savedThemeState.liquidGlassTheme) {
+        document.documentElement.setAttribute('data-liquid-glass-theme', this.savedThemeState.liquidGlassTheme)
+      }
+      
+      // 确保主题相关的CSS变量正确设置
+      this.applyConfigToStyles()
+      
+      this.debugLog('主题状态已完全恢复', { 
+        config: this.config, 
+        savedState: this.savedThemeState 
+      })
+      
+    } catch (error) {
+      this.debugLog('恢复主题设置失败', error)
+      // 如果重新加载配置失败，使用保存的状态作为备用方案
+      this.fallbackRestoreTheme()
+    }
+  }
+
+  /**
+   * 重新加载持久化配置
+   * 专门用于打印后恢复，确保获取最新的用户设置
+   */
+  private async reloadPersistedConfig(): Promise<void> {
+    try {
+      if (!this.checkExtensionContext()) {
+        throw new Error('扩展上下文无效，无法重新加载配置')
+      }
+
+      // 使用与markdown.ts相同的存储键名
+      const result = await chrome.storage.sync.get('markdown-config')
+      if (result['markdown-config']) {
+        // 合并配置，确保不丢失任何设置
+        this.config = { ...this.config, ...result['markdown-config'] }
+        this.debugLog('配置已从chrome.storage.sync重新加载', this.config)
+        console.log('配置已从chrome.storage.sync加载')
+      } else {
+        this.debugLog('未找到存储的配置，保持当前配置')
+      }
+    } catch (error) {
+      this.debugLog('重新加载持久化配置失败', error)
+      throw error
+    }
+  }
+
+  /**
+   * 备用主题恢复方案
+   * 当重新加载配置失败时使用保存的状态
+   */
+  private fallbackRestoreTheme(): void {
+    try {
+      this.debugLog('使用备用方案恢复主题')
+      
+      // 使用保存的状态恢复主题
+      if (this.savedThemeState.theme) {
+        cssVariableManager.setTheme(this.savedThemeState.theme as Theme)
+      }
+      if (this.savedThemeState.accentColor) {
+        cssVariableManager.setAccentColor(this.savedThemeState.accentColor as AccentColor)
+      }
+      
+      // 恢复DOM属性
+      if (this.savedThemeState.dataTheme) {
+        document.documentElement.setAttribute('data-theme', this.savedThemeState.dataTheme)
+      }
+      if (this.savedThemeState.dataActualTheme) {
+        document.documentElement.setAttribute('data-actual-theme', this.savedThemeState.dataActualTheme)
+      }
+      if (this.savedThemeState.liquidGlassTheme) {
+        document.documentElement.setAttribute('data-liquid-glass-theme', this.savedThemeState.liquidGlassTheme)
+      }
+      
+      this.debugLog('备用主题恢复完成')
+      
+    } catch (error) {
+      this.debugLog('备用主题恢复也失败', error)
+    }
+  }
+
+  /**
+   * 保存当前主题状态
+   * 在打印前调用，用于打印后恢复
+   */
+  private saveCurrentThemeState(): void {
+    try {
+      // 保存配置中的主题设置
+      this.savedThemeState.theme = this.config.theme
+      this.savedThemeState.accentColor = this.config.accentColor
+      
+      // 保存DOM元素上的主题属性
+      this.savedThemeState.dataTheme = document.documentElement.getAttribute('data-theme') || undefined
+      this.savedThemeState.dataActualTheme = document.documentElement.getAttribute('data-actual-theme') || undefined
+      this.savedThemeState.liquidGlassTheme = document.documentElement.getAttribute('data-liquid-glass-theme') || undefined
+      
+      this.debugLog('当前主题状态已保存', this.savedThemeState)
+      
+    } catch (error) {
+      this.debugLog('保存主题状态失败', error)
+    }
+  }
+
+  /**
    * 智能检测Markdown文件 - 支持多种场景
+   * 现在支持所有页面，不再限制只对.md文件生效
    * 1. 文件扩展名检测：.md, .MD, .Md, .mD, .markdown
    * 2. GitHub/GitLab等平台的markdown页面
    * 3. 内容类型检测（text/markdown, text/plain等）
    * 4. 文档标题和内容检测
+   * 5. 所有其他页面（新增）
    */
   private isMarkdownFile(): boolean {
     const url = window.location.href
     const pathname = window.location.pathname
 
-    // 1. 直接的文件扩展名检测
+    // 排除一些明显不需要处理的页面类型
+    const excludePatterns = [
+      /\.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$/i,  // 图片文件
+      /\.(mp4|avi|mov|wmv|flv|webm|mkv)$/i,       // 视频文件
+      /\.(mp3|wav|flac|aac|ogg|wma)$/i,           // 音频文件
+      /\.(zip|rar|7z|tar|gz|bz2)$/i,              // 压缩文件
+      /\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i,     // 办公文档
+      /\.(exe|dmg|pkg|deb|rpm|msi)$/i,            // 可执行文件
+      /\/api\//i,                                  // API接口
+      /\.(css|js|json|xml)$/i                     // 静态资源文件
+    ]
+
+    // 如果是明确需要排除的文件类型，直接返回false
+    if (excludePatterns.some(pattern => pattern.test(url) || pattern.test(pathname))) {
+      console.log('排除的文件类型，不启用插件:', { url, pathname })
+      return false
+    }
+
+    // 1. 直接的文件扩展名检测（优先级最高）
     if (/\.(md|markdown)$/i.test(url) || /\.(md|markdown)$/i.test(pathname)) {
       console.log('通过文件扩展名识别为Markdown文件')
       return true
@@ -340,8 +967,10 @@ class ContentScriptApp {
       return true
     }
 
-    console.log('未识别为Markdown文件:', { url, pathname, contentType })
-    return false
+    // 5. 新增：对所有其他页面也启用插件（除了排除列表中的文件）
+    // 这样用户可以在任何页面使用Markdown渲染功能
+    console.log('启用插件用于通用页面:', { url, pathname, contentType })
+    return true
   }
 
   /**
@@ -733,23 +1362,23 @@ class ContentScriptApp {
     try {
       // 导入异步图表渲染器
       const { asyncChartRenderer } = await import('../utils/asyncChartRenderer')
-      
+
       // 查找所有图表容器
       const chartContainers = container.querySelectorAll('.chart-container[data-chart-type][data-chart-id]')
-      
+
       this.debugLog(`查找图表容器结果: 找到 ${chartContainers.length} 个`)
-      
+
       // 如果没有找到，尝试查找所有.chart-container
       if (chartContainers.length === 0) {
         const allChartContainers = container.querySelectorAll('.chart-container')
         this.debugLog(`所有.chart-container元素: ${allChartContainers.length} 个`)
-        
+
         allChartContainers.forEach((element, index) => {
           const chartType = element.getAttribute('data-chart-type')
           const chartId = element.getAttribute('data-chart-id')
           this.debugLog(`图表容器 ${index}: type=${chartType}, id=${chartId}`)
         })
-        
+
         this.debugLog('未找到需要渲染的图表')
         return
       }
@@ -761,9 +1390,9 @@ class ContentScriptApp {
         const chartElement = chartContainer as HTMLElement
         const chartType = chartElement.getAttribute('data-chart-type')
         const chartId = chartElement.getAttribute('data-chart-id')
-        
+
         this.debugLog(`处理图表 ${index}: type=${chartType}, id=${chartId}`)
-        
+
         if (!chartType || !chartId) {
           this.debugLog('图表容器缺少必要属性', { chartType, chartId })
           return
@@ -806,7 +1435,7 @@ class ContentScriptApp {
           }
         } catch (error) {
           this.debugLog(`图表渲染失败: ${chartType} (${chartId})`, error)
-          
+
           // 显示错误信息
           const errorElement = chartElement.querySelector('.chart-error') as HTMLElement
           if (errorElement) {
@@ -839,8 +1468,203 @@ class ContentScriptApp {
     }
   }
 
-  private debugLog(message: string, data?: any): void {
-    console.log(`[ContentScript] ${message}`, data || '')
+  // 调试系统配置
+  private debugConfig = {
+    enabled: true,
+    level: 'info' as 'debug' | 'info' | 'warn' | 'error',
+    maxLogEntries: 1000,
+    enablePerformanceTracking: true,
+    enableMemoryTracking: true
+  }
+  
+  // 日志存储
+  private logEntries: Array<{
+    timestamp: number
+    level: string
+    message: string
+    data?: any
+    performance?: {
+      memory?: number
+      timing?: number
+    }
+  }> = []
+
+  /**
+   * 增强的调试日志系统
+   * 支持日志级别、性能监控和内存跟踪
+   * 
+   * @param message 日志消息
+   * @param data 附加数据
+   * @param level 日志级别
+   */
+  private debugLog(message: string, data?: any, level: 'debug' | 'info' | 'warn' | 'error' = 'info'): void {
+    if (!this.debugConfig.enabled) return
+
+    const timestamp = Date.now()
+    const logEntry: any = {
+      timestamp,
+      level,
+      message,
+      data
+    }
+
+    // 性能监控
+    if (this.debugConfig.enablePerformanceTracking) {
+      logEntry.performance = {
+        timing: performance.now()
+      }
+    }
+
+    // 内存监控（如果支持）
+    if (this.debugConfig.enableMemoryTracking && 'memory' in performance) {
+      logEntry.performance = {
+        ...logEntry.performance,
+        memory: (performance as any).memory?.usedJSHeapSize || 0
+      }
+    }
+
+    // 存储日志条目
+    this.logEntries.push(logEntry)
+
+    // 限制日志条目数量，防止内存泄漏
+    if (this.logEntries.length > this.debugConfig.maxLogEntries) {
+      this.logEntries.splice(0, this.logEntries.length - this.debugConfig.maxLogEntries)
+    }
+
+    // 控制台输出
+    const prefix = `[ContentScript:${level.toUpperCase()}]`
+    const timeStr = new Date(timestamp).toISOString().substring(11, 23)
+    const fullMessage = `${prefix} ${timeStr} ${message}`
+
+    switch (level) {
+      case 'debug':
+        console.debug(fullMessage, data || '')
+        break
+      case 'info':
+        console.log(fullMessage, data || '')
+        break
+      case 'warn':
+        console.warn(fullMessage, data || '')
+        break
+      case 'error':
+        console.error(fullMessage, data || '')
+        break
+    }
+  }
+
+  /**
+   * 获取性能指标
+   * 
+   * @returns 性能指标对象
+   */
+  private getPerformanceMetrics(): Record<string, any> {
+    const now = Date.now()
+    const metrics = {
+      ...this.performanceMetrics,
+      uptime: now - this.performanceMetrics.lastUpdate,
+      logEntries: this.logEntries.length,
+      eventListeners: this.eventListeners.size
+    }
+
+    // 添加内存信息（如果支持）
+    if ('memory' in performance) {
+      const memory = (performance as any).memory
+      metrics.memory = {
+        used: memory.usedJSHeapSize,
+        total: memory.totalJSHeapSize,
+        limit: memory.jsHeapSizeLimit
+      }
+    }
+
+    return metrics
+  }
+
+  /**
+   * 清理资源和事件监听器
+   * 防止内存泄漏
+   */
+  private cleanup(): void {
+    try {
+      this.debugLog('开始清理资源', undefined, 'info')
+
+      // 清理事件监听器
+      this.cleanupEventListeners()
+
+      // 清理渲染器
+      if (this.renderer) {
+        // 如果渲染器有清理方法，调用它
+        if (typeof (this.renderer as any).cleanup === 'function') {
+          (this.renderer as any).cleanup()
+        }
+        this.renderer = null
+      }
+
+      // 清理日志条目（保留最近的100条）
+      if (this.logEntries.length > 100) {
+        this.logEntries.splice(0, this.logEntries.length - 100)
+      }
+
+      // 重置状态
+      this.isActive = false
+      this.isExtensionValid = true
+      this.reconnectAttempts = 0
+
+      this.debugLog('资源清理完成', this.getPerformanceMetrics(), 'info')
+
+    } catch (error) {
+      this.debugLog('资源清理失败', error, 'error')
+    }
+  }
+
+  /**
+   * 导出调试信息
+   * 用于问题诊断和性能分析
+   * 
+   * @returns 调试信息对象
+   */
+  private exportDebugInfo(): Record<string, any> {
+    return {
+      timestamp: Date.now(),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      config: this.config,
+      performance: this.getPerformanceMetrics(),
+      recentLogs: this.logEntries.slice(-50), // 最近50条日志
+      eventListeners: Array.from(this.eventListeners.keys()),
+      isActive: this.isActive,
+      isExtensionValid: this.isExtensionValid,
+      reconnectAttempts: this.reconnectAttempts
+    }
+  }
+
+  /**
+   * 公开方法：获取调试信息
+   * 可通过控制台调用进行问题诊断
+   */
+  public getDebugInfo(): Record<string, any> {
+    this.debugLog('导出调试信息', undefined, 'info')
+    return this.exportDebugInfo()
+  }
+
+  /**
+   * 公开方法：导出调试信息到文件
+   * 便于问题报告和分析
+   */
+  public exportDebugInfoToFile(): void {
+    try {
+      const debugInfo = this.exportDebugInfo()
+      const blob = new Blob([JSON.stringify(debugInfo, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `markdown-reader-debug-${Date.now()}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      
+      this.debugLog('调试信息已导出到文件', undefined, 'info')
+    } catch (error) {
+      this.debugLog('导出调试信息到文件失败', error, 'error')
+    }
   }
 
   private async renderMarkdown(content: string): Promise<void> {
@@ -946,9 +1770,27 @@ class ContentScriptApp {
       }
     })
 
-    // 图片缩放功能
+    // 图片双击放大功能
+    document.addEventListener('dblclick', (e) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'IMG' && target.closest('.markdown-reader-container')) {
+        e.preventDefault()
+        this.openImageModal(target as HTMLImageElement)
+      }
+    })
+
+    // 图片缩放功能（保留原有的toggleImageZoom）
     window.toggleImageZoom = (img: HTMLImageElement) => {
       img.classList.toggle('zoomed')
+    }
+
+    // 图片模态框功能
+    window.openImageModal = (img: HTMLImageElement) => {
+      this.openImageModal(img)
+    }
+
+    window.closeImageModal = () => {
+      this.closeImageModal()
     }
   }
 
@@ -1643,12 +2485,85 @@ class ContentScriptApp {
     link.click()
     URL.revokeObjectURL(url)
   }
+
+  /**
+   * 打开图片模态框
+   */
+  private openImageModal(img: HTMLImageElement): void {
+    // 检查是否已存在模态框
+    const existingModal = document.getElementById('image-modal')
+    if (existingModal) {
+      this.closeImageModal()
+      return
+    }
+
+    // 创建模态框
+    const modal = document.createElement('div')
+    modal.className = 'image-modal'
+    modal.id = 'image-modal'
+
+    const modalContent = document.createElement('div')
+    modalContent.className = 'image-modal-content'
+
+
+
+    // 克隆图片
+    const clonedImg = img.cloneNode(true) as HTMLImageElement
+    clonedImg.style.maxWidth = '90vw'
+    clonedImg.style.maxHeight = '90vh'
+    clonedImg.style.width = 'auto'
+    clonedImg.style.height = 'auto'
+    clonedImg.style.objectFit = 'contain'
+
+    modalContent.appendChild(clonedImg)
+    modal.appendChild(modalContent)
+    document.body.appendChild(modal)
+
+    // 显示模态框
+    setTimeout(() => {
+      modal.classList.add('show')
+    }, 10)
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeImageModal()
+      }
+    })
+
+    // ESC键关闭
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.closeImageModal()
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+  }
+
+  /**
+   * 关闭图片模态框
+   */
+  private closeImageModal(): void {
+    const modal = document.getElementById('image-modal')
+    if (modal) {
+      modal.classList.remove('show')
+      setTimeout(() => {
+        modal.remove()
+      }, 300)
+    }
+  }
 }
 
 // 全局函数声明
 declare global {
   interface Window {
     toggleImageZoom: (img: HTMLImageElement) => void
+    openImageModal: (img: HTMLImageElement) => void
+    closeImageModal: () => void
+    toggleChartSource: (chartId: string) => void
+    openChartModal: (chartId: string) => void
+    closeChartModal: () => void
     retryChartRender: (chartId: string, chartType: string, encodedContent: string) => Promise<void>
     __markdownReaderInitialized?: boolean
   }
@@ -1665,20 +2580,128 @@ export function onExecute() {
   // 标记为已初始化
   window.__markdownReaderInitialized = true
 
+  // 添加全局切换图表源码显示函数
+  window.toggleChartSource = (chartId: string) => {
+    const sourceElement = document.getElementById(`${chartId}-source`)
+    const button = document.querySelector(`[data-chart-id="${chartId}"][data-action="toggle-source"]`) as HTMLButtonElement
+
+    if (sourceElement && button) {
+      const isVisible = sourceElement.style.display !== 'none'
+      sourceElement.style.display = isVisible ? 'none' : 'block'
+      button.textContent = isVisible ? '查看源码' : '隐藏源码'
+      
+      // 应用苹果风格的按钮状态切换
+      if (isVisible) {
+        // 隐藏状态 - 恢复默认样式
+        button.classList.remove('active')
+        button.removeAttribute('data-active')
+        button.style.background = ''
+        button.style.color = ''
+        button.style.borderColor = ''
+        button.style.boxShadow = ''
+      } else {
+        // 显示状态 - 激活样式
+        button.classList.add('active')
+        button.setAttribute('data-active', 'true')
+      }
+    }
+  }
+
+  // 添加事件委托来处理图表按钮点击
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    
+    // 处理查看源码按钮点击
+    if (target.classList.contains('view-source-btn') && target.hasAttribute('data-action') && target.hasAttribute('data-chart-id')) {
+      const action = target.getAttribute('data-action')
+      const chartId = target.getAttribute('data-chart-id')
+      
+      if (action === 'toggle-source' && chartId) {
+        event.preventDefault()
+        event.stopPropagation()
+        window.toggleChartSource(chartId)
+      }
+    }
+  })
+
+  // 添加全局图片模态框功能
+  window.openImageModal = (img: HTMLImageElement) => {
+    // 检查是否已存在模态框
+    const existingModal = document.getElementById('image-modal')
+    if (existingModal) {
+      window.closeImageModal()
+      return
+    }
+
+    // 创建模态框
+    const modal = document.createElement('div')
+    modal.className = 'image-modal'
+    modal.id = 'image-modal'
+
+    const modalContent = document.createElement('div')
+    modalContent.className = 'image-modal-content'
+
+
+
+    // 克隆图片
+    const clonedImg = img.cloneNode(true) as HTMLImageElement
+    clonedImg.style.maxWidth = '90vw'
+    clonedImg.style.maxHeight = '90vh'
+    clonedImg.style.width = 'auto'
+    clonedImg.style.height = 'auto'
+    clonedImg.style.objectFit = 'contain'
+
+    modalContent.appendChild(clonedImg)
+    modal.appendChild(modalContent)
+    document.body.appendChild(modal)
+
+    // 显示模态框
+    setTimeout(() => {
+      modal.classList.add('show')
+    }, 10)
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        window.closeImageModal()
+      }
+    })
+
+    // ESC键关闭
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.closeImageModal()
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+  }
+
+  // 添加全局关闭图片模态框功能
+  window.closeImageModal = () => {
+    const modal = document.getElementById('image-modal')
+    if (modal) {
+      modal.classList.remove('show')
+      setTimeout(() => {
+        modal.remove()
+      }, 300)
+    }
+  }
+
   // 添加全局重试图表渲染函数
   window.retryChartRender = async (chartId: string, chartType: string, encodedContent: string) => {
     try {
       const { asyncChartRenderer } = await import('../utils/asyncChartRenderer')
       const chartContent = decodeURIComponent(encodedContent)
-      
+
       console.log(`重试渲染图表: ${chartType} (${chartId})`)
-      
+
       // 清除错误状态
       const chartContainer = document.getElementById(chartId)
       if (chartContainer) {
         const errorElement = chartContainer.querySelector('.chart-error') as HTMLElement
         const loadingElement = chartContainer.querySelector('.chart-loading') as HTMLElement
-        
+
         if (errorElement) errorElement.style.display = 'none'
         if (loadingElement) {
           loadingElement.style.display = 'block'
@@ -1706,13 +2729,13 @@ export function onExecute() {
       console.log(`图表重试渲染成功: ${chartType} (${chartId})`)
     } catch (error) {
       console.error(`图表重试渲染失败: ${chartType} (${chartId})`, error)
-      
+
       // 显示重试失败的错误信息
       const chartContainer = document.getElementById(chartId)
       if (chartContainer) {
         const errorElement = chartContainer.querySelector('.chart-error') as HTMLElement
         const loadingElement = chartContainer.querySelector('.chart-loading') as HTMLElement
-        
+
         if (loadingElement) loadingElement.style.display = 'none'
         if (errorElement) {
           errorElement.style.display = 'block'

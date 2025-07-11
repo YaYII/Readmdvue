@@ -31,7 +31,7 @@ export class AsyncChartRenderer {
 
   // Kroki支持的所有图表类型
   private readonly supportedTypes = [
-    'mermaid', 'plantuml', 'graphviz', 'blockdiag', 'seqdiag', 
+    'mermaid', 'plantuml', 'graphviz', 'blockdiag', 'seqdiag',
     'actdiag', 'nwdiag', 'packetdiag', 'rackdiag', 'c4plantuml',
     'ditaa', 'erd', 'excalidraw', 'nomnoml', 'svgbob', 'vega',
     'vegalite', 'wavedrom', 'wireviz', 'structurizr'
@@ -67,10 +67,10 @@ export class AsyncChartRenderer {
       // 对于 Mermaid 图表，优先使用本地渲染
       if (type.toLowerCase() === 'mermaid') {
         console.log('使用本地 Mermaid 渲染器')
-        
+
         try {
           const result = await localMermaidRenderer.renderMermaid(content, containerId)
-          
+
           if (result.success) {
             const renderTime = Date.now() - startTime
             return {
@@ -95,10 +95,10 @@ export class AsyncChartRenderer {
       for (let attempt = 1; attempt <= retryCount; attempt++) {
         try {
           const result = await this.renderWithKroki(
-            type, 
-            content, 
-            container, 
-            timeout, 
+            type,
+            content,
+            container,
+            timeout,
             cacheEnabled && attempt === 1 // 只在第一次尝试时使用缓存
           )
 
@@ -108,7 +108,7 @@ export class AsyncChartRenderer {
           showSuccess(
             '图表渲染完成',
             `${this.getTypeDisplayName(type)}图表已成功渲染 (${renderTime.toFixed(0)}ms)`,
-            { 
+            {
               duration: 2000,
               liquidGlass: true
             }
@@ -124,7 +124,7 @@ export class AsyncChartRenderer {
         } catch (error) {
           lastError = error as Error
           console.warn(`${type}图表渲染失败 (尝试 ${attempt}/${retryCount}):`, error)
-          
+
           if (attempt < retryCount) {
             // 等待一段时间后重试
             await this.delay(1000 * attempt)
@@ -135,11 +135,11 @@ export class AsyncChartRenderer {
       // 所有重试都失败了
       const renderTime = Date.now() - startTime
       const errorMessage = lastError?.message || '渲染失败'
-      
+
       this.showErrorInContainer(container, errorMessage, type)
-      
+
       showError(
-        '图表渲染失败', 
+        '图表渲染失败',
         `${this.getTypeDisplayName(type)}: ${errorMessage}`,
         { liquidGlass: true }
       )
@@ -153,11 +153,11 @@ export class AsyncChartRenderer {
     } catch (error) {
       const renderTime = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : '未知错误'
-      
+
       console.error('图表渲染异常:', error)
-      
+
       showError(
-        '图表渲染异常', 
+        '图表渲染异常',
         errorMessage,
         { liquidGlass: true }
       )
@@ -174,15 +174,15 @@ export class AsyncChartRenderer {
    * 使用 Kroki POST API 渲染图表 - 简化方案
    */
   private async renderWithKroki(
-    type: string, 
-    content: string, 
+    type: string,
+    content: string,
     container: HTMLElement,
     timeout: number,
     useCache: boolean
   ): Promise<{ content: string; cached: boolean }> {
     // 生成缓存键
     const cacheKey = this.generateCacheKey(type, content)
-    
+
     // 检查缓存
     if (useCache && this.renderCache.has(cacheKey)) {
       const cachedUrl = this.renderCache.get(cacheKey)!
@@ -208,28 +208,28 @@ export class AsyncChartRenderer {
 
       // 获取 SVG 内容
       const svgContent = await response.text()
-      
+
       // 创建 Blob URL 用于显示
       const blob = new Blob([svgContent], { type: 'image/svg+xml' })
       const imageUrl = URL.createObjectURL(blob)
-      
+
       // 缓存结果
       if (useCache) {
         this.renderCache.set(cacheKey, imageUrl)
       }
-      
+
       // 显示图表
       this.displayResult(container, imageUrl)
       console.log(`${type}图表渲染成功 (Kroki POST API)`)
-      
+
       return { content: imageUrl, cached: false }
-      
+
     } catch (error) {
       console.error(`${type}图表渲染失败:`, error)
-      
+
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          throw new Error(`图表渲染超时（${(timeout/1000).toFixed(1)}秒），请检查网络连接`)
+          throw new Error(`图表渲染超时（${(timeout / 1000).toFixed(1)}秒），请检查网络连接`)
         } else if (error.message.includes('Failed to fetch')) {
           throw new Error('无法连接到 Kroki 服务器，请检查网络连接')
         } else {
@@ -281,11 +281,11 @@ export class AsyncChartRenderer {
         src="${imageUrl}" 
         alt="Chart" 
         class="kroki-chart-image" 
-        style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+        style="max-width: 100%; height: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
         loading="lazy"
       />
     `
-    
+
     // 恢复data-content属性
     if (dataContent) {
       contentElement.setAttribute('data-content', dataContent)

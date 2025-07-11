@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置界面实时更新测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+            background: #f5f5f7;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+        }
+        .test-title {
+            color: #1d1d1f;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .test-description {
+            color: #86868b;
+            margin-bottom: 15px;
+        }
+        .test-steps {
+            background: #f6f6f6;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .step {
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .step::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #30d158;
+            font-weight: bold;
+        }
+        .expected-behavior {
+            background: #e8f5e8;
+            border-left: 4px solid #30d158;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .troubleshooting {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">🎨 设置界面实时更新测试</h1>
+        
+        <div class="test-section">
+            <h2>📋 测试说明</h2>
+            <p class="test-description">
+                本测试页面用于验证Markdown阅读器设置界面的样式实时更新功能。
+                修复后，用户在设置界面中调整样式选项时，应该立即看到效果，无需刷新页面。
+            </p>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 测试步骤</h2>
+            <div class="test-steps">
+                <div class="step">在浏览器中打开任意Markdown文件</div>
+                <div class="step">激活Markdown阅读器插件</div>
+                <div class="step">点击设置按钮打开设置界面</div>
+                <div class="step">测试以下设置项的实时更新：</div>
+                <div style="margin-left: 20px;">
+                    <div class="step">强调色：切换不同颜色（蓝色、紫色、粉色等）</div>
+                    <div class="step">主题模式：切换明亮/暗黑/自动模式</div>
+                    <div class="step">字体大小：调整滑块从12px到24px</div>
+                    <div class="step">行高：调整滑块从1.2到2.0</div>
+                    <div class="step">最大宽度：调整滑块从800px到1600px</div>
+                    <div class="step">字体家族：切换不同字体</div>
+                </div>
+                <div class="step">观察页面样式是否立即更新</div>
+                <div class="step">点击"完成"按钮关闭设置界面</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ 预期行为</h2>
+            <div class="expected-behavior">
+                <h3>立即生效的样式更新：</h3>
+                <ul>
+                    <li><strong>强调色：</strong> 按钮、链接、选中状态的颜色立即改变</li>
+                    <li><strong>主题模式：</strong> 页面背景和文字颜色立即切换</li>
+                    <li><strong>字体大小：</strong> 文本大小立即调整</li>
+                    <li><strong>行高：</strong> 文本行间距立即改变</li>
+                    <li><strong>最大宽度：</strong> 内容区域宽度立即调整</li>
+                    <li><strong>字体家族：</strong> 文本字体立即切换</li>
+                </ul>
+                <p><strong>关键特性：</strong></p>
+                <ul>
+                    <li>所有设置变更无需刷新页面即可生效</li>
+                    <li>设置界面本身也会反映样式变化</li>
+                    <li>样式变更平滑过渡，无闪烁现象</li>
+                    <li>设置保存后重新打开页面仍保持设置</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 故障排除</h2>
+            <div class="troubleshooting">
+                <h3>如果样式没有立即更新：</h3>
+                <ol>
+                    <li>检查浏览器控制台是否有JavaScript错误</li>
+                    <li>确认插件已正确加载和激活</li>
+                    <li>尝试刷新页面后重新测试</li>
+                    <li>检查是否有其他扩展程序冲突</li>
+                </ol>
+                
+                <h3>技术实现验证：</h3>
+                <ul>
+                    <li>检查document.documentElement上的data属性是否正确设置</li>
+                    <li>验证CSS变量是否正确应用</li>
+                    <li>确认updateConfig方法是否正确调用样式应用函数</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 测试重点</h2>
+            <p class="test-description">
+                本次修复的核心是确保SettingsPanel.vue中的updateConfig方法能够：
+            </p>
+            <ul>
+                <li>立即调用相应的样式应用函数（applyTypography、applyMaxWidth等）</li>
+                <li>通过data属性和CSS变量实现样式的即时更新</li>
+                <li>在组件挂载时正确应用当前配置</li>
+                <li>保持与content script的同步</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

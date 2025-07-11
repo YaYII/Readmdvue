@@ -8,10 +8,10 @@
   --md-line-height: 1.6;
   --md-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  
+
   /* 布局配置 */
-  --md-max-width: 1300px;
-  
+  --md-max-width: 750px;
+
   /* 间距系统 */
   --md-spacing-xs: 4px;
   --md-spacing-sm: 8px;
@@ -19,13 +19,13 @@
   --md-spacing-lg: 24px;
   --md-spacing-xl: 32px;
   --md-spacing-2xl: 48px;
-  
+
   /* 圆角系统 */
   --md-radius-sm: 6px;
   --md-radius-md: 8px;
   --md-radius-lg: 12px;
   --md-radius-xl: 16px;
-  
+
   /* 阴影系统 */
   --md-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --md-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
@@ -44,16 +44,16 @@
   --md-bg-tertiary: #e9ecef;
   --md-bg-code: #f6f8fa;
   --md-bg-blockquote: rgba(0, 122, 255, 0.05);
-  
+
   --md-text-primary: #1d1d1f;
   --md-text-secondary: #6e6e73;
   --md-text-tertiary: #8e8e93;
   --md-text-inverse: #ffffff;
-  
+
   --md-border-primary: #d2d2d7;
   --md-border-secondary: #e5e5ea;
   --md-border-tertiary: #f2f2f7;
-  
+
   --md-surface-primary: rgba(255, 255, 255, 0.8);
   --md-surface-secondary: rgba(248, 249, 250, 0.8);
   --md-surface-glass: rgba(255, 255, 255, 0.7);
@@ -67,17 +67,17 @@
   --md-bg-tertiary: #2c2c2e;
   --md-bg-code: #1e1e20;
   --md-bg-blockquote: rgba(0, 122, 255, 0.1);
-  
+
   --md-text-primary: #ffffff;
   --md-text-secondary: #ebebf5;
   --md-text-tertiary: #ebebf5;
   --md-text-quaternary: #ebebf5;
   --md-text-inverse: #000000;
-  
+
   --md-border-primary: #38383a;
   --md-border-secondary: #48484a;
   --md-border-tertiary: #58585a;
-  
+
   --md-surface-primary: rgba(28, 28, 30, 0.8);
   --md-surface-secondary: rgba(44, 44, 46, 0.8);
   --md-surface-glass: rgba(0, 0, 0, 0.7);
@@ -86,29 +86,39 @@
 /* 护眼模式 - 专为长时间阅读设计 */
 :root[data-theme="eyecare"] {
   /* 护眼模式基础色彩 - 温暖的米黄色调 */
-  --md-bg-primary: #FDF6E3;           /* 温暖的米黄色背景 */
-  --md-bg-secondary: #F7F0D7;         /* 稍深的米黄色 */
-  --md-bg-tertiary: #F0E9C7;          /* 更深的米黄色 */
-  --md-bg-code: #F0E9C7;              /* 代码块背景 */
-  --md-bg-blockquote: rgba(107, 142, 35, 0.1); /* 引用块背景 */
-  
+  --md-bg-primary: #FDF6E3;
+  /* 温暖的米黄色背景 */
+  --md-bg-secondary: #F7F0D7;
+  /* 稍深的米黄色 */
+  --md-bg-tertiary: #F0E9C7;
+  /* 更深的米黄色 */
+  --md-bg-code: #F0E9C7;
+  /* 代码块背景 */
+  --md-bg-blockquote: rgba(107, 142, 35, 0.1);
+  /* 引用块背景 */
+
   /* 文字颜色 - 深棕色系，减少对比度 */
-  --md-text-primary: #5D4E37;         /* 深棕色主文字 */
-  --md-text-secondary: #8B7355;       /* 中等棕色次要文字 */
-  --md-text-tertiary: #A0916B;        /* 浅棕色辅助文字 */
-  --md-text-quaternary: #B8A882;      /* 最浅棕色说明文字 */
-  --md-text-inverse: #FDF6E3;         /* 反色文字 */
-  
+  --md-text-primary: #5D4E37;
+  /* 深棕色主文字 */
+  --md-text-secondary: #8B7355;
+  /* 中等棕色次要文字 */
+  --md-text-tertiary: #A0916B;
+  /* 浅棕色辅助文字 */
+  --md-text-quaternary: #B8A882;
+  /* 最浅棕色说明文字 */
+  --md-text-inverse: #FDF6E3;
+  /* 反色文字 */
+
   /* 边框颜色 */
   --md-border-primary: rgba(93, 78, 55, 0.2);
   --md-border-secondary: rgba(93, 78, 55, 0.15);
   --md-border-tertiary: rgba(93, 78, 55, 0.1);
-  
+
   /* 表面颜色 */
   --md-surface-primary: rgba(247, 240, 215, 0.8);
   --md-surface-secondary: rgba(240, 233, 199, 0.8);
   --md-surface-glass: rgba(253, 246, 227, 0.7);
-  
+
   /* 护眼模式阴影 - 更柔和 */
   --md-shadow-sm: 0 1px 3px rgba(93, 78, 55, 0.08);
   --md-shadow-md: 0 4px 12px rgba(93, 78, 55, 0.12);
@@ -210,39 +220,123 @@
 /* ===== 动态字体配置 - 基于data属性 ===== */
 
 /* 通过data属性动态设置字体大小 */
-[data-font-size="12"] { --md-font-size: 12px; }
-[data-font-size="13"] { --md-font-size: 13px; }
-[data-font-size="14"] { --md-font-size: 14px; }
-[data-font-size="15"] { --md-font-size: 15px; }
-[data-font-size="16"] { --md-font-size: 16px; }
-[data-font-size="17"] { --md-font-size: 17px; }
-[data-font-size="18"] { --md-font-size: 18px; }
-[data-font-size="19"] { --md-font-size: 19px; }
-[data-font-size="20"] { --md-font-size: 20px; }
-[data-font-size="21"] { --md-font-size: 21px; }
-[data-font-size="22"] { --md-font-size: 22px; }
-[data-font-size="24"] { --md-font-size: 24px; }
+[data-font-size="12"] {
+  --md-font-size: 12px;
+}
+
+[data-font-size="13"] {
+  --md-font-size: 13px;
+}
+
+[data-font-size="14"] {
+  --md-font-size: 14px;
+}
+
+[data-font-size="15"] {
+  --md-font-size: 15px;
+}
+
+[data-font-size="16"] {
+  --md-font-size: 16px;
+}
+
+[data-font-size="17"] {
+  --md-font-size: 17px;
+}
+
+[data-font-size="18"] {
+  --md-font-size: 18px;
+}
+
+[data-font-size="19"] {
+  --md-font-size: 19px;
+}
+
+[data-font-size="20"] {
+  --md-font-size: 20px;
+}
+
+[data-font-size="21"] {
+  --md-font-size: 21px;
+}
+
+[data-font-size="22"] {
+  --md-font-size: 22px;
+}
+
+[data-font-size="24"] {
+  --md-font-size: 24px;
+}
 
 /* 通过data属性动态设置行高 */
-[data-line-height="1.2"] { --md-line-height: 1.2; }
-[data-line-height="1.3"] { --md-line-height: 1.3; }
-[data-line-height="1.4"] { --md-line-height: 1.4; }
-[data-line-height="1.5"] { --md-line-height: 1.5; }
-[data-line-height="1.6"] { --md-line-height: 1.6; }
-[data-line-height="1.7"] { --md-line-height: 1.7; }
-[data-line-height="1.8"] { --md-line-height: 1.8; }
-[data-line-height="2.0"] { --md-line-height: 2.0; }
+[data-line-height="1.2"] {
+  --md-line-height: 1.2;
+}
+
+[data-line-height="1.3"] {
+  --md-line-height: 1.3;
+}
+
+[data-line-height="1.4"] {
+  --md-line-height: 1.4;
+}
+
+[data-line-height="1.5"] {
+  --md-line-height: 1.5;
+}
+
+[data-line-height="1.6"] {
+  --md-line-height: 1.6;
+}
+
+[data-line-height="1.7"] {
+  --md-line-height: 1.7;
+}
+
+[data-line-height="1.8"] {
+  --md-line-height: 1.8;
+}
+
+[data-line-height="2.0"] {
+  --md-line-height: 2.0;
+}
 
 /* 通过data属性动态设置最大宽度 */
-[data-max-width="800"] { --md-max-width: 800px; }
-[data-max-width="900"] { --md-max-width: 900px; }
-[data-max-width="1000"] { --md-max-width: 1000px; }
-[data-max-width="1100"] { --md-max-width: 1100px; }
-[data-max-width="1200"] { --md-max-width: 1200px; }
-[data-max-width="1300"] { --md-max-width: 1300px; }
-[data-max-width="1400"] { --md-max-width: 1400px; }
-[data-max-width="1500"] { --md-max-width: 1500px; }
-[data-max-width="1600"] { --md-max-width: 1600px; }
+[data-max-width="800"] {
+  --md-max-width: 800px;
+}
+
+[data-max-width="900"] {
+  --md-max-width: 900px;
+}
+
+[data-max-width="1000"] {
+  --md-max-width: 1000px;
+}
+
+[data-max-width="1100"] {
+  --md-max-width: 1100px;
+}
+
+[data-max-width="1200"] {
+  --md-max-width: 1200px;
+}
+
+[data-max-width="1300"] {
+  --md-max-width: 1300px;
+}
+
+[data-max-width="1400"] {
+  --md-max-width: 1400px;
+}
+
+[data-max-width="1500"] {
+  --md-max-width: 1500px;
+}
+
+[data-max-width="1600"] {
+  --md-max-width: 1600px;
+}
 
 /* ===== 基础容器样式 ===== */
 .markdown-reader-container {
@@ -272,12 +366,29 @@
   transition: color 0.3s ease;
 }
 
-.markdown-reader-container h1 { font-size: 2.5em; }
-.markdown-reader-container h2 { font-size: 2em; }
-.markdown-reader-container h3 { font-size: 1.5em; }
-.markdown-reader-container h4 { font-size: 1.25em; }
-.markdown-reader-container h5 { font-size: 1.1em; }
-.markdown-reader-container h6 { font-size: 1em; }
+.markdown-reader-container h1 {
+  font-size: 2.5em;
+}
+
+.markdown-reader-container h2 {
+  font-size: 2em;
+}
+
+.markdown-reader-container h3 {
+  font-size: 1.5em;
+}
+
+.markdown-reader-container h4 {
+  font-size: 1.25em;
+}
+
+.markdown-reader-container h5 {
+  font-size: 1.1em;
+}
+
+.markdown-reader-container h6 {
+  font-size: 1em;
+}
 
 /* ===== 链接样式 ===== */
 .markdown-reader-container a {
@@ -372,10 +483,18 @@
     padding: var(--md-spacing-md);
     font-size: calc(var(--md-font-size) * 0.9);
   }
-  
-  .markdown-reader-container h1 { font-size: 2em; }
-  .markdown-reader-container h2 { font-size: 1.75em; }
-  .markdown-reader-container h3 { font-size: 1.5em; }
+
+  .markdown-reader-container h1 {
+    font-size: 2em;
+  }
+
+  .markdown-reader-container h2 {
+    font-size: 1.75em;
+  }
+
+  .markdown-reader-container h3 {
+    font-size: 1.5em;
+  }
 }
 
 /* ===== 动画和过渡效果 ===== */
@@ -411,7 +530,7 @@
     font-size: 12pt !important;
     line-height: 1.5 !important;
   }
-  
+
   .action-toolbar {
     display: none !important;
   }

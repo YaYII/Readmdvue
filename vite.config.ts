@@ -55,6 +55,7 @@ export default defineConfig({
     target: 'esnext',
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
+    copyPublicDir: true, // 确保public目录下的文件被复制
     rollupOptions: {
       input: {
         // 明确指定入口文件
@@ -64,7 +65,10 @@ export default defineConfig({
       },
       output: {
         chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'src/[name]/main.js', // 保持原有路径结构
+        entryFileNames: (chunkInfo) => {
+          // 保持原有路径结构
+          return 'src/[name]/main.js'
+        },
       },
       // 防止第三方库注入不必要的网络请求
       external: (id) => {

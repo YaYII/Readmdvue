@@ -121,151 +121,13 @@
       <!-- 渲染功能 -->
       <div class="control-group">
         <h4 class="group-title">渲染功能</h4>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableMermaid"
-              @change="updateConfig({ enableMermaid: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">Mermaid 图表</span>
-          </label>
-          <p class="control-description">支持流程图、时序图、甘特图等</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableMath"
-              @change="updateConfig({ enableMath: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">数学公式</span>
-          </label>
-          <p class="control-description">LaTeX 数学公式渲染</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableCharts"
-              @change="updateConfig({ enableCharts: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">图表渲染</span>
-          </label>
-          <p class="control-description">PlantUML、Kroki 等图表</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableHighlight"
-              @change="updateConfig({ enableHighlight: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">代码高亮</span>
-          </label>
-          <p class="control-description">语法高亮显示代码块</p>
-        </div>
+        功能敬请期待  目前仅支持渲染Markdown语法
       </div>
 
       <!-- 内容功能 -->
       <div class="control-group">
         <h4 class="group-title">内容功能</h4>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableTables"
-              @change="updateConfig({ enableTables: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">表格样式</span>
-          </label>
-          <p class="control-description">美化表格显示效果</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableTaskLists"
-              @change="updateConfig({ enableTaskLists: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">任务列表</span>
-          </label>
-          <p class="control-description">支持可交互的任务清单</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableImageZoom"
-              @change="updateConfig({ enableImageZoom: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">图片缩放</span>
-          </label>
-          <p class="control-description">点击图片可放大查看</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableCopyCode"
-              @change="updateConfig({ enableCopyCode: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">代码复制</span>
-          </label>
-          <p class="control-description">代码块添加复制按钮</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableLineNumbers"
-              @change="updateConfig({ enableLineNumbers: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">行号显示</span>
-          </label>
-          <p class="control-description">代码块显示行号</p>
-        </div>
-        
-        <div class="control-item">
-          <label class="control-label">
-            <input 
-              type="checkbox" 
-              :checked="config.enableAutoSave"
-              @change="updateConfig({ enableAutoSave: ($event.target as HTMLInputElement).checked })"
-              class="control-checkbox"
-            >
-            <span class="checkbox-custom"></span>
-            <span class="label-text">自动保存</span>
-          </label>
-          <p class="control-description">自动保存配置更改</p>
-        </div>
+        功能敬请期待 
       </div>
     </div>
 
@@ -337,14 +199,15 @@ const accentColors = [
 
 // 组件挂载时初始化
 onMounted(async () => {
-  console.log('设置面板挂载，初始化配置')
-  
-  // 确保配置已加载
+  // 确保store已初始化
   await markdownStore.initialize()
   
   // 应用当前配置
   updateAccentColor(markdownStore.config.accentColor)
   applyTheme(markdownStore.config.theme)
+  applyTypography(markdownStore.config.fontSize, markdownStore.config.lineHeight)
+  applyMaxWidth(markdownStore.config.maxWidth)
+  applyFontFamily(markdownStore.config.fontFamily)
   applyStyleConfig(markdownStore.config)
   
   console.log('当前配置:', markdownStore.config)
@@ -355,17 +218,28 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
   console.log('更新配置:', updates)
   await markdownStore.updateConfig(updates)
   
-  // 如果更新了强调色，需要更新CSS变量
+  // 立即应用样式更新到当前页面
   if (updates.accentColor) {
     updateAccentColor(updates.accentColor)
   }
   
-  // 如果更新了主题，需要应用主题
   if (updates.theme) {
     applyTheme(updates.theme)
   }
   
-  // 应用样式配置
+  if (updates.fontSize || updates.lineHeight) {
+    applyTypography(updates.fontSize || markdownStore.config.fontSize, updates.lineHeight || markdownStore.config.lineHeight)
+  }
+  
+  if (updates.maxWidth) {
+    applyMaxWidth(updates.maxWidth)
+  }
+  
+  if (updates.fontFamily) {
+    applyFontFamily(updates.fontFamily)
+  }
+  
+  // 应用样式配置到content script
   applyStyleConfig(markdownStore.config)
 }
 
@@ -375,16 +249,26 @@ const applyStyleConfig = (config: MarkdownConfig) => {
   // 只通知content script应用配置，不在popup中设置CSS变量
   // 这样避免了双重应用和冲突
   try {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          type: 'UPDATE_STYLE_CONFIG',
-          config: config
-        }).catch(error => {
-          console.log('发送样式配置消息失败:', error)
-        })
-      }
-    })
+    // 检查chrome.tabs是否可用
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (chrome.runtime.lastError) {
+          console.log('Chrome tabs query error:', chrome.runtime.lastError)
+          return
+        }
+        
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'UPDATE_STYLE_CONFIG',
+            config: config
+          }).catch(error => {
+            console.log('发送样式配置消息失败:', error)
+          })
+        }
+      })
+    } else {
+      console.log('Chrome tabs API 不可用，跳过样式配置发送')
+    }
   } catch (error) {
     console.log('无法发送样式配置消息:', error)
   }
@@ -401,6 +285,9 @@ const updateAccentColor = (accentColor: AccentColor) => {
   
   // 添加新的强调色类
   document.documentElement.classList.add(`accent-${accentColor}`)
+  
+  // 设置data-accent属性（这是关键！）
+  document.documentElement.setAttribute('data-accent', accentColor)
   
   // 更新CSS变量
   const colorMap = {
@@ -437,6 +324,22 @@ const applyTheme = (theme: string) => {
   } else {
     document.documentElement.setAttribute('data-actual-theme', theme)
   }
+}
+
+const applyTypography = (fontSize: number, lineHeight: number) => {
+  console.log('应用字体设置:', { fontSize, lineHeight })
+  document.documentElement.setAttribute('data-font-size', fontSize.toString())
+  document.documentElement.setAttribute('data-line-height', lineHeight.toString())
+}
+
+const applyMaxWidth = (maxWidth: number) => {
+  console.log('应用最大宽度:', maxWidth)
+  document.documentElement.setAttribute('data-max-width', maxWidth.toString())
+}
+
+const applyFontFamily = (fontFamily: string) => {
+  console.log('应用字体家族:', fontFamily)
+  document.documentElement.style.setProperty('--md-font-family', fontFamily)
 }
 
 const hexToRgb = (hex: string): string => {
