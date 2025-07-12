@@ -612,6 +612,13 @@ input:checked + .switch-slider:before {
   --apple-accent-primary: var(--apple-graphite);
 }
 
+/* 自定义强调色 - 动态系统 */
+.accent-custom {
+  --apple-accent-primary: var(--custom-accent-color, #007AFF);
+  --apple-accent-gradient: linear-gradient(135deg, var(--custom-accent-color, #007AFF) 0%, color-mix(in srgb, var(--custom-accent-color, #007AFF) 70%, white) 100%);
+  --apple-accent-gradient-hover: linear-gradient(135deg, color-mix(in srgb, var(--custom-accent-color, #007AFF) 80%, black) 0%, color-mix(in srgb, var(--custom-accent-color, #007AFF) 60%, white) 100%);
+}
+
 /* 强调色按钮变体 */
 .btn-accent {
   background: var(--apple-accent-gradient);
@@ -756,3 +763,28 @@ input:checked + .switch-slider.accent {
 .accent-color-option.yellow { background: var(--apple-yellow); }
 .accent-color-option.green { background: var(--apple-green); }
 .accent-color-option.graphite { background: var(--apple-graphite); }
+
+/* 自定义强调色选项 - 动态背景 */
+.accent-color-option.custom { 
+  background: var(--custom-accent-color, #007AFF);
+  /* 添加渐变边框效果 */
+  background-image: linear-gradient(135deg, var(--custom-accent-color, #007AFF) 0%, color-mix(in srgb, var(--custom-accent-color, #007AFF) 70%, white) 100%);
+}
+
+/* 自定义强调色选项的特殊效果 */
+.accent-color-option.custom::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: inherit;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+  opacity: 0;
+  transition: opacity var(--apple-animation-normal) ease;
+}
+
+.accent-color-option.custom:hover::before {
+  opacity: 1;
+}

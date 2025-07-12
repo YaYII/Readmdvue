@@ -1,27 +1,29 @@
 <template>
-  <div class="settings-panel">
-    <!-- 头部 -->
-    <div class="settings-header">
-      <div class="header-content">
-        <div class="header-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+  <!-- 遮罩层 -->
+  <div class="settings-overlay" @click="$emit('close')">
+    <div class="settings-panel" :class="tocLayoutClass" @click.stop>
+      <!-- 头部 -->
+      <div class="settings-header">
+        <div class="header-content">
+          <div class="header-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2 class="header-title">设置</h2>
         </div>
-        <h2 class="header-title">设置</h2>
+        <button 
+          class="close-button"
+          data-close-btn
+          @click="$emit('close')"
+          aria-label="关闭设置"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
-      <button 
-        class="close-button"
-        data-close-btn
-        @click="$emit('close')"
-        aria-label="关闭设置"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
 
     <!-- 设置内容 -->
     <div class="settings-content">
@@ -57,10 +59,97 @@
                 :class="[color.value, { active: config.accentColor === color.value }]"
                 @click="updateConfig({ accentColor: color.value })"
                 :title="color.name"
-              ></div>
+                :style="color.value === 'custom' ? { backgroundColor: config.customAccentColor } : {}"
+              >
+                <!-- 自定义颜色选项显示调色板图标 -->
+                <svg v-if="color.value === 'custom'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="13.5" cy="6.5" r=".5"/>
+                  <circle cx="17.5" cy="10.5" r=".5"/>
+                  <circle cx="8.5" cy="7.5" r=".5"/>
+                  <circle cx="6.5" cy="12.5" r=".5"/>
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                </svg>
+              </div>
             </div>
           </label>
-          <p class="control-description">选择界面的强调色主题</p>
+          
+          <!-- 自定义颜色选择器 -->
+          <div v-if="config.accentColor === 'custom'" class="custom-color-section">
+            <div class="custom-color-picker">
+              <span class="color-picker-text">选择自定义颜色</span>
+              <div class="color-picker-container">
+                <button 
+                  type="button"
+                  class="color-picker-button"
+                  @click="openColorPicker"
+                  :style="{ backgroundColor: config.customAccentColor }"
+                  title="点击打开调色板"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="13.5" cy="6.5" r=".5"/>
+                    <circle cx="17.5" cy="10.5" r=".5"/>
+                    <circle cx="8.5" cy="7.5" r=".5"/>
+                    <circle cx="6.5" cy="12.5" r=".5"/>
+                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                  </svg>
+                </button>
+                <input 
+                  v-if="showColorPicker"
+                  type="color" 
+                  :value="tempColor || config.customAccentColor"
+                  @input="handleColorInput"
+                  @blur="hideColorPicker"
+                  @change="confirmColor"
+                  class="color-picker-input"
+                  ref="colorInput"
+                  title="选择颜色后会自动应用"
+                >
+                <div class="color-info">
+                  <div class="color-preview" :style="{ backgroundColor: config.customAccentColor }"></div>
+                  <span class="color-value">{{ config.customAccentColor.toUpperCase() }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 常用颜色 -->
+            <div class="preset-colors">
+              <div class="preset-colors-header">
+                <span class="preset-colors-label">常用颜色</span>
+                <span class="preset-colors-limit">最多5个</span>
+                <button 
+                  v-if="favoriteColors.length > 0"
+                  @click="clearFavoriteColors"
+                  class="clear-favorites-btn"
+                  title="清空常用颜色"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="preset-colors-grid">
+                <!-- 常用颜色插槽 -->
+                <div 
+                  v-for="index in FAVORITE_COLORS_SLOTS" 
+                  :key="index"
+                  class="preset-color-slot"
+                  :class="{ 'has-color': favoriteColors[index - 1] }"
+                  @click="handleFavoriteColorClick(index - 1)"
+                  @dblclick="handleFavoriteColorDoubleClick(index - 1)"
+                  :style="{ backgroundColor: favoriteColors[index - 1] || 'transparent' }"
+                  :title="getFavoriteColorSlotTitle(index - 1)"
+                >
+                  <span v-if="!favoriteColors[index - 1]" class="empty-slot-icon">+</span>
+                </div>
+              </div>
+              <!-- 使用说明 -->
+              <div class="preset-colors-help">
+                <span class="help-text">💡 单击应用颜色，双击删除颜色</span>
+              </div>
+            </div>
+          </div>
+          
+          <p class="control-description">选择界面的强调色主题，或自定义您喜欢的颜色</p>
         </div>
 
         <div class="control-item">
@@ -168,12 +257,15 @@
         完成
       </button>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useMarkdownStore } from '../stores/markdown'
+import { favoriteColorsManager } from '../utils/favoriteColorsManager'
+import { favoriteColorsMigration } from '../utils/favoriteColorsMigration'
 import type { MarkdownConfig, AccentColor } from '../types'
 
 // 定义事件
@@ -185,6 +277,42 @@ const emit = defineEmits<{
 const markdownStore = useMarkdownStore()
 const config = computed(() => markdownStore.config)
 
+// 定义ref
+const colorInput = ref<HTMLInputElement>()
+const showColorPicker = ref(false)
+const tempColor = ref('')
+
+// 目录菜单状态监听（用于推拉式布局）
+const tocVisible = ref(false)
+const tocCollapsed = ref(false)
+
+// 推拉式布局计算属性
+const tocLayoutClass = computed(() => {
+  const classes = []
+  
+  if (tocVisible.value) {
+    classes.push('toc-visible')
+    
+    if (tocCollapsed.value) {
+      classes.push('toc-collapsed')
+    } else {
+      classes.push('toc-expanded')
+    }
+  }
+  
+  return classes.join(' ')
+})
+
+// 常用颜色管理
+const favoriteColors = ref<string[]>([])
+const FAVORITE_COLORS_SLOTS = 5
+
+// 常用颜色变化监听器
+const onFavoriteColorsChange = (colors: string[]) => {
+  favoriteColors.value = colors
+  console.log('常用颜色已更新:', colors)
+}
+
 // 强调色选项
 const accentColors = [
   { value: 'blue', name: '蓝色' },
@@ -194,26 +322,290 @@ const accentColors = [
   { value: 'orange', name: '橙色' },
   { value: 'yellow', name: '黄色' },
   { value: 'green', name: '绿色' },
-  { value: 'graphite', name: '石墨色' }
+  { value: 'graphite', name: '石墨色' },
+  { value: 'custom', name: '自定义' }
 ] as const
+
+// 隐藏颜色选择器
+const hideColorPicker = () => {
+  showColorPicker.value = false
+}
+
+// 打开颜色选择器并自动聚焦
+const openColorPicker = async () => {
+  showColorPicker.value = true
+  // 等待DOM更新后自动聚焦颜色选择器
+  await nextTick()
+  if (colorInput.value) {
+    colorInput.value.focus()
+    colorInput.value.click() // 在某些浏览器中需要点击才能打开颜色选择器
+  }
+}
+
+// 处理颜色输入（实时预览）
+const handleColorInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  tempColor.value = target.value
+  // 实时预览但不保存
+  updateCustomColorPreview(target.value)
+}
+
+// 确定颜色（change事件时调用）
+const confirmColor = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const color = target.value
+  
+  if (color) {
+    await updateCustomColor(color)
+    await addToFavoriteColors(color)
+    tempColor.value = ''
+    showColorPicker.value = false
+  }
+}
+
+// 添加到常用颜色
+const addToFavoriteColors = async (color: string) => {
+  try {
+    // 检查是否已达到最大限制
+    if (favoriteColors.value.length >= FAVORITE_COLORS_SLOTS) {
+      console.warn('常用颜色已达到最大限制 (5个)')
+      // 可以在这里添加用户提示，比如toast通知
+      return
+    }
+    
+    const success = await favoriteColorsManager.addColor(color)
+    if (success) {
+      console.log('颜色已添加到常用颜色:', color)
+    } else {
+      console.warn('添加常用颜色失败，可能已存在或达到限制:', color)
+    }
+  } catch (error) {
+    console.error('添加常用颜色时发生错误:', error)
+  }
+}
+
+// 从常用颜色中移除
+const removeFavoriteColor = async (color: string) => {
+  try {
+    const success = await favoriteColorsManager.removeColor(color)
+    if (success) {
+      console.log('颜色已从常用颜色中移除:', color)
+    } else {
+      console.warn('从常用颜色中移除颜色失败:', color)
+    }
+  } catch (error) {
+    console.error('移除常用颜色时发生错误:', error)
+  }
+}
+
+// 获取常用颜色插槽的标题提示
+const getFavoriteColorSlotTitle = (index: number): string => {
+  const color = favoriteColors.value[index]
+  if (color) {
+    return `${color} (双击删除)`
+  } else {
+    if (favoriteColors.value.length >= FAVORITE_COLORS_SLOTS) {
+      return '已达到最大限制 (5个颜色)'
+    } else {
+      return '空位，点击打开调色板'
+    }
+  }
+}
+
+// 处理常用颜色插槽点击
+const handleFavoriteColorClick = (index: number) => {
+  const color = favoriteColors.value[index]
+  if (color) {
+    // 如果插槽有颜色，应用该颜色
+    updateCustomColor(color)
+  } else {
+    // 如果插槽为空，检查是否已达到限制
+    if (favoriteColors.value.length >= FAVORITE_COLORS_SLOTS) {
+      console.warn('常用颜色已达到最大限制 (5个)')
+      return
+    }
+    // 打开颜色选择器
+    openColorPicker()
+  }
+}
+
+// 处理常用颜色插槽双击
+const handleFavoriteColorDoubleClick = (index: number) => {
+  const color = favoriteColors.value[index]
+  if (color) {
+    // 如果插槽有颜色，删除该颜色
+    removeFavoriteColor(color)
+  }
+  // 如果插槽为空，双击不执行任何操作
+}
+
+// 清空常用颜色
+const clearFavoriteColors = async () => {
+  try {
+    const success = await favoriteColorsManager.clearColors()
+    if (success) {
+      console.log('常用颜色已清空')
+    } else {
+      console.warn('清空常用颜色失败')
+    }
+  } catch (error) {
+    console.error('清空常用颜色时发生错误:', error)
+  }
+}
 
 // 组件挂载时初始化
 onMounted(async () => {
-  // 确保store已初始化
-  await markdownStore.initialize()
-  
-  // 应用当前配置
-  updateAccentColor(markdownStore.config.accentColor)
-  applyTheme(markdownStore.config.theme)
-  applyTypography(markdownStore.config.fontSize, markdownStore.config.lineHeight)
-  applyMaxWidth(markdownStore.config.maxWidth)
-  applyFontFamily(markdownStore.config.fontFamily)
-  applyStyleConfig(markdownStore.config)
-  
-  console.log('当前配置:', markdownStore.config)
+  try {
+    // 确保store已初始化
+    await markdownStore.initialize()
+    
+    // 检查并执行数据迁移
+    const migrationCompleted = await favoriteColorsMigration.checkMigrationStatus()
+    if (!migrationCompleted) {
+      console.log('检测到旧的常用颜色数据，开始迁移...')
+      const migrationSuccess = await favoriteColorsMigration.migrate(markdownStore.config)
+      if (migrationSuccess) {
+        console.log('常用颜色数据迁移成功')
+        // 迁移成功后清理旧数据
+        await favoriteColorsMigration.cleanupOldData(markdownStore.updateConfig)
+      }
+    }
+    
+    // 初始化常用颜色管理器
+    await favoriteColorsManager.initialize()
+    
+    // 加载当前常用颜色
+    favoriteColors.value = favoriteColorsManager.getFavoriteColors()
+    
+    // 添加常用颜色变化监听器
+    favoriteColorsManager.addListener(onFavoriteColorsChange)
+    
+    // 设置目录菜单状态监听器（推拉式布局）
+    setupTocStateListeners()
+    
+    // 应用当前配置
+    updateAccentColor(markdownStore.config.accentColor)
+    applyTheme(markdownStore.config.theme)
+    applyTypography(markdownStore.config.fontSize, markdownStore.config.lineHeight)
+    applyMaxWidth(markdownStore.config.maxWidth)
+    applyFontFamily(markdownStore.config.fontFamily)
+    applyStyleConfig(markdownStore.config)
+    
+    console.log('设置面板初始化完成')
+    console.log('当前配置:', markdownStore.config)
+    console.log('当前常用颜色:', favoriteColors.value)
+  } catch (error) {
+    console.error('设置面板初始化失败:', error)
+  }
 })
 
-// 方法
+// 设置目录菜单状态监听器
+const setupTocStateListeners = () => {
+  try {
+    // 检查目录面板是否存在
+    const checkTocPanel = () => {
+      const tocPanel = document.querySelector('.toc-panel')
+      if (tocPanel) {
+        // 检查目录是否可见
+        tocVisible.value = tocPanel.classList.contains('show')
+        // 检查目录是否折叠
+        tocCollapsed.value = tocPanel.classList.contains('collapsed')
+        
+        console.log('目录状态更新:', {
+          visible: tocVisible.value,
+          collapsed: tocCollapsed.value,
+          layoutClass: tocLayoutClass.value
+        })
+      } else {
+        // 目录面板不存在，重置状态
+        tocVisible.value = false
+        tocCollapsed.value = false
+      }
+    }
+    
+    // 初始检查
+    checkTocPanel()
+    
+    // 使用MutationObserver监听DOM变化
+    const observer = new MutationObserver((mutations) => {
+      let shouldCheck = false
+      
+      mutations.forEach((mutation) => {
+        // 监听类名变化
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const target = mutation.target as Element
+          if (target.classList.contains('toc-panel')) {
+            shouldCheck = true
+          }
+        }
+        
+        // 监听DOM结构变化（目录面板的添加/移除）
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element
+              if (element.classList?.contains('toc-panel') || element.querySelector?.('.toc-panel')) {
+                shouldCheck = true
+              }
+            }
+          })
+          
+          mutation.removedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element
+              if (element.classList?.contains('toc-panel') || element.querySelector?.('.toc-panel')) {
+                shouldCheck = true
+              }
+            }
+          })
+        }
+      })
+      
+      if (shouldCheck) {
+        // 使用requestAnimationFrame确保DOM更新完成
+        requestAnimationFrame(checkTocPanel)
+      }
+    })
+    
+    // 开始观察整个文档的变化
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
+    })
+    
+    // 保存observer引用以便清理
+    ;(window as any).__settingsPanelTocObserver = observer
+    
+    console.log('目录菜单状态监听器已设置')
+  } catch (error) {
+    console.error('设置目录菜单状态监听器失败:', error)
+  }
+}
+
+// 清理目录菜单状态监听器
+const cleanupTocStateListeners = () => {
+  try {
+    const observer = (window as any).__settingsPanelTocObserver
+    if (observer) {
+      observer.disconnect()
+      delete (window as any).__settingsPanelTocObserver
+      console.log('目录菜单状态监听器已清理')
+    }
+  } catch (error) {
+    console.error('清理目录菜单状态监听器失败:', error)
+  }
+}
+
+// 组件卸载时清理
+onUnmounted(() => {
+  // 移除常用颜色变化监听器
+  favoriteColorsManager.removeListener(onFavoriteColorsChange)
+  
+  // 清理目录菜单状态监听器
+  cleanupTocStateListeners()
+})
 const updateConfig = async (updates: Partial<MarkdownConfig>) => {
   console.log('更新配置:', updates)
   await markdownStore.updateConfig(updates)
@@ -246,14 +638,15 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
 const applyStyleConfig = (config: MarkdownConfig) => {
   console.log('应用样式配置:', config)
   
-  // 只通知content script应用配置，不在popup中设置CSS变量
-  // 这样避免了双重应用和冲突
+  // 方案1: 尝试通过chrome.tabs API发送到content script
   try {
     // 检查chrome.tabs是否可用
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (chrome.runtime.lastError) {
           console.log('Chrome tabs query error:', chrome.runtime.lastError)
+          // 如果tabs API失败，触发备选方案
+          applyStyleConfigFallback(config)
           return
         }
         
@@ -261,16 +654,149 @@ const applyStyleConfig = (config: MarkdownConfig) => {
           chrome.tabs.sendMessage(tabs[0].id, {
             type: 'UPDATE_STYLE_CONFIG',
             config: config
+          }).then(() => {
+            console.log('样式配置已通过tabs API发送成功')
           }).catch(error => {
             console.log('发送样式配置消息失败:', error)
+            // 如果消息发送失败，触发备选方案
+            applyStyleConfigFallback(config)
           })
+        } else {
+          console.log('未找到活动标签页，使用备选方案')
+          applyStyleConfigFallback(config)
         }
       })
     } else {
-      console.log('Chrome tabs API 不可用，跳过样式配置发送')
+      console.log('Chrome tabs API 不可用，使用备选方案')
+      applyStyleConfigFallback(config)
     }
   } catch (error) {
     console.log('无法发送样式配置消息:', error)
+    applyStyleConfigFallback(config)
+  }
+}
+
+// 备选方案：直接通过runtime消息或localStorage通知
+const applyStyleConfigFallback = (config: MarkdownConfig) => {
+  console.log('使用备选方案应用样式配置')
+  
+  try {
+    // 方案2: 尝试通过chrome.runtime发送广播消息
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage({
+        type: 'UPDATE_STYLE_CONFIG',
+        config: config
+      }).then(() => {
+        console.log('样式配置已通过runtime API发送成功')
+      }).catch(error => {
+        console.log('Runtime API发送失败:', error)
+        // 方案3: 使用localStorage + 自定义事件
+        applyStyleConfigLocalStorage(config)
+      })
+    } else {
+      // 方案3: 使用localStorage + 自定义事件
+      applyStyleConfigLocalStorage(config)
+    }
+  } catch (error) {
+    console.log('Runtime API不可用，使用localStorage方案:', error)
+    applyStyleConfigLocalStorage(config)
+  }
+}
+
+// 方案3：通过localStorage + 自定义事件通知content script
+const applyStyleConfigLocalStorage = (config: MarkdownConfig) => {
+  console.log('使用localStorage + 自定义事件方案')
+  
+  try {
+    // 保存配置到localStorage，带时间戳
+    const configWithTimestamp = {
+      ...config,
+      _timestamp: Date.now(),
+      _source: 'settings-panel'
+    }
+    
+    localStorage.setItem('markdown-style-config-update', JSON.stringify(configWithTimestamp))
+    
+    // 触发自定义事件通知content script
+    window.dispatchEvent(new CustomEvent('markdown-style-config-changed', {
+      detail: configWithTimestamp
+    }))
+    
+    console.log('样式配置已通过localStorage + 自定义事件发送')
+    
+    // 清理临时配置（避免重复触发）
+    setTimeout(() => {
+      localStorage.removeItem('markdown-style-config-update')
+    }, 1000)
+    
+  } catch (error) {
+    console.error('localStorage方案也失败了:', error)
+    // 最后的备选：直接在当前页面应用（如果是在content script环境中）
+    if (typeof window !== 'undefined' && window.location.href.includes('.md')) {
+      console.log('尝试直接在当前页面应用样式配置')
+      applyStyleConfigDirect(config)
+    }
+  }
+}
+
+// 方案4：直接在当前页面应用样式（最后的备选方案）
+const applyStyleConfigDirect = (config: MarkdownConfig) => {
+  console.log('直接在当前页面应用样式配置')
+  
+  try {
+    // 应用强调色
+    if (config.accentColor) {
+      const customColor = config.accentColor === 'custom' ? config.customAccentColor : undefined
+      // 如果有全局的cssVariableManager，使用它
+      if (typeof window !== 'undefined' && (window as any).cssVariableManager) {
+        (window as any).cssVariableManager.setAccentColor(config.accentColor, customColor)
+      } else {
+        // 否则直接设置CSS变量
+        const colorMap = {
+          blue: '#007AFF',
+          purple: '#AF52DE',
+          pink: '#FF2D92',
+          red: '#FF3B30',
+          orange: '#FF9500',
+          yellow: '#FFCC00',
+          green: '#30D158',
+          graphite: '#8E8E93',
+          custom: config.customAccentColor
+        }
+        const color = colorMap[config.accentColor] || config.customAccentColor
+        if (color) {
+          document.documentElement.style.setProperty('--accent-color', color)
+          document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(color))
+          document.documentElement.setAttribute('data-accent', config.accentColor)
+        }
+      }
+    }
+    
+    // 应用其他样式配置
+    if (config.theme) {
+      document.documentElement.setAttribute('data-theme', config.theme)
+    }
+    
+    if (config.fontSize) {
+      document.documentElement.style.setProperty('--md-font-size', `${config.fontSize}px`)
+    }
+    
+    if (config.lineHeight) {
+      document.documentElement.style.setProperty('--md-line-height', config.lineHeight.toString())
+    }
+    
+    if (config.maxWidth) {
+      document.documentElement.style.setProperty('--md-max-width', `${config.maxWidth}px`)
+    }
+    
+    if (config.fontFamily) {
+      document.documentElement.style.setProperty('--md-font-family', config.fontFamily)
+    }
+    
+    console.log('样式配置已直接应用到当前页面')
+    
+  } catch (error) {
+    console.error('直接应用样式配置失败:', error)
   }
 }
 
@@ -280,7 +806,7 @@ const updateAccentColor = (accentColor: AccentColor) => {
   // 移除之前的强调色类
   document.documentElement.classList.remove(
     'accent-blue', 'accent-purple', 'accent-pink', 'accent-red',
-    'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite'
+    'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite', 'accent-custom'
   )
   
   // 添加新的强调色类
@@ -298,11 +824,37 @@ const updateAccentColor = (accentColor: AccentColor) => {
     orange: '#FF9500',
     yellow: '#FFCC00',
     green: '#30D158',
-    graphite: '#8E8E93'
+    graphite: '#8E8E93',
+    custom: markdownStore.config.customAccentColor // 使用自定义颜色
   }
   
-  const color = colorMap[accentColor]
+  const color = colorMap[accentColor] || markdownStore.config.customAccentColor
   if (color) {
+    document.documentElement.style.setProperty('--accent-color', color)
+    document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(color))
+  }
+}
+
+// 实时预览自定义颜色（不保存到配置）
+const updateCustomColorPreview = (color: string) => {
+  console.log('预览自定义颜色:', color)
+  
+  // 如果当前选中的是自定义颜色，立即预览
+  if (markdownStore.config.accentColor === 'custom') {
+    document.documentElement.style.setProperty('--accent-color', color)
+    document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(color))
+  }
+}
+
+// 更新自定义颜色
+const updateCustomColor = async (color: string) => {
+  console.log('更新自定义颜色:', color)
+  
+  // 更新配置中的自定义颜色
+  await updateConfig({ customAccentColor: color })
+  
+  // 如果当前选中的是自定义颜色，立即应用
+  if (markdownStore.config.accentColor === 'custom') {
     document.documentElement.style.setProperty('--accent-color', color)
     document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(color))
   }
@@ -429,6 +981,22 @@ const printPage = () => {
 </script>
 
 <style scoped>
+/* 遮罩层样式 */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  z-index: 999998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
 /* 基础样式 */
 .settings-panel {
   position: fixed !important;
@@ -460,7 +1028,26 @@ const printPage = () => {
   /* 防止文本选择高亮 */
   -webkit-touch-callout: none !important;
   -webkit-tap-highlight-color: transparent !important;
+  /* 添加过渡动画 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
+/* 推拉式布局样式 - 增加20px右偏移优化间距 */
+.settings-panel.toc-visible {
+  /* 当目录可见时，设置面板向右偏移 */
+  left: calc(50% + 140px) !important;
+}
+
+.settings-panel.toc-visible.toc-collapsed {
+  /* 当目录折叠时，设置面板偏移较少 */
+  left: calc(50% + 80px) !important;
+}
+
+.settings-panel.toc-visible.toc-expanded {
+  /* 当目录完全展开时，设置面板偏移更多 */
+  left: calc(50% + 140px) !important;
+}
+
 
 /* 头部样式 */
 .settings-header {
@@ -692,6 +1279,271 @@ const printPage = () => {
 .accent-color-option.yellow { background: #FFCC00; }
 .accent-color-option.green { background: #30D158; }
 .accent-color-option.graphite { background: #8E8E93; }
+
+/* 自定义颜色选项样式 */
+.accent-color-option.custom {
+  background: linear-gradient(45deg, 
+    #ff0000 0%, #ff8000 12.5%, #ffff00 25%, #80ff00 37.5%, 
+    #00ff00 50%, #00ff80 62.5%, #00ffff 75%, #0080ff 87.5%, #0000ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 自定义颜色选择区域 */
+.custom-color-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(248, 248, 248, 0.8);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.custom-color-picker {
+  margin-bottom: 16px;
+}
+
+.color-picker-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.custom-color-section {
+  margin-top: 80px;
+  padding-top: 16px;
+}
+
+.color-picker-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.color-picker-button {
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.color-picker-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 1);
+}
+
+.color-picker-button svg {
+  color: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  z-index: 1;
+}
+
+.custom-color-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.color-picker-button {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+}
+
+.color-picker-button:hover {
+  border-color: var(--accent-color);
+  transform: scale(1.05);
+}
+
+.color-picker-button svg {
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.color-picker-input {
+  position: absolute;
+  top: -70px;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--accent-color);
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 50;
+  background: transparent;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.color-picker-input:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.color-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.color-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d1d1f;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* 预设颜色 */
+.preset-colors {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 12px;
+}
+
+.preset-colors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.preset-colors-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+
+.preset-colors-limit {
+  font-size: 10px;
+  font-weight: 400;
+  color: #ff9500;
+  background: rgba(255, 149, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 149, 0, 0.2);
+}
+
+.clear-favorites-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #8e8e93;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-favorites-btn:hover {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+}
+
+.preset-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.preset-color-slot {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.preset-color-slot.has-color {
+  background: var(--slot-color, rgba(0, 0, 0, 0.05));
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.preset-color-slot:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.preset-color-slot:not(.has-color) {
+  border: 2px dashed rgba(0, 0, 0, 0.2);
+}
+
+.preset-color-slot:not(.has-color):hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.empty-slot-icon {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.3);
+  font-weight: 300;
+}
+
+.preset-colors-help {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.help-text {
+  font-size: 10px;
+  color: #8e8e93;
+  line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(142, 142, 147, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(142, 142, 147, 0.2);
+}
+
+.preset-colors-tip {
+  font-size: 10px;
+  color: #8e8e93;
+  margin: 0;
+  text-align: center;
+  line-height: 1.3;
+}
 
 /* 底部操作 */
 .settings-footer {

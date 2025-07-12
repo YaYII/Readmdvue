@@ -4,8 +4,8 @@ import { MarkdownRenderer } from '../utils/markdownRenderer'
 import { logger, performanceMonitor, errorHandler, themeUtils, domUtils } from '../utils'
 import { cssVariableManager } from '../utils/cssVariableManager'
 import { smartToolbarManager } from '../utils/smartToolbarManager'
-import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types/index.js'
-import { defaultConfig } from '../types/index.js'
+import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types'
+import { defaultConfig } from '../types'
 
 // CSS文件已通过manifest.json直接加载，无需在此导入
 // 这样可以避免Vite将CSS转换为JS注入的问题
@@ -1182,8 +1182,9 @@ class ContentScriptApp {
 
     // 应用强调色
     if (this.config.accentColor) {
-      cssVariableManager.setAccentColor(this.config.accentColor)
-      console.log('已应用强调色:', this.config.accentColor)
+      const customColor = this.config.accentColor === 'custom' ? this.config.customAccentColor : undefined
+      cssVariableManager.setAccentColor(this.config.accentColor, customColor)
+      console.log('已应用强调色:', this.config.accentColor, customColor)
     }
 
     // 应用主题
@@ -2304,6 +2305,7 @@ class ContentScriptApp {
       return
     }
 
+    // 方案1: Chrome runtime消息监听（主要方案）
     chrome.runtime.onMessage.addListener(
       (message: ExtensionMessage, _sender, sendResponse) => {
         // 检查扩展上下文
@@ -2321,6 +2323,66 @@ class ContentScriptApp {
         return true // 保持消息通道开放
       }
     )
+
+    // 方案2: 监听localStorage变化（备选方案）
+    this.addEventListenerManaged('storage-change', window, 'storage', (event: Event) => {
+      const storageEvent = event as StorageEvent
+      if (storageEvent.key === 'markdown-style-config-update' && storageEvent.newValue) {
+        try {
+          const configData = JSON.parse(storageEvent.newValue)
+          if (configData._source === 'settings-panel' && configData._timestamp) {
+            console.log('通过localStorage接收到样式配置更新:', configData)
+            this.updateStyleConfig(configData as MarkdownConfig)
+          }
+        } catch (error) {
+          console.error('解析localStorage配置失败:', error)
+        }
+      }
+    })
+
+    // 方案3: 监听自定义事件（备选方案）
+    this.addEventListenerManaged('custom-config-change', window, 'markdown-style-config-changed', (event: Event) => {
+      const customEvent = event as CustomEvent
+      try {
+        const configData = customEvent.detail
+        if (configData._source === 'settings-panel' && configData._timestamp) {
+          console.log('通过自定义事件接收到样式配置更新:', configData)
+          this.updateStyleConfig(configData as MarkdownConfig)
+        }
+      } catch (error) {
+        console.error('处理自定义事件配置失败:', error)
+      }
+    })
+
+    // 方案4: 定期检查localStorage中的配置更新（最后备选）
+    let lastCheckTimestamp = 0
+    const checkConfigUpdates = () => {
+      try {
+        const configUpdateStr = localStorage.getItem('markdown-style-config-update')
+        if (configUpdateStr) {
+          const configData = JSON.parse(configUpdateStr)
+          if (configData._timestamp && configData._timestamp > lastCheckTimestamp) {
+            lastCheckTimestamp = configData._timestamp
+            if (configData._source === 'settings-panel') {
+              console.log('通过定期检查接收到样式配置更新:', configData)
+              this.updateStyleConfig(configData as MarkdownConfig)
+            }
+          }
+        }
+      } catch (error) {
+        // 静默处理错误，避免日志污染
+      }
+    }
+
+    // 每2秒检查一次配置更新（仅在其他方案都失败时使用）
+    setInterval(checkConfigUpdates, 2000)
+
+    this.debugLog('多重消息监听机制已设置', {
+      runtime: 'chrome.runtime.onMessage',
+      storage: 'window.storage',
+      custom: 'markdown-style-config-changed',
+      polling: '2s interval'
+    })
   }
 
   private async handleMessage(message: ExtensionMessage): Promise<ExtensionResponse> {
@@ -2400,7 +2462,11 @@ class ContentScriptApp {
 
       // 应用强调色
       if (config.accentColor) {
-        cssVariableManager.setAccentColor(config.accentColor)
+        const customColor = config.accentColor === 'custom' ? config.customAccentColor : undefined
+        cssVariableManager.setAccentColor(config.accentColor, customColor)
+        
+        // 立即验证强调色是否生效
+        this.verifyAccentColorApplication(config.accentColor, customColor)
       }
 
       // 应用主题
@@ -2431,13 +2497,105 @@ class ContentScriptApp {
         this.renderer.updateConfig(this.config)
       }
 
-      // 注意：不再重新渲染页面，避免影响UI组件
-      // 样式更改会通过CSS变量自动应用到现有内容
+      // 强制触发样式重新计算
+      this.forceStyleRecalculation()
 
       console.log('样式配置更新完成')
     } catch (error) {
       console.error('更新样式配置失败:', error)
     }
+  }
+
+  /**
+   * 验证强调色应用是否成功
+   */
+  private verifyAccentColorApplication(accentColor: string, customColor?: string): void {
+    setTimeout(() => {
+      const expectedColor = accentColor === 'custom' ? customColor : this.getAccentColorValue(accentColor)
+      const actualColor = getComputedStyle(document.documentElement).getPropertyValue('--apple-accent-primary').trim()
+      
+      console.log('强调色验证:', {
+        accentColor,
+        expectedColor,
+        actualColor,
+        isMatch: actualColor === expectedColor
+      })
+      
+      if (actualColor !== expectedColor) {
+        console.warn('强调色未正确应用，执行强制修复')
+        this.forceAccentColorApplication(accentColor, expectedColor)
+      }
+    }, 200)
+  }
+
+  /**
+   * 获取强调色对应的颜色值
+   */
+  private getAccentColorValue(accentColor: string): string {
+    const colors: Record<string, string> = {
+      blue: '#007AFF',
+      purple: '#AF52DE',
+      pink: '#FF2D92',
+      red: '#FF3B30',
+      orange: '#FF9500',
+      yellow: '#FFCC00',
+      green: '#30D158',
+      graphite: '#8E8E93'
+    }
+    return colors[accentColor] || '#007AFF'
+  }
+
+  /**
+   * 强制应用强调色
+   */
+  private forceAccentColorApplication(accentColor: string, color?: string): void {
+    const targetColor = color || this.getAccentColorValue(accentColor)
+    
+    // 在多个层级强制设置
+    const targets = [
+      document.documentElement,
+      document.body,
+      ...Array.from(document.querySelectorAll('.markdown-body, .md-content, [data-md-rendered]'))
+    ]
+    
+    targets.forEach(element => {
+      if (element instanceof HTMLElement) {
+        element.style.setProperty('--apple-accent-primary', targetColor, 'important')
+        element.style.setProperty('--accent-color', targetColor, 'important')
+        element.style.setProperty('--md-accent-primary', targetColor, 'important')
+      }
+    })
+    
+    // 强制刷新所有链接颜色
+    const links = document.querySelectorAll('a')
+    links.forEach(link => {
+      if (link instanceof HTMLElement) {
+        link.style.setProperty('color', targetColor, 'important')
+      }
+    })
+    
+    console.log('强制强调色应用完成:', targetColor)
+  }
+
+  /**
+   * 强制触发样式重新计算
+   */
+  private forceStyleRecalculation(): void {
+    // 方法1: 触发重排
+    document.documentElement.offsetHeight
+    
+    // 方法2: 临时修改display属性
+    const originalDisplay = document.body.style.display
+    document.body.style.display = 'none'
+    document.body.offsetHeight // 触发重排
+    document.body.style.display = originalDisplay
+    
+    // 方法3: 触发自定义事件通知页面样式已更新
+    window.dispatchEvent(new CustomEvent('md-style-updated', {
+      detail: { config: this.config }
+    }))
+    
+    console.log('样式重新计算已触发')
   }
 
   private async updateConfig(newConfig: Partial<MarkdownConfig>): Promise<void> {
@@ -2463,7 +2621,8 @@ class ContentScriptApp {
       // 立即应用样式更新，但不重新渲染页面
       if (newConfig.accentColor) {
         console.log('应用强调色:', newConfig.accentColor)
-        cssVariableManager.setAccentColor(newConfig.accentColor)
+        const customColor = newConfig.accentColor === 'custom' ? newConfig.customAccentColor : undefined
+        cssVariableManager.setAccentColor(newConfig.accentColor, customColor)
       }
 
       if (newConfig.theme) {

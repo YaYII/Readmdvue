@@ -66,8 +66,16 @@ export default defineConfig({
       output: {
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: (chunkInfo) => {
-          // 保持原有路径结构
-          return 'src/[name]/main.js'
+          // 根据入口文件名生成正确的输出路径
+          const name = chunkInfo.name
+          if (name === 'content') {
+            return 'content/main.js'
+          } else if (name === 'background') {
+            return 'background/main.js'
+          } else if (name === 'popup') {
+            return 'popup/main.js'
+          }
+          return '[name]/main.js'
         },
       },
       // 防止第三方库注入不必要的网络请求

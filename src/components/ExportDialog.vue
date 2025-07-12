@@ -1,6 +1,15 @@
 <template>
   <div class="export-dialog-overlay" @click="$emit('close')">
-    <div class="export-dialog liquid-glass animate-scale-up" @click.stop>
+    <div 
+      class="export-dialog liquid-glass animate-scale-up" 
+      :class="tocLayoutClass" 
+      @click.stop
+      @mousedown.prevent
+      @dragstart.prevent
+      @selectstart.prevent
+      @touchstart.passive
+      @touchmove.prevent
+    >
       <!-- 头部 -->
       <div class="dialog-header">
         <div class="header-content">
@@ -176,6 +185,8 @@
               v-model="exportOptions.filename"
               class="input-apple"
               placeholder="输入文件名"
+              @mousedown.stop
+              @selectstart.stop
             >
             <span class="filename-extension">.{{ selectedFormatConfig?.extension }}</span>
           </div>
@@ -209,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { ExportOptions } from '../types'
 import { showNotification } from '../utils/appleNotification'
 import { exportDocument, getCurrentPageContent, generateDefaultFilename } from '../utils/exportUtils'
@@ -225,6 +236,135 @@ const emit = defineEmits<{
   close: []
   export: [options: ExportOptions]
 }>()
+
+// 推拉式布局相关状态
+const tocVisible = ref(false)
+const tocCollapsed = ref(false)
+let tocObserver: MutationObserver | null = null
+let checkTimeout: ReturnType<typeof setTimeout> | null = null
+
+// 推拉式布局计算属性
+const tocLayoutClass = computed(() => {
+  if (!tocVisible.value) return ''
+  return tocCollapsed.value ? 'toc-collapsed' : 'toc-expanded'
+})
+
+// 设置目录菜单状态监听器
+const setupTocStateListeners = () => {
+  try {
+    // 检查目录面板状态
+    const checkTocPanel = () => {
+      const tocPanel = document.querySelector('.toc-panel')
+      if (tocPanel) {
+        // 检查目录是否可见
+        const isVisible = tocPanel.classList.contains('show')
+        const isCollapsed = tocPanel.classList.contains('collapsed')
+        
+        // 只在状态真正改变时更新
+        if (tocVisible.value !== isVisible || tocCollapsed.value !== isCollapsed) {
+          tocVisible.value = isVisible
+          tocCollapsed.value = isCollapsed
+          
+          console.log('导出对话框 - 目录状态更新:', {
+            visible: tocVisible.value,
+            collapsed: tocCollapsed.value,
+            layoutClass: tocLayoutClass.value
+          })
+        }
+      } else {
+        // 目录面板不存在，重置状态
+        if (tocVisible.value || tocCollapsed.value) {
+          tocVisible.value = false
+          tocCollapsed.value = false
+          console.log('导出对话框 - 目录面板不存在，重置状态')
+        }
+      }
+    }
+    
+    // 初始检查
+    requestAnimationFrame(() => {
+      checkTocPanel()
+    })
+    
+    // 使用防抖优化的MutationObserver
+    const debouncedCheck = () => {
+      if (checkTimeout) {
+        clearTimeout(checkTimeout)
+      }
+      checkTimeout = setTimeout(() => {
+        requestAnimationFrame(checkTocPanel)
+        checkTimeout = null
+      }, 16) // 约60fps的更新频率
+    }
+    
+    // 使用MutationObserver监听DOM变化，但限制监听范围
+    tocObserver = new MutationObserver((mutations) => {
+      let shouldCheck = false
+      
+      // 优化：只检查与toc-panel相关的变化
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const target = mutation.target as Element
+          if (target.classList.contains('toc-panel')) {
+            shouldCheck = true
+            break // 找到就退出循环
+          }
+        } else if (mutation.type === 'childList') {
+          // 只检查直接相关的节点
+          const hasRelevantChange = 
+            Array.from(mutation.addedNodes).some(node => 
+              node.nodeType === Node.ELEMENT_NODE && 
+              ((node as Element).classList?.contains('toc-panel') || 
+               (node as Element).querySelector?.('.toc-panel'))
+            ) ||
+            Array.from(mutation.removedNodes).some(node => 
+              node.nodeType === Node.ELEMENT_NODE && 
+              ((node as Element).classList?.contains('toc-panel') || 
+               (node as Element).querySelector?.('.toc-panel'))
+            )
+          
+          if (hasRelevantChange) {
+            shouldCheck = true
+            break // 找到就退出循环
+          }
+        }
+      }
+      
+      if (shouldCheck) {
+        debouncedCheck()
+      }
+    })
+    
+    // 优化：只监听可能包含toc-panel的容器，而不是整个body
+    const targetContainer = document.querySelector('.markdown-content') || 
+                           document.querySelector('.content-container') || 
+                           document.body
+    
+    tocObserver.observe(targetContainer, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'] // 只监听class属性变化
+    })
+    
+    console.log('导出对话框 - 目录菜单状态监听器已设置（优化版）')
+  } catch (error) {
+    console.error('导出对话框 - 设置目录菜单状态监听器失败:', error)
+  }
+}
+
+// 清理目录菜单状态监听器
+const cleanupTocStateListeners = () => {
+  if (tocObserver) {
+    tocObserver.disconnect()
+    tocObserver = null
+  }
+  // 清理组件自己的timeout
+  if (checkTimeout) {
+    clearTimeout(checkTimeout)
+    checkTimeout = null
+  }
+}
 
 // 响应式数据
 const selectedFormat = ref<string>('html')
@@ -332,10 +472,12 @@ const handleExport = async () => {
   }
 }
 
-// 更新文件名扩展名
-const updateFilename = () => {
-  const baseName = exportOptions.value.filename.replace(/\.[^/.]+$/, '')
-  exportOptions.value.filename = baseName
+// 更新文件名扩展名（优化版）
+const updateFilename = (newFormat: string) => {
+  const currentFilename = exportOptions.value.filename
+  const baseName = currentFilename.replace(/\.[^/.]+$/, '')
+  const newExtension = formatOptions.find(f => f.value === newFormat)?.extension || newFormat
+  exportOptions.value.filename = `${baseName}.${newExtension}`
 }
 
 // 生成默认文件名
@@ -344,20 +486,29 @@ const generateFilename = () => {
   exportOptions.value.filename = filename
 }
 
-// 监听格式变化
-watch(selectedFormat, (newFormat) => {
-  exportOptions.value.format = selectedFormat.value as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
-  updateFilename()
-  exportOptions.value.filename += `.${newFormat}`
-})
+// 监听格式变化（优化版）
+watch(selectedFormat, (newFormat, oldFormat) => {
+  // 避免重复赋值
+  if (newFormat !== oldFormat) {
+    exportOptions.value.format = newFormat as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
+    updateFilename(newFormat)
+  }
+}, { immediate: false }) // 不立即执行，避免初始化时的重复调用
 
 // 初始化时生成默认文件名
 onMounted(() => {
   generateFilename()
+  setupTocStateListeners()
+})
+
+// 组件卸载时清理监听器
+onUnmounted(() => {
+  cleanupTocStateListeners()
 })
 </script>
 
 <style scoped>
+/* 基础样式 - 完全采用设置弹窗的样式 */
 .export-dialog-overlay {
   position: fixed;
   top: 0;
@@ -367,41 +518,85 @@ onMounted(() => {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: var(--spacing-lg);
 }
 
 .export-dialog {
-  width: 100%;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 90vw;
   max-width: 600px;
   max-height: 80vh;
+  z-index: 999999 !important;
   display: flex;
   flex-direction: column;
-  font-family: var(--apple-font-family);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+  /* 防止页面样式干扰 */
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  /* 防止选中效果 */
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  /* 防止文本选择高亮 */
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  /* 添加过渡动画 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  /* 禁用拖拽，但允许文本选择 */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  /* 防止触摸滑动 */
+  touch-action: none;
 }
 
+/* 推拉式布局样式 - 增加20px右偏移优化间距，与设置面板保持一致 */
+.export-dialog.toc-expanded {
+  /* 当目录完全展开时，对话框向右偏移更多 */
+  left: calc(50% + 140px) !important;
+}
+
+.export-dialog.toc-collapsed {
+  /* 当目录折叠时，对话框偏移较少 */
+  left: calc(50% + 80px) !important;
+}
+
+
+/* 头部样式 - 完全采用设置弹窗的样式 */
 .dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--liquid-glass-border);
+  padding: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 12px;
 }
 
 .header-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, var(--apple-green), var(--apple-blue));
-  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #007AFF, #5856D6);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -411,107 +606,139 @@ onMounted(() => {
 .header-text {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 4px;
 }
 
 .header-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--apple-label);
+  font-size: 20px;
+  font-weight: 600;
   margin: 0;
+  color: #1d1d1f;
 }
 
 .header-subtitle {
-  font-size: var(--font-size-base);
-  color: var(--apple-secondary-label);
+  font-size: 13px;
+  color: #8e8e93;
   margin: 0;
 }
 
 .close-btn {
-  width: 36px;
-  height: 36px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #8e8e93;
   padding: 0;
-  border-radius: 50%;
 }
 
+.close-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #1d1d1f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 内容区域 - 采用设置弹窗的样式 */
 .dialog-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: 16px;
+}
+
+/* 控制组样式 - 完全采用设置弹窗的样式 */
+.format-section,
+.options-section,
+.filename-section {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .section-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--apple-label);
-  margin: 0 0 var(--spacing-md) 0;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #1d1d1f;
 }
 
+/* 格式选项样式 */
 .format-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .format-option {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: var(--liquid-glass-light);
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
   border: 2px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-in-out);
+  transition: all 0.2s ease;
   text-align: left;
 }
 
 .format-option:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 1);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .format-option.active {
-  border-color: var(--apple-blue);
+  border-color: #007AFF;
   background: rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .format-icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  font-size: 20px;
   flex-shrink: 0;
+  background: linear-gradient(135deg, #007AFF, #5856D6);
 }
 
 .format-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 4px;
 }
 
 .format-name {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--apple-label);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1d1f;
 }
 
 .format-desc {
-  font-size: var(--font-size-sm);
-  color: var(--apple-secondary-label);
+  font-size: 11px;
+  color: #8e8e93;
+  line-height: 1.3;
 }
 
 .format-check {
   width: 24px;
   height: 24px;
-  background: var(--apple-blue);
+  background: #007AFF;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -520,68 +747,119 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* 选项网格样式 */
 .options-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: 12px;
 }
 
 .option-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md);
-  background: var(--liquid-glass-light);
-  border: 1px solid var(--liquid-glass-border);
-  border-radius: var(--radius-md);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
 }
 
 .option-label {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 4px;
   flex: 1;
 }
 
 .option-label > span:first-child {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--apple-label);
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d1d1f;
 }
 
 .option-desc {
-  font-size: var(--font-size-sm);
-  color: var(--apple-secondary-label);
+  font-size: 11px;
+  color: #8e8e93;
+  line-height: 1.3;
 }
 
+/* 开关样式 - 采用设置弹窗的样式 */
+.switch-apple {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.switch-apple input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d1d1d6;
+  transition: 0.2s;
+  border-radius: 24px;
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.switch-apple input:checked + .switch-slider {
+  background-color: #007AFF;
+}
+
+.switch-apple input:checked + .switch-slider:before {
+  transform: translateX(20px);
+}
+
+/* 选择框样式 - 采用设置弹窗的样式 */
 .select-apple {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--liquid-glass-light);
-  border: 1px solid var(--liquid-glass-border);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-md);
-  color: var(--apple-label);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #1d1d1f;
   outline: none;
-  transition: all var(--duration-normal) var(--ease-in-out);
+  transition: all 0.2s ease;
+  min-width: 120px;
 }
 
 .select-apple:focus {
-  border-color: var(--apple-blue);
+  border-color: #007AFF;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
+/* 滑块样式 - 采用设置弹窗的样式 */
 .slider-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 12px;
   min-width: 150px;
 }
 
 .slider-apple {
   flex: 1;
-  height: 6px;
-  background: var(--apple-gray-5);
-  border-radius: var(--radius-sm);
+  height: 4px;
+  background: #d1d1d6;
+  border-radius: 2px;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -590,60 +868,126 @@ onMounted(() => {
 .slider-apple::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
-  background: var(--apple-blue);
+  width: 18px;
+  height: 18px;
+  background: #007AFF;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
 }
 
 .slider-value {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--apple-secondary-label);
+  font-size: 12px;
+  font-weight: 600;
+  color: #007AFF;
   min-width: 40px;
   text-align: right;
 }
 
+/* 文件名输入样式 */
 .filename-input {
   display: flex;
   align-items: center;
-  background: var(--liquid-glass-light);
-  border: 1px solid var(--liquid-glass-border);
-  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d1d1d6;
+  border-radius: 12px;
   overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.filename-input:focus-within {
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .input-apple {
   flex: 1;
-  padding: var(--spacing-md);
+  padding: 12px;
   background: transparent;
   border: none;
-  font-size: var(--font-size-md);
-  color: var(--apple-label);
+  font-size: 13px;
+  color: #1d1d1f;
   outline: none;
+  /* 允许输入框中的文本选择 */
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
 }
 
 .filename-extension {
-  padding: var(--spacing-md);
-  background: var(--apple-gray-6);
-  color: var(--apple-secondary-label);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #8e8e93;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+/* 底部操作 - 采用设置弹窗的样式 */
 .dialog-footer {
-  padding: var(--spacing-lg);
-  border-top: 1px solid var(--liquid-glass-border);
+  padding: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
 }
 
 .footer-actions {
   display: flex;
+  gap: 12px;
   justify-content: flex-end;
-  gap: var(--spacing-md);
 }
 
+/* 按钮样式 - 采用设置弹窗的样式 */
+.btn-apple {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  outline: none;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #007AFF;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056CC;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4);
+}
+
+.btn-primary:disabled {
+  background: #d1d1d6;
+  color: #8e8e93;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1d1d1f;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 加载动画 */
 .loading-icon {
   animation: spin 1s linear infinite;
 }
@@ -653,17 +997,39 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* 响应式设计 */
+/* 滚动条样式 - 采用设置弹窗的样式 */
+.dialog-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dialog-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* 响应式设计 - 采用设置弹窗的样式 */
 @media (max-width: 768px) {
   .export-dialog {
-    max-width: 95vw;
+    width: 95vw;
     max-height: 90vh;
+  }
+  
+  .footer-actions {
+    flex-direction: column;
   }
   
   .option-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-sm);
+    gap: 8px;
   }
   
   .slider-container {
@@ -671,8 +1037,28 @@ onMounted(() => {
     min-width: unset;
   }
   
-  .footer-actions {
-    flex-direction: column;
+  .format-option {
+    padding: 16px 12px;
+  }
+  
+  .btn-apple {
+    width: 100%;
+  }
+}
+
+/* 动画效果 */
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 </style>

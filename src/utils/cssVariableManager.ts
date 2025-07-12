@@ -4,7 +4,7 @@
  */
 
 export type ThemeMode = 'light' | 'dark' | 'auto' | 'eyecare'
-export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite'
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'custom'
 
 export class CSSVariableManager {
   private static instance: CSSVariableManager
@@ -43,8 +43,8 @@ export class CSSVariableManager {
    * 设置强调色
    * 通过切换根元素的data-accent属性来控制强调色变量
    */
-  setAccentColor(accentColor: AccentColor): void {
-    console.log('设置强调色:', accentColor)
+  setAccentColor(accentColor: AccentColor, customColor?: string): void {
+    console.log('设置强调色:', accentColor, customColor)
 
     // 移除现有强调色类
     const existingAccentClasses = Array.from(this.root.classList)
@@ -55,7 +55,183 @@ export class CSSVariableManager {
     this.root.setAttribute('data-accent', accentColor)
     this.root.classList.add(`accent-${accentColor}`)
 
-    // 同时设置CSS变量以确保兼容性
+    // 处理自定义强调色
+    if (accentColor === 'custom' && customColor) {
+      // 设置自定义强调色的核心变量
+      this.root.style.setProperty('--custom-accent-color', customColor, 'important')
+      this.root.style.setProperty('--apple-accent-primary', customColor, 'important')
+      this.root.style.setProperty('--accent-color', customColor, 'important')
+      
+      // 设置完整的强调色变量体系
+      this.setCustomAccentColorVariables(customColor)
+      
+      // 强制注入样式以确保生效
+      this.injectAccentColorStyles(accentColor, customColor)
+      
+      console.log('自定义强调色CSS变量已设置:', customColor)
+      
+      // 验证样式是否生效
+      this.verifyStyleApplication(accentColor, customColor)
+    } else {
+      // 清除自定义强调色变量
+      this.root.style.removeProperty('--custom-accent-color')
+      
+      // 同时设置CSS变量以确保兼容性
+      const colorValue = this.getPresetAccentColor(accentColor)
+      if (colorValue) {
+        this.root.style.setProperty('--apple-accent-primary', colorValue, 'important')
+        this.root.style.setProperty('--accent-color', colorValue, 'important')
+        
+        // 强制注入样式以确保生效
+        this.injectAccentColorStyles(accentColor, colorValue)
+        
+        console.log('预设强调色CSS变量已设置:', colorValue)
+        
+        // 验证样式是否生效
+        this.verifyStyleApplication(accentColor, colorValue)
+      }
+    }
+  }
+
+  /**
+   * 注入强制强调色样式
+   */
+  private injectAccentColorStyles(accentColor: AccentColor, color: string): void {
+    // 移除之前的强制样式
+    const existingStyle = document.getElementById('md-accent-color-override')
+    if (existingStyle) {
+      existingStyle.remove()
+    }
+
+    // 创建新的样式元素
+    const styleElement = document.createElement('style')
+    styleElement.id = 'md-accent-color-override'
+    
+    // 为自定义强调色生成更全面的样式
+    if (accentColor === 'custom') {
+      styleElement.textContent = `
+        /* Markdown Reader 自定义强调色强制样式 */
+        :root {
+          --custom-accent-color: ${color} !important;
+          --apple-accent-primary: ${color} !important;
+          --accent-color: ${color} !important;
+          --md-accent-primary: ${color} !important;
+          --accent-primary: ${color} !important;
+          --primary-color: ${color} !important;
+          --link-color: ${color} !important;
+        }
+        
+        /* 自定义强调色的完整变量体系 */
+        :root[data-accent="custom"] {
+          --md-accent-primary: ${color} !important;
+          --md-accent-secondary: color-mix(in srgb, ${color} 80%, transparent) !important;
+          --md-accent-tertiary: color-mix(in srgb, ${color} 60%, transparent) !important;
+          --md-accent-hover: color-mix(in srgb, ${color} 80%, black) !important;
+          --md-accent-active: color-mix(in srgb, ${color} 60%, black) !important;
+          --md-accent-light: color-mix(in srgb, ${color} 10%, transparent) !important;
+          --md-accent-gradient: linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%) !important;
+        }
+        
+        /* 自定义强调色类的样式 */
+        .accent-custom {
+          --apple-accent-primary: ${color} !important;
+          --apple-accent-gradient: linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%) !important;
+          --apple-accent-gradient-hover: linear-gradient(135deg, color-mix(in srgb, ${color} 80%, black) 0%, color-mix(in srgb, ${color} 60%, white) 100%) !important;
+        }
+        
+        /* 自定义强调色选择器样式 */
+        .accent-color-option.custom {
+          background: ${color} !important;
+          background-image: linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%) !important;
+        }
+        
+        /* 强制应用到所有强调色相关的UI组件 */
+        .btn-accent,
+        .link-accent,
+        .tag-accent,
+        .progress-bar.accent,
+        .loading-accent,
+        input:checked + .switch-slider.accent,
+        .input-accent:focus,
+        a[href]:not([class]),
+        .markdown-body a,
+        .md-content a {
+          color: ${color} !important;
+        }
+        
+        .btn-accent {
+          background: linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%) !important;
+        }
+        
+        .btn-accent:hover {
+          background: linear-gradient(135deg, color-mix(in srgb, ${color} 80%, black) 0%, color-mix(in srgb, ${color} 60%, white) 100%) !important;
+        }
+        
+        .input-accent:focus {
+          border-color: ${color} !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, ${color} 20%, transparent) !important;
+        }
+        
+        .tag-accent {
+          background: color-mix(in srgb, ${color} 10%, transparent) !important;
+          color: ${color} !important;
+          border-color: color-mix(in srgb, ${color} 20%, transparent) !important;
+        }
+        
+        .progress-bar.accent,
+        input:checked + .switch-slider.accent {
+          background: ${color} !important;
+        }
+        
+        .loading-accent {
+          border-top-color: ${color} !important;
+        }
+      `
+    } else {
+      // 预设强调色的样式注入
+      styleElement.textContent = `
+        /* Markdown Reader 强调色强制样式 */
+        :root {
+          --apple-accent-primary: ${color} !important;
+          --accent-color: ${color} !important;
+          --md-accent-primary: ${color} !important;
+        }
+        
+        .accent-${accentColor} {
+          --apple-accent-primary: ${color} !important;
+        }
+        
+        /* 强制应用到常见元素 */
+        .markdown-body a,
+        .md-content a,
+        [data-md-rendered] a {
+          color: ${color} !important;
+        }
+        
+        .markdown-body .highlight,
+        .md-content .highlight,
+        [data-md-rendered] .highlight {
+          background-color: ${color}20 !important;
+        }
+        
+        /* 按钮和交互元素 */
+        .btn-accent,
+        .accent-button {
+          background-color: ${color} !important;
+          border-color: ${color} !important;
+        }
+      `
+    }
+    
+    // 插入到head的最后，确保优先级
+    document.head.appendChild(styleElement)
+    console.log('强制强调色样式已注入')
+  }
+
+  /**
+   * 获取预设强调色值
+   */
+  private getPresetAccentColor(accentColor: AccentColor): string | null {
     const accentColors = {
       blue: '#007AFF',
       purple: '#AF52DE',
@@ -66,13 +242,97 @@ export class CSSVariableManager {
       green: '#30D158',
       graphite: '#8E8E93'
     }
+    
+    return accentColors[accentColor as keyof typeof accentColors] || null
+  }
 
-    const color = accentColors[accentColor]
-    if (color) {
-      this.root.style.setProperty('--apple-accent-primary', color)
-      this.root.style.setProperty('--accent-color', color)
-      console.log('强调色CSS变量已设置:', color)
+  /**
+   * 验证样式应用是否成功
+   */
+  private verifyStyleApplication(accentColor: AccentColor, expectedColor?: string): void {
+    setTimeout(() => {
+      const computedStyle = getComputedStyle(this.root)
+      const actualColor = computedStyle.getPropertyValue('--apple-accent-primary').trim()
+      
+      const targetColor = expectedColor || this.getPresetAccentColor(accentColor)
+      
+      console.log('样式验证结果:', {
+        expected: targetColor,
+        actual: actualColor,
+        accentColor: accentColor,
+        rootClasses: this.root.className,
+        dataAccent: this.root.getAttribute('data-accent')
+      })
+      
+      if (targetColor && actualColor !== targetColor) {
+        console.warn('强调色样式未正确应用，尝试备用方案')
+        this.fallbackStyleApplication(accentColor, targetColor)
+      } else {
+        console.log('✅ 强调色样式应用成功')
+      }
+    }, 100)
+  }
+
+  /**
+   * 备用样式应用方案
+   */
+  private fallbackStyleApplication(_accentColor: AccentColor, color: string | null): void {
+    if (!color) return
+    // 方案1: 直接在body上设置样式
+    document.body.style.setProperty('--apple-accent-primary', color, 'important')
+    document.body.style.setProperty('--accent-color', color, 'important')
+    
+    // 方案2: 在所有可能的容器上设置
+    const containers = [
+      '.markdown-body',
+      '.md-content', 
+      '[data-md-rendered]',
+      'main',
+      'article',
+      '.content'
+    ]
+    
+    containers.forEach(selector => {
+      const elements = document.querySelectorAll(selector)
+      elements.forEach(element => {
+        if (element instanceof HTMLElement) {
+          element.style.setProperty('--apple-accent-primary', color, 'important')
+          element.style.setProperty('--accent-color', color, 'important')
+        }
+      })
+    })
+    
+    console.log('备用样式应用方案已执行')
+  }
+
+  /**
+   * 设置完整的自定义强调色变量体系
+   */
+  private setCustomAccentColorVariables(customColor: string): void {
+    // 设置所有相关的强调色变量
+    const accentVariables = {
+      '--custom-accent-color': customColor,
+      '--apple-accent-primary': customColor,
+      '--accent-color': customColor,
+      '--md-accent-primary': customColor,
+      '--accent-primary': customColor,
+      '--primary-color': customColor,
+      '--link-color': customColor,
+      '--highlight-color': customColor + '20' // 20% 透明度用于高亮
     }
+
+    Object.entries(accentVariables).forEach(([variable, value]) => {
+      this.root.style.setProperty(variable, value, 'important')
+    })
+
+    console.log('完整的自定义强调色变量体系已设置:', accentVariables)
+  }
+
+  /**
+   * 设置自定义强调色
+   */
+  setCustomAccentColor(customColor: string): void {
+    this.setAccentColor('custom', customColor)
   }
 
   /**

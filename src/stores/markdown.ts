@@ -305,7 +305,15 @@ export const useMarkdownStore = defineStore('markdown', () => {
         const result = await chrome.storage.sync.get('markdown-config')
         if (result['markdown-config']) {
           const savedConfig = result['markdown-config']
-          config.value = { ...defaultConfig, ...savedConfig }
+          // 安全合并配置，确保所有字段都有默认值
+          config.value = {
+            ...defaultConfig,
+            ...savedConfig,
+            // 确保favoriteColors是数组
+            favoriteColors: Array.isArray(savedConfig.favoriteColors) ? savedConfig.favoriteColors : defaultConfig.favoriteColors,
+            // 确保customAccentColor存在
+            customAccentColor: savedConfig.customAccentColor || defaultConfig.customAccentColor
+          }
           console.log('配置已从chrome.storage.sync加载')
           return
         }
@@ -315,7 +323,15 @@ export const useMarkdownStore = defineStore('markdown', () => {
       const saved = localStorage.getItem('markdown-config')
       if (saved) {
         const savedConfig = JSON.parse(saved)
-        config.value = { ...defaultConfig, ...savedConfig }
+        // 安全合并配置，确保所有字段都有默认值
+        config.value = {
+          ...defaultConfig,
+          ...savedConfig,
+          // 确保favoriteColors是数组
+          favoriteColors: Array.isArray(savedConfig.favoriteColors) ? savedConfig.favoriteColors : defaultConfig.favoriteColors,
+          // 确保customAccentColor存在
+          customAccentColor: savedConfig.customAccentColor || defaultConfig.customAccentColor
+        }
         console.log('配置已从localStorage加载')
         
         // 如果从localStorage加载成功，尝试迁移到chrome.storage

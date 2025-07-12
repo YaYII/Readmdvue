@@ -217,6 +217,30 @@
   --md-accent-gradient: linear-gradient(135deg, #8E8E93 0%, #A8A8AD 100%);
 }
 
+/* 自定义强调色 - 动态变量系统 */
+:root[data-accent="custom"] {
+  /* 主色调 - 由JavaScript动态设置 */
+  --md-accent-primary: var(--custom-accent-color, #007AFF);
+  
+  /* 次要色调 - 基于主色调的80%透明度 */
+  --md-accent-secondary: color-mix(in srgb, var(--custom-accent-color, #007AFF) 80%, transparent);
+  
+  /* 第三级色调 - 基于主色调的60%透明度 */
+  --md-accent-tertiary: color-mix(in srgb, var(--custom-accent-color, #007AFF) 60%, transparent);
+  
+  /* 悬停状态 - 主色调混合20%黑色 */
+  --md-accent-hover: color-mix(in srgb, var(--custom-accent-color, #007AFF) 80%, black);
+  
+  /* 激活状态 - 主色调混合40%黑色 */
+  --md-accent-active: color-mix(in srgb, var(--custom-accent-color, #007AFF) 60%, black);
+  
+  /* 浅色背景 - 基于主色调的10%透明度 */
+  --md-accent-light: color-mix(in srgb, var(--custom-accent-color, #007AFF) 10%, transparent);
+  
+  /* 渐变效果 - 主色调到亮色的渐变 */
+  --md-accent-gradient: linear-gradient(135deg, var(--custom-accent-color, #007AFF) 0%, color-mix(in srgb, var(--custom-accent-color, #007AFF) 70%, white) 100%);
+}
+
 /* ===== 动态字体配置 - 基于data属性 ===== */
 
 /* 通过data属性动态设置字体大小 */

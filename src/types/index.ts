@@ -1,8 +1,8 @@
 // 核心类型定义
 export type Theme = 'light' | 'dark' | 'auto' | 'eyecare'
 
-// 苹果强调色系统
-export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite'
+// 苹果强调色系统 - 添加自定义选项
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'custom'
 
 export interface AccentColorInfo {
   name: string
@@ -15,6 +15,12 @@ export interface AccentColorInfo {
 export interface MarkdownConfig {
   theme: Theme
   accentColor: AccentColor
+  customAccentColor: string // 自定义强调色的十六进制值
+  
+  // 常用颜色 - 已弃用，现在使用 FavoriteColorsManager
+  // @deprecated 使用 favoriteColorsManager 替代
+  favoriteColors: string[] // 用户常用颜色数组（保留用于向后兼容）
+  
   enableMermaid: boolean
   enableCharts: boolean
   enableMath: boolean
@@ -41,6 +47,8 @@ export interface MarkdownConfig {
 export const defaultConfig: MarkdownConfig = {
   theme: 'auto',
   accentColor: 'blue',
+  customAccentColor: '#007AFF', // 默认为蓝色
+  favoriteColors: [], // 默认为空，等待用户添加
   enableMermaid: true,
   enableCharts: true,
   enableMath: true,
@@ -120,6 +128,13 @@ export const accentColors: Record<AccentColor, AccentColorInfo> = {
     primaryColor: '#8E8E93',
     description: '用于中性、专业、商务场景',
     category: 'neutral'
+  },
+  custom: {
+    name: 'custom',
+    displayName: '自定义',
+    primaryColor: '#007AFF', // 默认值，实际使用时会被customAccentColor覆盖
+    description: '用户自定义的强调色',
+    category: 'custom'
   }
 }
 

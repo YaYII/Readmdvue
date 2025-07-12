@@ -100,6 +100,15 @@ export class AccentColorManager {
       quinary: 'rgba(142, 142, 147, 0.2)',
       gradient: 'linear-gradient(135deg, #8E8E93, rgba(142, 142, 147, 0.8))',
       gradientHover: 'linear-gradient(135deg, rgba(142, 142, 147, 0.8), rgba(142, 142, 147, 0.6))'
+    },
+    custom: {
+      primary: '#007AFF',
+      secondary: 'rgba(0, 122, 255, 0.8)',
+      tertiary: 'rgba(0, 122, 255, 0.6)',
+      quaternary: 'rgba(0, 122, 255, 0.4)',
+      quinary: 'rgba(0, 122, 255, 0.2)',
+      gradient: 'linear-gradient(135deg, #007AFF, rgba(0, 122, 255, 0.8))',
+      gradientHover: 'linear-gradient(135deg, rgba(0, 122, 255, 0.8), rgba(0, 122, 255, 0.6))'
     }
   }
 

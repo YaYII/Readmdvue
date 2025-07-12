@@ -14,24 +14,14 @@
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: overlayFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes overlayFadeIn {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-
-  to {
-    opacity: 1;
-    backdrop-filter: blur(8px);
-  }
 }
 
 /* 模态框主体 */
 .donation-modal {
-  position: relative;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -45,19 +35,39 @@
     0 0 0 1px rgba(255, 255, 255, 0.1),
     0 20px 60px rgba(0, 0, 0, 0.2),
     0 8px 32px rgba(0, 0, 0, 0.15);
-  animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center;
+  /* 添加与设置面板相同的过渡动画 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(20px);
-  }
+/* 推拉式布局样式 - 采用与设置面板完全相同的left定位方式 */
+.donation-modal.toc-expanded {
+  /* 当目录完全展开时，对话框向右偏移更多 */
+  left: calc(50% + 150px);
+}
 
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+.donation-modal.toc-collapsed {
+  /* 当目录折叠时，对话框偏移较少 */
+  left: calc(50% + 60px);
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .donation-modal.toc-expanded {
+    left: calc(50% + 120px);
+  }
+  
+  .donation-modal.toc-collapsed {
+    left: calc(50% + 50px);
+  }
+}
+
+/* 响应式适配 - 小屏幕时回退到居中显示 */
+@media (max-width: 768px) {
+  .donation-modal.toc-expanded,
+  .donation-modal.toc-collapsed {
+    left: 50%;
+    width: 95vw;
   }
 }
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自定义强调色功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        .demo-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .feature-highlight {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(175, 82, 222, 0.1));
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--accent-color, #007AFF);
+        }
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        .success {
+            color: #30D158;
+            font-weight: 600;
+        }
+        .info {
+            color: #007AFF;
+            font-weight: 500;
+        }
+        .warning {
+            color: #FF9500;
+            font-weight: 500;
+        }
+        h1 {
+            color: #1d1d1f;
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #1d1d1f;
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #007AFF, #5856D6);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🎨 自定义强调色功能测试 <span class="version-badge">v2.1.2</span></h1>
+        
+        <div class="feature-highlight">
+            <h2>✨ 功能亮点</h2>
+            <p>本次更新为 Markdown Reader 插件添加了完整的自定义强调色功能，用户现在可以：</p>
+            <ul>
+                <li><span class="success">✓</span> 选择任意颜色作为界面强调色</li>
+                <li><span class="success">✓</span> 使用HTML5颜色选择器进行精确调色</li>
+                <li><span class="success">✓</span> 从12种预设常用颜色中快速选择</li>
+                <li><span class="success">✓</span> 实时预览颜色变化效果</li>
+                <li><span class="success">✓</span> 颜色设置自动保存和同步</li>
+            </ul>
+        </div>
+
+        <h2>🎯 技术实现</h2>
+        <p>自定义强调色功能基于以下技术架构：</p>
+        
+        <h3>类型系统扩展</h3>
+        <ul>
+            <li><span class="color-preview" style="background: #007AFF;"></span><code>AccentColor</code> 类型添加 <code>'custom'</code> 选项</li>
+            <li><span class="color-preview" style="background: #30D158;"></span><code>MarkdownConfig</code> 接口新增 <code>customAccentColor</code> 字段</li>
+            <li><span class="color-preview" style="background: #FF9500;"></span>默认配置支持自定义颜色存储</li>
+        </ul>
+
+        <h3>设置面板增强</h3>
+        <ul>
+            <li><span class="color-preview" style="background: #FF2D92;"></span>HTML5 颜色选择器集成</li>
+            <li><span class="color-preview" style="background: #AF52DE;"></span>预设颜色网格快速选择</li>
+            <li><span class="color-preview" style="background: #FF3B30;"></span>实时颜色预览和十六进制显示</li>
+            <li><span class="color-preview" style="background: #8E8E93;"></span>调色板图标视觉标识</li>
+        </ul>
+
+        <h3>颜色管理系统</h3>
+        <ul>
+            <li><span class="color-preview" style="background: #FFCC00;"></span>CSS变量动态更新机制</li>
+            <li><span class="color-preview" style="background: #32D74B;"></span>自定义颜色应用逻辑</li>
+            <li><span class="color-preview" style="background: #5856D6;"></span>配置持久化和同步</li>
+        </ul>
+
+        <h2>🌈 预设颜色系统</h2>
+        <p>提供12种精心挑选的常用颜色：</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 20px 0;">
+            <div><span class="color-preview" style="background: #007AFF;"></span>苹果蓝 (#007AFF)</div>
+            <div><span class="color-preview" style="background: #00C896;"></span>翠绿 (#00C896)</div>
+            <div><span class="color-preview" style="background: #FF9500;"></span>橙色 (#FF9500)</div>
+            <div><span class="color-preview" style="background: #FF3B30;"></span>红色 (#FF3B30)</div>
+            <div><span class="color-preview" style="background: #FF2D92;"></span>粉色 (#FF2D92)</div>
+            <div><span class="color-preview" style="background: #AF52DE;"></span>紫色 (#AF52DE)</div>
+            <div><span class="color-preview" style="background: #5856D6;"></span>靛蓝 (#5856D6)</div>
+            <div><span class="color-preview" style="background: #32D74B;"></span>青色 (#32D74B)</div>
+            <div><span class="color-preview" style="background: #FFCC00;"></span>黄色 (#FFCC00)</div>
+            <div><span class="color-preview" style="background: #A2845E;"></span>棕色 (#A2845E)</div>
+            <div><span class="color-preview" style="background: #8E8E93;"></span>灰色 (#8E8E93)</div>
+            <div><span class="color-preview" style="background: #1D1D1F;"></span>黑色 (#1D1D1F)</div>
+        </div>
+
+        <h2>🚀 使用方法</h2>
+        <ol>
+            <li>在浏览器中安装 Markdown Reader 插件</li>
+            <li>打开任意 Markdown 文件</li>
+            <li>点击设置按钮打开设置面板</li>
+            <li>在强调色选项中选择"自定义"</li>
+            <li>使用颜色选择器或预设颜色进行个性化定制</li>
+            <li>实时预览效果并保存设置</li>
+        </ol>
+
+        <div class="feature-highlight">
+            <h3>💡 设计理念</h3>
+            <p>自定义强调色功能遵循苹果 Liquid Glass 材质系统和个性化设计理念，提供：</p>
+            <ul>
+                <li><span class="info">🎨</span> 无缝集成的用户界面</li>
+                <li><span class="info">⚡</span> 实时预览和即时反馈</li>
+                <li><span class="info">🔧</span> 灵活的定制选项</li>
+                <li><span class="info">💾</span> 可靠的配置持久化</li>
+            </ul>
+        </div>
+
+        <h2>✅ 项目状态</h2>
+        <p><span class="success">构建成功</span> - 自定义强调色功能已完全实现并通过所有测试</p>
+        <p><span class="info">类型安全</span> - 完整的 TypeScript 类型检查通过</p>
+        <p><span class="warning">性能优化</span> - 支持动态颜色切换，无需重新加载页面</p>
+    </div>
+</body>
+</html>

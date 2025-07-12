@@ -1,5 +1,6 @@
-import { logger, errorHandler } from '../utils/index.js'
-import type { ExtensionMessage, ExtensionResponse } from '../types/index.js'
+// 后台脚本主文件
+import { logger, errorHandler } from '../utils/index'
+import type { ExtensionMessage, ExtensionResponse } from '../types'
 
 /**
  * Background Script 主类
@@ -113,6 +114,9 @@ class BackgroundScript {
           
         case 'UPDATE_CONFIG':
           return await this.updateConfig(message.payload, tabId)
+
+        case 'UPDATE_STYLE_CONFIG':
+          return await this.broadcastStyleConfig(message.config, tabId)
           
         case 'LOG_EVENT':
           this.logEvent(message.payload, tabId)
@@ -139,6 +143,97 @@ class BackgroundScript {
       logger.error('处理消息失败:', { errorMsg, message, sender })
       return { success: false, error: errorMsg }
     }
+  }
+
+  /**
+   * 广播样式配置到所有相关标签页
+   */
+  private async broadcastStyleConfig(config: any, senderTabId?: number): Promise<ExtensionResponse> {
+    try {
+      // 检查扩展上下文
+      if (!chrome.runtime?.id) {
+        throw new Error('扩展上下文已失效')
+      }
+
+      logger.info('广播样式配置到所有标签页:', config)
+      
+      // 获取所有标签页
+      const tabs = await chrome.tabs.query({})
+      const results: Array<{ tabId: number; success: boolean; error?: string }> = []
+      
+      // 向每个标签页发送样式配置
+      for (const tab of tabs) {
+        if (!tab.id || tab.id === senderTabId) {
+          continue // 跳过发送者标签页和无效标签页
+        }
+        
+        try {
+          // 检查是否是Markdown文件或可能需要样式配置的页面
+          if (this.isMarkdownUrl(tab.url || '') || this.shouldReceiveStyleConfig(tab.url || '')) {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'UPDATE_STYLE_CONFIG',
+              config: config
+            })
+            
+            results.push({ tabId: tab.id, success: true })
+            logger.info(`样式配置已发送到标签页 ${tab.id}`)
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : '发送失败'
+          results.push({ 
+            tabId: tab.id, 
+            success: false, 
+            error: errorMsg 
+          })
+          logger.warn(`向标签页 ${tab.id} 发送样式配置失败:`, errorMsg)
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length
+      const totalCount = results.length
+      
+      return {
+        success: true,
+        data: {
+          message: `样式配置已广播到 ${successCount}/${totalCount} 个标签页`,
+          results: results,
+          config: config
+        }
+      }
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '广播样式配置失败'
+      logger.error('广播样式配置失败:', error)
+      return { success: false, error: errorMsg }
+    }
+  }
+
+  /**
+   * 判断URL是否应该接收样式配置
+   */
+  private shouldReceiveStyleConfig(url: string): boolean {
+    if (!url) return false
+    
+    // Markdown文件
+    if (this.isMarkdownUrl(url)) return true
+    
+    // GitHub页面
+    if (url.includes('github.com')) return true
+    
+    // GitLab页面
+    if (url.includes('gitlab.com')) return true
+    
+    // 其他可能包含Markdown内容的页面
+    const markdownSites = [
+      'readme',
+      'docs',
+      'wiki',
+      'documentation',
+      'guide',
+      'tutorial'
+    ]
+    
+    return markdownSites.some(site => url.toLowerCase().includes(site))
   }
 
   private async getTabState(tabId?: number): Promise<ExtensionResponse> {

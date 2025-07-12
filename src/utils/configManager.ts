@@ -220,7 +220,11 @@ export class ConfigManager {
       fontSize: config.fontSize || defaultConfig.fontSize,
       lineHeight: config.lineHeight || defaultConfig.lineHeight,
       maxWidth: config.maxWidth || defaultConfig.maxWidth,
-      fontFamily: config.fontFamily || defaultConfig.fontFamily
+      fontFamily: config.fontFamily || defaultConfig.fontFamily,
+      // 确保favoriteColors是数组
+      favoriteColors: Array.isArray(config.favoriteColors) ? config.favoriteColors : defaultConfig.favoriteColors,
+      // 确保customAccentColor存在
+      customAccentColor: config.customAccentColor || defaultConfig.customAccentColor
     }
   }
 

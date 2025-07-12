@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自定义强调色全面应用预览 - Markdown Reader Vue</title>
+  
+  <!-- 引入样式文件 -->
+  <link rel="stylesheet" href="src/styles/apple-design-system.css">
+  <link rel="stylesheet" href="src/styles/content-variables.css">
+  <link rel="stylesheet" href="src/styles/enhanced-components.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #f5f5f7;
+      line-height: 1.6;
+    }
+    
+    .preview-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .section {
+      margin-bottom: 40px;
+      padding: 20px;
+      border: 1px solid #e5e5ea;
+      border-radius: 8px;
+    }
+    
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1d1d1f;
+    }
+    
+    .color-selector {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+    
+    .accent-colors {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    
+    .accent-color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    .accent-color-option:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .accent-color-option.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 2px var(--apple-accent-primary, #007AFF);
+    }
+    
+    .custom-color-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e5e5ea;
+    }
+    
+    .color-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .color-input {
+      width: 50px;
+      height: 40px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    
+    .color-value {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .preset-colors {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    
+    .preset-color {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    
+    .preset-color:hover {
+      transform: scale(1.1);
+      border-color: #007AFF;
+    }
+    
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .demo-item {
+      padding: 15px;
+      border: 1px solid #e5e5ea;
+      border-radius: 8px;
+      background: white;
+    }
+    
+    /* 应用强调色的组件样式 */
+    .btn-primary {
+      background: var(--apple-accent-primary, #007AFF);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 5px;
+    }
+    
+    .btn-primary:hover {
+      background: var(--apple-accent-gradient, linear-gradient(135deg, #007AFF, #5856D6));
+      transform: translateY(-1px);
+    }
+    
+    .link-accent {
+      color: var(--apple-accent-primary, #007AFF);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .link-accent:hover {
+      text-decoration: underline;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e5ea;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: var(--apple-accent-gradient, linear-gradient(90deg, #007AFF, #5856D6));
+      width: 60%;
+      transition: all 0.3s ease;
+    }
+    
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--apple-accent-primary, #007AFF);
+      color: white;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      margin: 2px;
+    }
+    
+    .input-focus {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e5e5ea;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .input-focus:focus {
+      outline: none;
+      border-color: var(--apple-accent-primary, #007AFF);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 30px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 30px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--apple-accent-primary, #007AFF);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e5e5ea;
+      border-top: 4px solid var(--apple-accent-primary, #007AFF);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body data-accent="custom">
+  <div class="preview-container">
+    <h1 style="text-align: center; color: #1d1d1f; margin-bottom: 30px;">
+      🎨 自定义强调色全面应用预览
+    </h1>
+    
+    <!-- 颜色选择器 -->
+    <div class="color-selector">
+      <h3>选择强调色</h3>
+      <div class="accent-colors">
+        <div class="accent-color-option blue" data-color="blue" style="background: #007AFF;"></div>
+        <div class="accent-color-option purple" data-color="purple" style="background: #AF52DE;"></div>
+        <div class="accent-color-option pink" data-color="pink" style="background: #FF2D92;"></div>
+        <div class="accent-color-option red" data-color="red" style="background: #FF3B30;"></div>
+        <div class="accent-color-option orange" data-color="orange" style="background: #FF9500;"></div>
+        <div class="accent-color-option yellow" data-color="yellow" style="background: #FFCC00;"></div>
+        <div class="accent-color-option green" data-color="green" style="background: #30D158;"></div>
+        <div class="accent-color-option graphite" data-color="graphite" style="background: #8E8E93;"></div>
+        <div class="accent-color-option custom active" data-color="custom" style="background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEAA7, #DDA0DD);"></div>
+      </div>
+      
+      <div class="custom-color-section">
+        <h4>自定义颜色</h4>
+        <div class="color-input-group">
+          <input type="color" id="customColorInput" class="color-input" value="#FF6B6B">
+          <span class="color-value" id="colorValue">#FF6B6B</span>
+        </div>
+        <div class="preset-colors">
+          <div class="preset-color" style="background: #007AFF;" data-color="#007AFF"></div>
+          <div class="preset-color" style="background: #00C896;" data-color="#00C896"></div>
+          <div class="preset-color" style="background: #FF9500;" data-color="#FF9500"></div>
+          <div class="preset-color" style="background: #FF3B30;" data-color="#FF3B30"></div>
+          <div class="preset-color" style="background: #FF2D92;" data-color="#FF2D92"></div>
+          <div class="preset-color" style="background: #AF52DE;" data-color="#AF52DE"></div>
+          <div class="preset-color" style="background: #5856D6;" data-color="#5856D6"></div>
+          <div class="preset-color" style="background: #32D74B;" data-color="#32D74B"></div>
+          <div class="preset-color" style="background: #FFCC00;" data-color="#FFCC00"></div>
+          <div class="preset-color" style="background: #A2845E;" data-color="#A2845E"></div>
+          <div class="preset-color" style="background: #8E8E93;" data-color="#8E8E93"></div>
+          <div class="preset-color" style="background: #1D1D1F;" data-color="#1D1D1F"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 组件演示 -->
+    <div class="demo-grid">
+      <div class="section">
+        <div class="section-title">按钮组件</div>
+        <div class="demo-item">
+          <button class="btn-primary">主要按钮</button>
+          <button class="btn-primary">保存设置</button>
+          <button class="btn-primary">立即应用</button>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">链接组件</div>
+        <div class="demo-item">
+          <p>这是一个 <a href="#" class="link-accent">强调色链接</a> 的示例。</p>
+          <p><a href="#" class="link-accent">了解更多详情</a></p>
+          <p><a href="#" class="link-accent">查看文档</a></p>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">进度条</div>
+        <div class="demo-item">
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+          <p>下载进度: 60%</p>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">标签组件</div>
+        <div class="demo-item">
+          <span class="tag">Vue.js</span>
+          <span class="tag">TypeScript</span>
+          <span class="tag">强调色</span>
+          <span class="tag">自定义</span>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">输入框焦点</div>
+        <div class="demo-item">
+          <input type="text" class="input-focus" placeholder="点击查看焦点效果">
+          <input type="email" class="input-focus" placeholder="邮箱地址">
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">开关控件</div>
+        <div class="demo-item">
+          <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+          <p>启用自定义强调色</p>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">加载动画</div>
+        <div class="demo-item">
+          <div class="loading-spinner"></div>
+          <p style="text-align: center;">加载中...</p>
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-top: 40px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+      <h3>✅ 自定义强调色全面应用特性</h3>
+      <ul>
+        <li><strong>完整CSS变量体系：</strong> 支持 --md-accent-* 和 --apple-accent-* 变量</li>
+        <li><strong>动态颜色计算：</strong> 自动生成hover、active、light等衍生色彩</li>
+        <li><strong>全组件覆盖：</strong> 按钮、链接、输入框、进度条、标签等所有UI组件</li>
+        <li><strong>实时预览：</strong> 颜色选择后立即看到效果</li>
+        <li><strong>预设颜色：</strong> 12种精心挑选的常用颜色快速选择</li>
+        <li><strong>视觉一致性：</strong> 与预设强调色具有相同的应用范围和效果</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // 设置初始自定义颜色
+    const initialColor = '#FF6B6B';
+    document.documentElement.style.setProperty('--custom-accent-color', initialColor);
+    updateAccentColorVariables(initialColor);
+    
+    // 颜色输入框事件
+    const colorInput = document.getElementById('customColorInput');
+    const colorValue = document.getElementById('colorValue');
+    
+    colorInput.addEventListener('input', function(e) {
+      const color = e.target.value;
+      colorValue.textContent = color;
+      applyCustomColor(color);
+    });
+    
+    // 预设颜色点击事件
+    document.querySelectorAll('.preset-color').forEach(color => {
+      color.addEventListener('click', function() {
+        const colorValue = this.dataset.color;
+        colorInput.value = colorValue;
+        document.getElementById('colorValue').textContent = colorValue;
+        applyCustomColor(colorValue);
+      });
+    });
+    
+    // 强调色选项点击事件
+    document.querySelectorAll('.accent-color-option').forEach(option => {
+      option.addEventListener('click', function() {
+        // 移除所有active类
+        document.querySelectorAll('.accent-color-option').forEach(opt => opt.classList.remove('active'));
+        // 添加active类到当前选项
+        this.classList.add('active');
+        
+        const colorType = this.dataset.color;
+        if (colorType === 'custom') {
+          applyCustomColor(colorInput.value);
+        } else {
+          applyPresetColor(colorType);
+        }
+      });
+    });
+    
+    function applyCustomColor(color) {
+      document.body.setAttribute('data-accent', 'custom');
+      document.documentElement.style.setProperty('--custom-accent-color', color);
+      updateAccentColorVariables(color);
+    }
+    
+    function applyPresetColor(colorType) {
+      document.body.setAttribute('data-accent', colorType);
+      // 移除自定义颜色变量，使用预设颜色
+      document.documentElement.style.removeProperty('--custom-accent-color');
+    }
+    
+    function updateAccentColorVariables(color) {
+      // 设置Apple Design System变量
+      document.documentElement.style.setProperty('--apple-accent-primary', color);
+      document.documentElement.style.setProperty('--apple-accent-gradient', `linear-gradient(135deg, ${color}, ${adjustColor(color, -20)})`);
+      
+      // 设置Material Design变量
+      document.documentElement.style.setProperty('--md-accent-primary', color);
+      document.documentElement.style.setProperty('--md-accent-secondary', adjustColor(color, 20));
+      document.documentElement.style.setProperty('--md-accent-tertiary', adjustColor(color, 40));
+      document.documentElement.style.setProperty('--md-accent-hover', adjustColor(color, -10));
+      document.documentElement.style.setProperty('--md-accent-active', adjustColor(color, -20));
+      document.documentElement.style.setProperty('--md-accent-light', adjustColor(color, 60));
+      document.documentElement.style.setProperty('--md-accent-gradient', `linear-gradient(135deg, ${color}, ${adjustColor(color, -15)})`);
+    }
+    
+    function adjustColor(color, percent) {
+      // 简单的颜色调整函数
+      const num = parseInt(color.replace("#", ""), 16);
+      const amt = Math.round(2.55 * percent);
+      const R = (num >> 16) + amt;
+      const G = (num >> 8 & 0x00FF) + amt;
+      const B = (num & 0x0000FF) + amt;
+      return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    }
+  </script>
+</body>
+</html>
