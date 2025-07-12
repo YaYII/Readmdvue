@@ -62,7 +62,8 @@
 /* Markdown 容器基础样式 - 应用Liquid Glass效果 */
 .markdown-reader-container {
   max-width: var(--md-max-width);
-  /* margin: 0 auto; */
+  /* 默认居中布局：目录隐藏时内容居中显示 */
+  margin: 0 auto;
   padding: var(--md-spacing-2xl) var(--md-spacing-lg);
   font-family: var(--md-font-family);
   font-size: var(--md-font-size);
@@ -70,10 +71,42 @@
   color: var(--md-text-primary);
   background: var(--md-bg-primary);
   min-height: 100vh;
-  margin-left: 400px;
+  
+  /* 推拉式布局：默认居中，有目录时靠左 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Liquid Glass 背景效果 */
   position: relative;
+}
+
+/* 目录显示时的内容偏移 - 内容靠左对齐 */
+.markdown-reader-container.toc-visible {
+  margin-left: 400px;
+  margin-right: 0;
+}
+
+/* 目录折叠时的内容偏移 - 内容轻微靠左 */
+.markdown-reader-container.toc-collapsed {
+  margin-left: 60px;
+  margin-right: 0;
+}
+
+/* 响应式设计：移动端适配 */
+@media (max-width: 768px) {
+  .markdown-reader-container.toc-visible {
+    margin-left: 280px;
+    margin-right: 0;
+  }
+  
+  .markdown-reader-container.toc-collapsed {
+    margin-left: 50px;
+    margin-right: 0;
+  }
+  
+  /* 移动端内容区域调整 */
+  .markdown-reader-container {
+    padding: var(--md-spacing-xl) var(--md-spacing-md);
+  }
 }
 
 /* 覆盖层模式样式 */

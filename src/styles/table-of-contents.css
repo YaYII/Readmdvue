@@ -833,3 +833,32 @@
     font-size: 11px;
   }
 }
+
+/* ===================================
+   打赏功能样式
+   ================================== */
+
+/* 爱心按钮特殊样式 */
+.toc-toolbar-btn.donation-btn {
+  background: linear-gradient(135deg, rgba(255, 45, 146, 0.1), rgba(255, 59, 48, 0.1));
+  color: #ff2d92;
+  border: 1px solid rgba(255, 45, 146, 0.2);
+}
+
+.toc-toolbar-btn.donation-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 45, 146, 0.2), rgba(255, 59, 48, 0.2));
+  color: #ff2d92;
+  border-color: rgba(255, 45, 146, 0.3);
+  box-shadow:
+    0 2px 8px rgba(255, 45, 146, 0.15),
+    0 0 0 1px rgba(255, 45, 146, 0.1);
+}
+
+.toc-toolbar-btn.donation-btn.active {
+  background: linear-gradient(135deg, rgba(255, 45, 146, 0.25), rgba(255, 59, 48, 0.25));
+  color: #ff2d92;
+  border-color: rgba(255, 45, 146, 0.4);
+  box-shadow:
+    0 0 0 2px rgba(255, 45, 146, 0.1),
+    0 2px 8px rgba(255, 45, 146, 0.2);
+}

@@ -4,6 +4,7 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import PerformanceMonitor from '../components/PerformanceMonitor.vue'
 import TableOfContents from '../components/TableOfContents.vue'
+import DonationModal from '../components/DonationModal.vue'
 import type { MarkdownConfig } from '../types'
 import type { TocItem } from '../utils/markdownRenderer'
 
@@ -16,13 +17,36 @@ class VueComponentManager {
   private containers: Map<string, HTMLElement> = new Map()
 
   /**
-   * 显示设置面板
+   * 切换设置面板显示状态（互斥逻辑）
    */
-  showSettingsPanel(
+  toggleSettingsPanel(
     config: MarkdownConfig, 
     onUpdate: (config: Partial<MarkdownConfig>) => void,
     onClose?: () => void
   ): void {
+    // 如果设置面板已显示，则隐藏
+    if (this.apps.has('settings')) {
+      console.log('隐藏设置面板')
+      this.hideComponent('settings')
+      if (onClose) {
+        onClose()
+      }
+      return
+    }
+
+    // 如果导出对话框正在显示，先关闭它
+    if (this.apps.has('export')) {
+      console.log('关闭导出对话框以显示设置面板')
+      this.hideComponent('export')
+    }
+
+    // 如果打赏组件正在显示，先关闭它
+    if (this.apps.has('donation')) {
+      console.log('关闭打赏组件以显示设置面板')
+      this.hideComponent('donation')
+    }
+
+    // 显示设置面板
     console.log('显示设置面板，当前配置:', config)
     this.createComponent('settings', SettingsPanel, {
       config,
@@ -42,19 +66,62 @@ class VueComponentManager {
   }
 
   /**
-   * 显示导出对话框
+   * 显示设置面板（保持向后兼容）
    */
-  showExportDialog(
+  showSettingsPanel(
+    config: MarkdownConfig, 
+    onUpdate: (config: Partial<MarkdownConfig>) => void,
+    onClose?: () => void
+  ): void {
+    this.toggleSettingsPanel(config, onUpdate, onClose)
+  }
+
+  /**
+   * 切换导出对话框显示状态（互斥逻辑）
+   */
+  toggleExportDialog(
     content: string,
     config: MarkdownConfig,
     onExport: (format: string, options: any) => void
   ): void {
+    // 如果导出对话框已显示，则隐藏
+    if (this.apps.has('export')) {
+      console.log('隐藏导出对话框')
+      this.hideComponent('export')
+      return
+    }
+
+    // 如果设置面板正在显示，先关闭它
+    if (this.apps.has('settings')) {
+      console.log('关闭设置面板以显示导出对话框')
+      this.hideComponent('settings')
+    }
+
+    // 如果打赏组件正在显示，先关闭它
+    if (this.apps.has('donation')) {
+      console.log('关闭打赏组件以显示导出对话框')
+      this.hideComponent('donation')
+    }
+
+    // 显示导出对话框
+    console.log('显示导出对话框')
     this.createComponent('export', ExportDialog, {
       content,
       config,
       onClose: () => this.hideComponent('export'),
       onExport
     })
+  }
+
+  /**
+   * 显示导出对话框（保持向后兼容）
+   */
+  showExportDialog(
+    content: string,
+    config: MarkdownConfig,
+    onExport: (format: string, options: any) => void
+  ): void {
+    this.toggleExportDialog(content, config, onExport)
   }
 
 
@@ -127,6 +194,53 @@ class VueComponentManager {
       container.remove()
       this.containers.delete('toc')
     }
+  }
+
+  /**
+   * 切换打赏组件显示状态（互斥逻辑）
+   */
+  toggleDonationModal(): void {
+    // 如果打赏组件已显示，则隐藏
+    if (this.apps.has('donation')) {
+      console.log('隐藏打赏组件')
+      this.hideComponent('donation')
+      return
+    }
+
+    // 如果设置面板正在显示，先关闭它
+    if (this.apps.has('settings')) {
+      console.log('关闭设置面板以显示打赏组件')
+      this.hideComponent('settings')
+    }
+
+    // 如果导出对话框正在显示，先关闭它
+    if (this.apps.has('export')) {
+      console.log('关闭导出对话框以显示打赏组件')
+      this.hideComponent('export')
+    }
+
+    // 显示打赏组件
+    console.log('显示打赏组件')
+    this.createComponent('donation', DonationModal, {
+      onClose: () => {
+        console.log('打赏组件关闭')
+        this.hideComponent('donation')
+      }
+    })
+  }
+
+  /**
+   * 创建打赏组件（保持向后兼容）
+   */
+  createDonationModal(): void {
+    this.toggleDonationModal()
+  }
+
+  /**
+   * 隐藏打赏组件
+   */
+  hideDonationModal(): void {
+    this.hideComponent('donation')
   }
 
   /**

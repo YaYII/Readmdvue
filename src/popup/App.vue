@@ -37,6 +37,20 @@
               <AlertIcon class="error-icon" />
               <span>检测到扩展上下文失效，你的配置列表中没有主题选项。无法修改</span>
             </div>
+            <!-- 停止插件运行按钮 -->
+            <div class="action-item">
+              <button 
+                @click="stopExtension" 
+                class="action-btn stop-btn"
+                :disabled="isLoading"
+              >
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="6" y="6" width="12" height="12" rx="2"/>
+                </svg>
+                停止运行
+              </button>
+            </div>
+            <!-- 重新加载扩展按钮 -->
             <button @click="reloadExtension" class="reload-button">
               <RefreshIcon class="button-icon" />
               重新加载扩展
@@ -67,11 +81,57 @@
       </div>
     </section>
 
+    <!-- 支付支持部分 -->
+    <section class="support-section" v-if="showSupport">
+      <div class="support-header">
+        <h4 class="support-title">
+          <HeartIcon class="heart-icon" />
+          支持开发者
+        </h4>
+        <button @click="toggleSupport" class="close-button">
+          <!-- <CloseIcon class="button-icon" /> -->
+        </button>
+      </div>
+      <div class="support-content">
+        <p class="support-description">
+          如果这个插件对您有帮助，欢迎扫码支持开发者继续改进和维护
+        </p>
+        <div class="qr-codes-container">
+          <div class="qr-code-item">
+            <div class="qr-code-wrapper">
+              <img 
+                src="../assets/pay/24d4be73eecb41422cacfedef3002456.jpg" 
+                alt="微信支付"
+                class="qr-code-image"
+              />
+            </div>
+            <span class="qr-code-label">微信支付</span>
+          </div>
+          <div class="qr-code-item">
+            <div class="qr-code-wrapper">
+              <img 
+                src="../assets/pay/8832d512343a8573d8bb212463ae15a9.jpg" 
+                alt="支付宝"
+                class="qr-code-image"
+              />
+            </div>
+            <span class="qr-code-label">支付宝</span>
+          </div>
+        </div>
+        <div class="support-thanks">
+          <span class="thanks-text">感谢您的支持 ❤️</span>
+        </div>
+      </div>
+    </section>
+
     <!-- 页脚 -->
     <footer class="popup-footer">
       <div class="footer-links">
         <button @click="toggleLogs" class="footer-link">
           {{ showLogs ? '隐藏' : '显示' }}日志
+        </button>
+        <button @click="toggleSupport" class="footer-link">
+          {{ showSupport ? '隐藏' : '支持' }}开发者
         </button>
         <button @click="openHelp" class="footer-link">
           帮助文档
@@ -114,6 +174,14 @@ const ClearIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 
   h('path', { d: 'M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z' })
 ])
 
+const HeartIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'currentColor' }, [
+  h('path', { d: 'M8 2.748l-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z' })
+])
+
+const CloseIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'currentColor' }, [
+  h('path', { d: 'M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z' })
+])
+
 // Store
 const pluginStore = usePluginStore()
 
@@ -122,6 +190,7 @@ const version = ref('2.0.0')
 const isLoading = ref(false)
 const loadingText = ref('')
 const showLogs = ref(false)
+const showSupport = ref(true)
 const localConfig = ref<MarkdownConfig>({ ...defaultConfig })
 
 // 计算属性
@@ -167,6 +236,10 @@ const toggleLogs = () => {
   showLogs.value = !showLogs.value
 }
 
+const toggleSupport = () => {
+  showSupport.value = !showSupport.value
+}
+
 const clearLogs = () => {
   pluginStore.clearLogs()
 }
@@ -184,6 +257,40 @@ const formatTime = (timestamp: number) => {
     minute: '2-digit',
     second: '2-digit'
   })
+}
+
+const stopExtension = async () => {
+  try {
+    isLoading.value = true
+    
+    // 获取当前活动标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    
+    if (tab.id) {
+      // 发送停止消息到后台脚本
+      const response = await chrome.runtime.sendMessage({
+        type: 'STOP_EXTENSION',
+        payload: { 
+          tabId: tab.id,
+          reason: 'user_popup_stop' 
+        }
+      })
+      
+      if (response.success) {
+        console.log('✅ 插件已停止运行')
+        // 可以选择关闭popup或显示成功消息
+        window.close()
+      } else {
+        console.error('❌ 停止插件失败:', response.error)
+        alert('停止插件失败: ' + response.error)
+      }
+    }
+  } catch (error) {
+    console.error('❌ 停止插件时发生错误:', error)
+    alert('停止插件时发生错误: ' + error)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const reloadExtension = async () => {
@@ -377,6 +484,33 @@ watch(() => pluginStore.currentConfig, (newConfig) => {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+/* 停止按钮样式 */
+.stop-btn {
+  background: linear-gradient(135deg, #ff3b30 0%, #ff6b6b 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stop-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e6342a 0%, #ff5252 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(255, 59, 48, 0.3);
+}
+
+.stop-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.2);
+}
+
+.stop-btn:disabled {
+  background: #f5f5f7;
+  color: #8e8e93;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .reload-button {
@@ -600,6 +734,140 @@ watch(() => pluginStore.currentConfig, (newConfig) => {
 .button-icon {
   width: 14px;
   height: 14px;
+}
+
+/* 支付支持部分 */
+.support-section {
+  margin: 0 20px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.support-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(255, 45, 146, 0.05), rgba(175, 82, 222, 0.05));
+}
+
+.support-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d1d1f;
+}
+
+.heart-icon {
+  width: 18px;
+  height: 18px;
+  color: #FF2D92;
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1d1d1f;
+}
+
+.support-content {
+  padding: 20px;
+}
+
+.support-description {
+  font-size: 13px;
+  color: #6e6e73;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.qr-codes-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.qr-code-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-code-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.qr-code-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.qr-code-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.qr-code-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6e6e73;
+  text-align: center;
+}
+
+.support-thanks {
+  text-align: center;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 45, 146, 0.05), rgba(175, 82, 222, 0.05));
+  border-radius: 12px;
+  border: 1px solid rgba(255, 45, 146, 0.1);
+}
+
+.thanks-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #FF2D92;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 /* 日志面板 */

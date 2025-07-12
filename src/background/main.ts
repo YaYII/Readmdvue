@@ -1,5 +1,5 @@
-import { logger, errorHandler } from '@/utils'
-import type { ExtensionMessage, ExtensionResponse } from '@/types'
+import { logger, errorHandler } from '../utils/index.js'
+import type { ExtensionMessage, ExtensionResponse } from '../types/index.js'
 
 /**
  * Background Script 主类
@@ -120,6 +120,15 @@ class BackgroundScript {
 
         case 'PING':
           return { success: true, data: { status: 'alive' } }
+
+        case 'STOP_EXTENSION':
+          return await this.stopExtension(tabId)
+
+        case 'DISABLE_EXTENSION':
+          return await this.disableExtension(tabId)
+
+        case 'CLEANUP_EXTENSION':
+          return await this.cleanupExtension(tabId)
           
         default:
           logger.warn('未知消息类型:', message.type)
@@ -453,6 +462,186 @@ class BackgroundScript {
       }
     }
   }
+
+  /**
+   * 停止指定标签页的插件运行
+   */
+  private async stopExtension(tabId?: number): Promise<ExtensionResponse> {
+    try {
+      if (!tabId) {
+        return { success: false, error: '无效的标签页ID' }
+      }
+
+      // 向content script发送停止消息
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'STOP_EXTENSION',
+        payload: { reason: 'user_requested' }
+      })
+
+      // 清理标签页状态
+      this.tabStates.delete(tabId)
+
+      // 清除徽章
+      await chrome.action.setBadgeText({ text: '', tabId })
+      await chrome.action.setTitle({ 
+        title: 'Markdown Reader Vue - 已停止', 
+        tabId 
+      })
+
+      logger.info('插件已在标签页停止运行:', tabId)
+      return { success: true, data: { message: '插件已停止运行' } }
+    } catch (error) {
+      logger.error('停止插件失败:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '停止插件失败' 
+      }
+    }
+  }
+
+  /**
+   * 禁用指定标签页的插件功能
+   */
+  private async disableExtension(tabId?: number): Promise<ExtensionResponse> {
+    try {
+      if (!tabId) {
+        return { success: false, error: '无效的标签页ID' }
+      }
+
+      // 向content script发送禁用消息
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'DISABLE_EXTENSION',
+        payload: { reason: 'user_disabled' }
+      })
+
+      // 更新标签页状态为禁用
+      const currentState = this.tabStates.get(tabId) || {}
+      this.tabStates.set(tabId, { 
+        ...currentState, 
+        disabled: true, 
+        disabledAt: Date.now() 
+      })
+
+      // 更新徽章显示禁用状态
+      await chrome.action.setBadgeText({ text: 'OFF', tabId })
+      await chrome.action.setBadgeBackgroundColor({ color: '#FF3B30', tabId })
+      await chrome.action.setTitle({ 
+        title: 'Markdown Reader Vue - 已禁用', 
+        tabId 
+      })
+
+      logger.info('插件已在标签页禁用:', tabId)
+      return { success: true, data: { message: '插件已禁用' } }
+    } catch (error) {
+      logger.error('禁用插件失败:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '禁用插件失败' 
+      }
+    }
+  }
+
+  /**
+   * 清理指定标签页的插件资源
+   */
+  private async cleanupExtension(tabId?: number): Promise<ExtensionResponse> {
+    try {
+      if (!tabId) {
+        // 如果没有指定标签页，清理所有资源
+        await this.cleanupAllResources()
+        return { success: true, data: { message: '所有资源已清理' } }
+      }
+
+      // 向content script发送清理消息
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'CLEANUP_EXTENSION',
+        payload: { reason: 'user_cleanup' }
+      })
+
+      // 清理标签页状态
+      this.tabStates.delete(tabId)
+
+      // 清除徽章
+      await chrome.action.setBadgeText({ text: '', tabId })
+      await chrome.action.setTitle({ 
+        title: 'Markdown Reader Vue', 
+        tabId 
+      })
+
+      logger.info('插件资源已在标签页清理:', tabId)
+      return { success: true, data: { message: '资源已清理' } }
+    } catch (error) {
+      logger.error('清理插件资源失败:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '清理资源失败' 
+      }
+    }
+  }
+
+  /**
+   * 清理所有插件资源
+   */
+  private async cleanupAllResources(): Promise<void> {
+    try {
+      // 获取所有标签页
+      const tabs = await chrome.tabs.query({})
+      
+      // 向所有标签页发送清理消息
+      for (const tab of tabs) {
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'CLEANUP_EXTENSION',
+              payload: { reason: 'global_cleanup' }
+            })
+          } catch (error) {
+            // 忽略无法发送消息的标签页
+            logger.warn(`无法向标签页 ${tab.id} 发送清理消息:`, error)
+          }
+        }
+      }
+
+      // 清理所有标签页状态
+      this.tabStates.clear()
+
+      // 清理存储的配置（可选）
+      // await chrome.storage.sync.clear()
+
+      logger.info('所有插件资源已清理')
+    } catch (error) {
+      logger.error('清理所有资源失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 完全停止插件运行（全局）
+   */
+  public async stopExtensionGlobally(): Promise<void> {
+    try {
+      logger.info('开始全局停止插件运行')
+      
+      // 清理所有资源
+      await this.cleanupAllResources()
+      
+      // 移除所有事件监听器
+      chrome.runtime.onMessage.removeListener(this.messageHandler)
+      chrome.tabs.onActivated.removeListener(this.setupTabListeners)
+      chrome.tabs.onUpdated.removeListener(this.setupTabListeners)
+      chrome.tabs.onRemoved.removeListener(this.setupTabListeners)
+      chrome.runtime.onInstalled.removeListener(this.setupInstallListener)
+      chrome.storage.onChanged.removeListener(this.setupStorageListener)
+      
+      // 标记为未初始化
+      this.isInitialized = false
+      
+      logger.info('插件已全局停止运行')
+    } catch (error) {
+      logger.error('全局停止插件失败:', error)
+      throw error
+    }
+  }
 }
 
 // 创建Background Script实例
@@ -465,3 +654,38 @@ setInterval(() => {
 
 // 导出实例（用于调试）
 ;(globalThis as any).backgroundScript = backgroundScript
+
+// 导出全局停止方法，可在任何地方调用
+;(globalThis as any).stopMarkdownReaderExtension = async () => {
+  try {
+    await backgroundScript.stopExtensionGlobally()
+    console.log('✅ Markdown Reader Vue 插件已完全停止运行')
+    return true
+  } catch (error) {
+    console.error('❌ 停止插件失败:', error)
+    return false
+  }
+}
+
+// 导出单个标签页停止方法
+;(globalThis as any).stopMarkdownReaderInCurrentTab = async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tab.id) {
+      const response = await chrome.runtime.sendMessage({
+        type: 'STOP_EXTENSION'
+      })
+      if (response.success) {
+        console.log('✅ 当前标签页的 Markdown Reader Vue 已停止运行')
+        return true
+      } else {
+        console.error('❌ 停止当前标签页插件失败:', response.error)
+        return false
+      }
+    }
+    return false
+  } catch (error) {
+    console.error('❌ 停止当前标签页插件失败:', error)
+    return false
+  }
+}

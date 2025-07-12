@@ -44,4 +44,4 @@ if (import.meta.env.DEV) {
 }
 
 // 导出应用实例（用于调试）
-; (globalThis as any).__VUE_APP__ = app
+;(globalThis as any).__VUE_APP__ = app

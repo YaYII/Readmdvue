@@ -69,6 +69,17 @@
         </svg>
       </button>
 
+      <!-- 爱心打赏按钮 -->
+      <button 
+        class="toc-toolbar-btn toc-heart-btn donation-btn" 
+        @click="toggleDonation"
+        title="支持开发者"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      </button>
+
       <!-- 分隔线 -->
       <div class="toc-toolbar-divider"></div>
 
@@ -292,6 +303,25 @@ const displayTocItems = computed(() => {
   })
 })
 
+// 控制内容区域样式的函数
+const updateContentLayout = () => {
+  const container = document.querySelector('.markdown-reader-container')
+  if (!container) return
+  
+  // 移除所有目录相关的类
+  container.classList.remove('toc-visible', 'toc-collapsed')
+  
+  // 根据当前状态添加对应的类
+  if (isVisible.value) {
+    if (isCollapsed.value) {
+      container.classList.add('toc-collapsed')
+    } else {
+      container.classList.add('toc-visible')
+    }
+  }
+  // 如果目录不可见，则不添加任何类，内容区域占满全宽
+}
+
 // 触发区域和面板的鼠标事件处理
 const handleTriggerEnter = () => {
   if (!isPinned.value) {
@@ -370,6 +400,14 @@ const clearSearch = () => {
   searchInput.value?.focus()
 }
 
+// 打赏功能
+const toggleDonation = async () => {
+  // 触发全局打赏事件，让主应用处理
+  window.dispatchEvent(new CustomEvent('toggle-donation', {
+    detail: { show: true }
+  }))
+}
+
 const toggleOriginalContent = () => {
   // 触发全局切换原始内容事件
   const event = new CustomEvent('toggleOriginalContent')
@@ -385,6 +423,9 @@ const togglePin = () => {
     isVisible.value = true
     clearHideTimer()
   }
+  
+  // 更新内容区域布局
+  updateContentLayout()
 }
 
 const hidePanel = () => {
@@ -394,6 +435,9 @@ const hidePanel = () => {
   clearSearch()
   localStorage.setItem('toc-pinned', 'false')
   clearHideTimer()
+  
+  // 更新内容区域布局
+  updateContentLayout()
 }
 
 const toggleCollapse = () => {
@@ -407,6 +451,9 @@ const toggleCollapse = () => {
   
   // 保存折叠状态到本地存储
   localStorage.setItem('toc-collapsed', isCollapsed.value.toString())
+  
+  // 更新内容区域布局
+  updateContentLayout()
 }
 
 const scrollToHeading = (id: string, event: Event) => {
@@ -576,6 +623,12 @@ onMounted(() => {
   console.log('🔥 立即执行初始化...')
   handleScroll()
   console.log('🎯 初始化完成，当前阅读进度:', readingProgress.value)
+  
+  // 初始化内容区域布局
+  setTimeout(() => {
+    updateContentLayout()
+    console.log('🎨 内容区域布局初始化完成')
+  }, 100)
 })
 
 onUnmounted(() => {
@@ -597,6 +650,16 @@ watch(() => props.visible, (newValue) => {
   if (newValue && !isPinned.value) {
     isVisible.value = newValue
   }
+})
+
+// 监听isVisible状态变化，更新内容区域布局
+watch(isVisible, () => {
+  updateContentLayout()
+})
+
+// 监听isCollapsed状态变化，更新内容区域布局
+watch(isCollapsed, () => {
+  updateContentLayout()
 })
 </script>
 

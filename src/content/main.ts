@@ -4,8 +4,8 @@ import { MarkdownRenderer } from '../utils/markdownRenderer'
 import { logger, performanceMonitor, errorHandler, themeUtils, domUtils } from '../utils'
 import { cssVariableManager } from '../utils/cssVariableManager'
 import { smartToolbarManager } from '../utils/smartToolbarManager'
-import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types'
-import { defaultConfig } from '../types'
+import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types/index.js'
+import { defaultConfig } from '../types/index.js'
 
 // CSS文件已通过manifest.json直接加载，无需在此导入
 // 这样可以避免Vite将CSS转换为JS注入的问题
@@ -63,6 +63,63 @@ class ContentScriptApp {
 
   constructor() {
     this.init()
+  }
+
+  /**
+   * 显示通知消息
+   */
+  private showNotification(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
+    // 创建通知元素
+    const notification = document.createElement('div')
+    notification.className = `markdown-reader-notification notification-${type}`
+    notification.textContent = message
+
+    // 添加样式
+    Object.assign(notification.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      padding: '12px 16px',
+      borderRadius: '8px',
+      color: 'white',
+      fontSize: '14px',
+      fontWeight: '500',
+      zIndex: '10000',
+      maxWidth: '300px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      transition: 'all 0.3s ease',
+      opacity: '0',
+      transform: 'translateX(100%)'
+    })
+
+    // 根据类型设置背景色
+    const colors = {
+      info: '#007AFF',
+      success: '#30D158',
+      warning: '#FF9500',
+      error: '#FF3B30'
+    }
+    notification.style.backgroundColor = colors[type]
+
+    // 添加到页面
+    document.body.appendChild(notification)
+
+    // 显示动画
+    requestAnimationFrame(() => {
+      notification.style.opacity = '1'
+      notification.style.transform = 'translateX(0)'
+    })
+
+    // 自动移除
+    setTimeout(() => {
+      notification.style.opacity = '0'
+      notification.style.transform = 'translateX(100%)'
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification)
+        }
+      }, 300)
+    }, 3000)
   }
 
   /**
@@ -209,9 +266,12 @@ class ContentScriptApp {
 
         this.debugLog('Content Script 初始化完成')
       } else {
-        this.debugLog('未检测到Markdown文件，Content Script 不激活')
-        // 静默退出，不激活插件功能
-        this.isActive = false
+        this.debugLog('未检测到Markdown文件，自动停止程序运行')
+        // 显示通知告知用户
+        this.showNotification('当前页面不是Markdown文档，程序已自动停止', 'info')
+        this.isActive = false;
+        // 自动停止程序运行
+        this.stopExtension()
         return;
       }
 
@@ -973,7 +1033,8 @@ class ContentScriptApp {
       console.log('通过文件扩展名识别为Markdown文件')
       return true
     } else {
-      return false;
+      console.log('未通过文件扩展名识别为Markdown文件')
+      //return false
     }
 
     // 2. GitHub/GitLab等平台特殊路径检测
@@ -990,15 +1051,14 @@ class ContentScriptApp {
     }
 
     // 4. 页面内容特征检测
-    if (this.detectMarkdownContent()) {
-      console.log('通过内容特征识别为Markdown文件')
-      return true
-    }
+    // if (this.detectMarkdownContent()) {
+    //   console.log('通过内容特征识别为Markdown文件')
+    //   return true
+    // }
 
-    // 5. 新增：对所有其他页面也启用插件（除了排除列表中的文件）
-    // 这样用户可以在任何页面使用Markdown渲染功能
-    console.log('启用插件用于通用页面:', { url, pathname, contentType })
-    return true
+    // 如果以上检测都不匹配，则不是Markdown文件
+    console.log('未识别为Markdown文件，程序将停止运行:', { url, pathname, contentType })
+    return false
   }
 
   /**
@@ -1048,34 +1108,6 @@ class ContentScriptApp {
       if (!url.includes(platform.domain)) return false
       return platform.patterns.some(pattern => pattern.test(url))
     })
-  }
-
-  /**
-   * 检测页面内容是否具有Markdown特征
-   */
-  private detectMarkdownContent(): boolean {
-    // 检查页面标题
-    const title = document.title.toLowerCase()
-    if (title.includes('readme') || title.includes('markdown') || title.includes('.md')) {
-      return true
-    }
-
-    // 检查页面内容的Markdown特征
-    const bodyText = document.body.textContent || ''
-    const markdownIndicators = [
-      /^#{1,6}\s+/m,  // 标题
-      /\*\*.*?\*\*/,   // 粗体
-      /\*.*?\*/,       // 斜体
-      /```[\s\S]*?```/, // 代码块
-      /`.*?`/,         // 内联代码
-      /^\s*\|\s*.*\s*\|/m, // 表格
-      /^\s*[\*\-\+]\s+/m,  // 列表
-      /^\s*\d+\.\s+/m,     // 数字列表
-      /\[.*?\]\(.*?\)/     // 链接
-    ]
-
-    const matchCount = markdownIndicators.filter(regex => regex.test(bodyText)).length
-    return matchCount >= 2  // 至少匹配2个特征才认为是Markdown
   }
 
   private async loadConfig(): Promise<void> {
@@ -1652,6 +1684,294 @@ class ContentScriptApp {
   }
 
   /**
+   * 停止插件运行
+   * 完全停止插件在当前页面的所有功能
+   */
+  async stopExtension(reason: string = 'user_requested'): Promise<void> {
+    try {
+      this.debugLog(`停止插件运行，原因: ${reason}`, undefined, 'info')
+
+      // 显示停止通知
+      this.showNotification('🛑 Markdown Reader Vue 已停止运行', 'info')
+
+      // 执行完整清理
+      this.cleanup()
+
+      // 清理Vue组件
+      if (vueComponentManager) {
+        vueComponentManager.destroy()
+      }
+
+      // 清理智能工具栏
+      if (smartToolbarManager) {
+        smartToolbarManager.destroy()
+      }
+
+      // 移除所有插件添加的DOM元素
+      this.removeAllPluginElements()
+
+      // 恢复原始页面内容
+      this.restoreOriginalContent()
+
+      // 清理CSS变量
+      cssVariableManager.reset()
+
+      // 移除样式表
+      this.removePluginStylesheets()
+
+      // 标记为非活跃状态
+      this.isActive = false
+
+      // 清理全局变量
+      this.cleanupGlobalVariables()
+
+      this.debugLog('插件已完全停止运行', undefined, 'info')
+
+    } catch (error) {
+      this.debugLog('停止插件运行失败', error, 'error')
+      throw error
+    }
+  }
+
+  /**
+   * 禁用插件功能
+   * 保留基本结构但禁用所有交互功能
+   */
+  async disableExtension(reason: string = 'user_disabled'): Promise<void> {
+    try {
+      this.debugLog(`禁用插件功能，原因: ${reason}`, undefined, 'info')
+
+      // 显示禁用通知
+      this.showNotification('⏸️ Markdown Reader Vue 已禁用', 'warning')
+
+      // 禁用所有交互功能
+      this.disableInteractions()
+
+      // 隐藏工具栏和组件
+      if (smartToolbarManager) {
+        try {
+          smartToolbarManager.destroy()
+        } catch (error) {
+          this.debugLog('隐藏工具栏失败', error, 'error')
+        }
+      }
+
+      // 隐藏Vue组件
+      if (vueComponentManager) {
+        try {
+          vueComponentManager.destroy()
+        } catch (error) {
+          this.debugLog('隐藏Vue组件失败', error, 'error')
+        }
+      }
+
+      // 添加禁用样式
+      this.addDisabledStyles()
+
+      // 标记为非活跃状态
+      this.isActive = false
+
+      this.debugLog('插件功能已禁用', undefined, 'info')
+
+    } catch (error) {
+      this.debugLog('禁用插件功能失败', error, 'error')
+      throw error
+    }
+  }
+
+  /**
+   * 清理插件资源
+   * 清理缓存、临时文件等资源
+   */
+  async cleanupExtension(reason: string = 'user_cleanup'): Promise<void> {
+    try {
+      this.debugLog(`清理插件资源，原因: ${reason}`, undefined, 'info')
+
+      // 显示清理通知
+      this.showNotification('🧹 正在清理 Markdown Reader Vue 资源...', 'info')
+
+      // 执行基本清理
+      this.cleanup()
+
+      // 清理缓存
+      this.clearCache()
+
+      // 清理临时DOM元素
+      this.cleanupTemporaryElements()
+
+      // 清理性能监控数据
+      // PerformanceMonitor是静态类，不需要清理实例
+
+      // 清理日志
+      this.logEntries = []
+
+      // 重置配置到默认值
+      this.config = { ...defaultConfig }
+
+      this.showNotification('✅ Markdown Reader Vue 资源清理完成', 'success')
+      this.debugLog('插件资源清理完成', undefined, 'info')
+
+    } catch (error) {
+      this.debugLog('清理插件资源失败', error, 'error')
+      throw error
+    }
+  }
+
+  /**
+   * 移除所有插件添加的DOM元素
+   */
+  private removeAllPluginElements(): void {
+    try {
+      // 移除插件容器
+      const containers = document.querySelectorAll('.markdown-reader-container, .vue-component-container, .smart-toolbar')
+      containers.forEach(container => container.remove())
+
+      // 移除通知元素
+      const notifications = document.querySelectorAll('.apple-notification')
+      notifications.forEach(notification => notification.remove())
+
+      // 移除模态框
+      const modals = document.querySelectorAll('.modal-overlay, .image-modal, .donation-modal')
+      modals.forEach(modal => modal.remove())
+
+      this.debugLog('所有插件DOM元素已移除')
+    } catch (error) {
+      this.debugLog('移除插件DOM元素失败', error, 'error')
+    }
+  }
+
+  /**
+   * 恢复原始页面内容
+   */
+  private restoreOriginalContent(): void {
+    try {
+      // 如果有备份的原始内容，恢复它
+      const originalContent = document.querySelector('[data-original-content]')
+      if (originalContent) {
+        document.body.innerHTML = originalContent.innerHTML
+        originalContent.removeAttribute('data-original-content')
+      }
+
+      this.debugLog('原始页面内容已恢复')
+    } catch (error) {
+      this.debugLog('恢复原始页面内容失败', error, 'error')
+    }
+  }
+
+  /**
+   * 移除插件样式表
+   */
+  private removePluginStylesheets(): void {
+    try {
+      const stylesheets = document.querySelectorAll('link[data-markdown-reader="true"], style[data-markdown-reader="true"]')
+      stylesheets.forEach(stylesheet => stylesheet.remove())
+
+      this.debugLog('插件样式表已移除')
+    } catch (error) {
+      this.debugLog('移除插件样式表失败', error, 'error')
+    }
+  }
+
+  /**
+   * 禁用所有交互功能
+   */
+  private disableInteractions(): void {
+    try {
+      // 禁用所有按钮
+      const buttons = document.querySelectorAll('.markdown-reader-container button, .smart-toolbar button')
+      buttons.forEach(button => {
+        (button as HTMLButtonElement).disabled = true
+      })
+
+      // 移除点击事件监听器
+      this.cleanupEventListeners()
+
+      this.debugLog('所有交互功能已禁用')
+    } catch (error) {
+      this.debugLog('禁用交互功能失败', error, 'error')
+    }
+  }
+
+  /**
+   * 添加禁用样式
+   */
+  private addDisabledStyles(): void {
+    try {
+      const style = document.createElement('style')
+      style.setAttribute('data-markdown-reader', 'true')
+      style.setAttribute('data-disabled', 'true')
+      style.textContent = `
+        .markdown-reader-container {
+          opacity: 0.6;
+          pointer-events: none;
+          filter: grayscale(50%);
+        }
+        .smart-toolbar {
+          opacity: 0.3;
+          pointer-events: none;
+        }
+      `
+      document.head.appendChild(style)
+
+      this.debugLog('禁用样式已添加')
+    } catch (error) {
+      this.debugLog('添加禁用样式失败', error, 'error')
+    }
+  }
+
+  /**
+   * 清理缓存
+   */
+  private clearCache(): void {
+    try {
+      // 清理图表渲染缓存
+      if ((window as any).mermaidCache) {
+        (window as any).mermaidCache.clear()
+      }
+
+      // 清理其他缓存
+      if ((window as any).markdownCache) {
+        (window as any).markdownCache.clear()
+      }
+
+      this.debugLog('缓存已清理')
+    } catch (error) {
+      this.debugLog('清理缓存失败', error, 'error')
+    }
+  }
+
+  /**
+   * 清理临时DOM元素
+   */
+  private cleanupTemporaryElements(): void {
+    try {
+      // 清理临时创建的元素
+      const tempElements = document.querySelectorAll('[data-temp="true"], .temp-element')
+      tempElements.forEach(element => element.remove())
+
+      this.debugLog('临时DOM元素已清理')
+    } catch (error) {
+      this.debugLog('清理临时DOM元素失败', error, 'error')
+    }
+  }
+
+  /**
+   * 清理全局变量
+   */
+  private cleanupGlobalVariables(): void {
+    try {
+      // 清理调试变量
+      delete (window as any).__MARKDOWN_READER_DEBUG__
+      delete (window as any).__MARKDOWN_READER_PERFORMANCE__
+      delete (window as any).__MARKDOWN_READER_APP__
+
+      this.debugLog('全局变量已清理')
+    } catch (error) {
+      this.debugLog('清理全局变量失败', error, 'error')
+    }
+  }
+
+  /**
    * 导出调试信息
    * 用于问题诊断和性能分析
    * 
@@ -1883,7 +2203,10 @@ class ContentScriptApp {
       this.showExportDialog()
     })
 
-
+    // 打赏组件显示事件
+    this.addEventListenerManaged('toggleDonation', window, 'toggle-donation', () => {
+      this.showDonationModal()
+    })
 
     // 切换原始内容事件
     this.addEventListenerManaged('toggleOriginalContent', window, 'toggleOriginalContent', () => {
@@ -1892,13 +2215,13 @@ class ContentScriptApp {
   }
 
   /**
-   * 显示设置面板
+   * 切换设置面板显示状态
    */
   private showSettingsPanel(): void {
     // 通知智能工具栏管理器设置面板即将打开
     smartToolbarManager.setSettingsPanelOpen(true)
 
-    vueComponentManager.showSettingsPanel(this.config, (newConfig) => {
+    vueComponentManager.toggleSettingsPanel(this.config, (newConfig) => {
       this.updateConfig(newConfig)
     }, () => {
       // 设置面板关闭回调
@@ -1907,13 +2230,20 @@ class ContentScriptApp {
   }
 
   /**
-   * 显示导出对话框
+   * 切换导出对话框显示状态
    */
   private showExportDialog(): void {
     const content = document.querySelector('.markdown-content')?.innerHTML || ''
-    vueComponentManager.showExportDialog(content, this.config, (format, options) => {
+    vueComponentManager.toggleExportDialog(content, this.config, (format, options) => {
       this.handleExport(format, options)
     })
+  }
+
+  /**
+   * 显示打赏组件
+   */
+  private showDonationModal(): void {
+    vueComponentManager.toggleDonationModal()
   }
 
 
@@ -2040,6 +2370,18 @@ class ContentScriptApp {
         case 'EXPORT_HTML':
           this.exportAsHtml()
           return { success: true }
+
+        case 'STOP_EXTENSION':
+          await this.stopExtension(message.payload?.reason || 'user_requested')
+          return { success: true, data: { message: '插件已停止运行' } }
+
+        case 'DISABLE_EXTENSION':
+          await this.disableExtension(message.payload?.reason || 'user_disabled')
+          return { success: true, data: { message: '插件已禁用' } }
+
+        case 'CLEANUP_EXTENSION':
+          await this.cleanupExtension(message.payload?.reason || 'user_cleanup')
+          return { success: true, data: { message: '插件资源已清理' } }
 
         default:
           return { success: false, error: '未知消息类型' }
@@ -2670,14 +3012,93 @@ export function onExecute() {
     }
   }
 
-  // 初始化Content Script
+  // 初始化Content Script并保存实例引用
+  let appInstance: ContentScriptApp
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      new ContentScriptApp()
+      appInstance = new ContentScriptApp()
+        // 导出到全局作用域
+        ; (window as any).__MARKDOWN_READER_APP__ = appInstance
     })
   } else {
-    new ContentScriptApp()
+    appInstance = new ContentScriptApp()
+      // 导出到全局作用域
+      ; (window as any).__MARKDOWN_READER_APP__ = appInstance
   }
+
+  // 导出停止插件运行的全局方法
+  ; (window as any).stopMarkdownReader = async () => {
+    try {
+      const app = (window as any).__MARKDOWN_READER_APP__ || appInstance
+      if (app) {
+        await app.stopExtension('user_global_stop')
+        console.log('✅ Markdown Reader Vue 已在当前页面停止运行')
+        return true
+      } else {
+        console.warn('⚠️ 插件实例未找到，可能已经停止')
+        return false
+      }
+    } catch (error) {
+      console.error('❌ 停止插件失败:', error)
+      return false
+    }
+  }
+
+    // 导出禁用插件的全局方法
+    ; (window as any).disableMarkdownReader = async () => {
+      try {
+        const app = (window as any).__MARKDOWN_READER_APP__ || appInstance
+        if (app) {
+          await app.disableExtension('user_global_disable')
+          console.log('✅ Markdown Reader Vue 已在当前页面禁用')
+          return true
+        } else {
+          console.warn('⚠️ 插件实例未找到，可能已经禁用')
+          return false
+        }
+      } catch (error) {
+        console.error('❌ 禁用插件失败:', error)
+        return false
+      }
+    }
+
+    // 导出清理插件资源的全局方法
+    ; (window as any).cleanupMarkdownReader = async () => {
+      try {
+        const app = (window as any).__MARKDOWN_READER_APP__ || appInstance
+        if (app) {
+          await app.cleanupExtension('user_global_cleanup')
+          console.log('✅ Markdown Reader Vue 资源已清理')
+          return true
+        } else {
+          console.warn('⚠️ 插件实例未找到，可能已经清理')
+          return false
+        }
+      } catch (error) {
+        console.error('❌ 清理插件资源失败:', error)
+        return false
+      }
+    }
+
+    // 导出通过消息系统停止插件的方法
+    ; (window as any).stopMarkdownReaderViaMessage = async () => {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'STOP_EXTENSION',
+          payload: { reason: 'user_console_stop' }
+        })
+        if (response.success) {
+          console.log('✅ 通过消息系统停止插件成功')
+          return true
+        } else {
+          console.error('❌ 通过消息系统停止插件失败:', response.error)
+          return false
+        }
+      } catch (error) {
+        console.error('❌ 发送停止消息失败:', error)
+        return false
+      }
+    }
 }
 
 // 兼容性：直接执行（用于开发模式）
