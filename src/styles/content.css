@@ -435,7 +435,11 @@
   font-family: var(--md-font-family-mono);
   font-size: 0.9em;
   background: var(--md-bg-code);
-  color: var(--md-accent-primary);
+  color: var(--md-text-code);
+  /* 重置父级 strong/标题 的渐变文字填充，否则嵌套在加粗内的 code 文字会被填充为透明而不显示 */
+  -webkit-text-fill-color: var(--md-text-code);
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
   padding: 3px 8px;
   border-radius: var(--md-radius-md);
   border: 1px solid var(--md-border-primary);
@@ -480,6 +484,113 @@
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* highlight.js token 配色 - GitHub 风格（项目未引入 hljs 主题 CSS，故内联，避免高亮 span 无颜色导致代码文字不可见） */
+.markdown-reader-container .hljs {
+  color: var(--md-text-code);
+  background: transparent;
+}
+.markdown-reader-container .hljs-comment,
+.markdown-reader-container .hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+.markdown-reader-container .hljs-keyword,
+.markdown-reader-container .hljs-selector-tag,
+.markdown-reader-container .hljs-doctag,
+.markdown-reader-container .hljs-type {
+  color: #d73a49;
+}
+.markdown-reader-container .hljs-string,
+.markdown-reader-container .hljs-meta .hljs-string,
+.markdown-reader-container .hljs-regexp {
+  color: #032f62;
+}
+.markdown-reader-container .hljs-number,
+.markdown-reader-container .hljs-literal,
+.markdown-reader-container .hljs-symbol,
+.markdown-reader-container .hljs-bullet {
+  color: #005cc5;
+}
+.markdown-reader-container .hljs-title,
+.markdown-reader-container .hljs-section,
+.markdown-reader-container .hljs-function .hljs-title {
+  color: #6f42c1;
+}
+.markdown-reader-container .hljs-name,
+.markdown-reader-container .hljs-selector-id,
+.markdown-reader-container .hljs-selector-class,
+.markdown-reader-container .hljs-tag {
+  color: #22863a;
+}
+.markdown-reader-container .hljs-attr,
+.markdown-reader-container .hljs-attribute,
+.markdown-reader-container .hljs-variable,
+.markdown-reader-container .hljs-template-variable {
+  color: #e36209;
+}
+.markdown-reader-container .hljs-built_in,
+.markdown-reader-container .hljs-class .hljs-title {
+  color: #6f42c1;
+}
+.markdown-reader-container .hljs-emphasis { font-style: italic; }
+.markdown-reader-container .hljs-strong { font-weight: 600; }
+
+/* 深色主题 hljs 配色覆盖 - GitHub Dark */
+:root[data-theme="dark"] .markdown-reader-container .hljs,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs {
+  color: var(--md-text-code);
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-comment,
+:root[data-theme="dark"] .markdown-reader-container .hljs-quote,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-comment,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-quote {
+  color: #8b949e;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-keyword,
+:root[data-theme="dark"] .markdown-reader-container .hljs-selector-tag,
+:root[data-theme="dark"] .markdown-reader-container .hljs-doctag,
+:root[data-theme="dark"] .markdown-reader-container .hljs-type,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-keyword,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-selector-tag,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-doctag,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-type {
+  color: #ff7b72;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-string,
+:root[data-theme="dark"] .markdown-reader-container .hljs-regexp,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-string,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-regexp {
+  color: #a5d6ff;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-number,
+:root[data-theme="dark"] .markdown-reader-container .hljs-literal,
+:root[data-theme="dark"] .markdown-reader-container .hljs-symbol,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-number,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-literal,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-symbol {
+  color: #79c0ff;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-title,
+:root[data-theme="dark"] .markdown-reader-container .hljs-section,
+:root[data-theme="dark"] .markdown-reader-container .hljs-built_in,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-title,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-section,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-built_in {
+  color: #d2a8ff;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-name,
+:root[data-theme="dark"] .markdown-reader-container .hljs-tag,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-name,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-tag {
+  color: #7ee787;
+}
+:root[data-theme="dark"] .markdown-reader-container .hljs-attr,
+:root[data-theme="dark"] .markdown-reader-container .hljs-variable,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-attr,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .hljs-variable {
+  color: #ffa657;
 }
 
 /* 代码块复制按钮 - 苹果风格 */
@@ -714,7 +825,8 @@
 
 .markdown-reader-container td {
   color: var(--md-text-primary);
-  background: var(--md-bg-primary);
+  /* 不铺背景，让 tr 的斑马纹/hover 透出 */
+  background: transparent;
 }
 
 /* 水平分割线样式 */

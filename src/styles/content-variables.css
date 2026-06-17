@@ -9,8 +9,8 @@
   --md-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 
-  /* 布局配置 */
-  --md-max-width: 750px;
+  /* 布局配置 - 默认内容宽度（无 data-max-width 属性时的兜底，与默认配置 1200 保持一致） */
+  --md-max-width: 1200px;
 
   /* 间距系统 */
   --md-spacing-xs: 4px;
@@ -43,6 +43,7 @@
   --md-bg-secondary: #f8f9fa;
   --md-bg-tertiary: #e9ecef;
   --md-bg-code: #f6f8fa;
+  --md-text-code: #1d1d1f;
   --md-bg-blockquote: rgba(0, 122, 255, 0.05);
 
   --md-text-primary: #1d1d1f;
@@ -66,6 +67,7 @@
   --md-bg-secondary: #1c1c1e;
   --md-bg-tertiary: #2c2c2e;
   --md-bg-code: #1e1e20;
+  --md-text-code: #e6e6e6;
   --md-bg-blockquote: rgba(0, 122, 255, 0.1);
 
   --md-text-primary: #ffffff;
@@ -94,6 +96,8 @@
   /* 更深的米黄色 */
   --md-bg-code: #F0E9C7;
   /* 代码块背景 */
+  --md-text-code: #5D4E37;
+  /* 代码文字 - 深棕色，与护眼背景高对比 */
   --md-bg-blockquote: rgba(107, 142, 35, 0.1);
   /* 引用块背景 */
 

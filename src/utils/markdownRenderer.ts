@@ -10,6 +10,7 @@ import type { MarkdownConfig, RenderResult } from '../types'
 declare global {
   interface Window {
     copyCode: (codeId: string) => Promise<void>
+    __mdCopyDelegationBound?: boolean
     retryChart: (chartId: string, chartType: string, code: string) => Promise<void>
 
     handleImageLoad: (imageId: string) => void
@@ -23,7 +24,7 @@ declare global {
 if (typeof window !== 'undefined') {
   // 强制定义全局函数，确保在任何时候都可用
   const defineGlobalFunctions = () => {
-    // 复制代码函数
+    // 复制代码：宿主页面 CSP 会阻止内联 onclick，故用全局函数 + 事件委托双保险
     window.copyCode = async (codeId: string) => {
       const codeElement = document.getElementById(codeId)
       if (!codeElement) return
@@ -31,11 +32,21 @@ if (typeof window !== 'undefined') {
       const codeText = codeElement.textContent || ''
 
       try {
-        await navigator.clipboard.writeText(codeText)
+        // navigator.clipboard 仅在安全上下文(https/扩展页)可用，失败时回退 execCommand
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(codeText)
+        } else {
+          copyViaExecCommand(codeText)
+        }
         showSuccess('复制成功', '代码已复制到剪贴板')
       } catch (err) {
-        console.error('复制失败:', err)
-        showError('复制失败', '无法复制到剪贴板')
+        // 主路径异常时再兜底一次 execCommand
+        if (copyViaExecCommand(codeText)) {
+          showSuccess('复制成功', '代码已复制到剪贴板')
+        } else {
+          console.error('复制失败:', err)
+          showError('复制失败', '无法复制到剪贴板')
+        }
       }
     }
 
@@ -150,6 +161,37 @@ if (typeof window !== 'undefined') {
     }
   }
 
+  // execCommand 兜底复制：用于非安全上下文或 clipboard API 不可用时
+  const copyViaExecCommand = (text: string): boolean => {
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.top = '-9999px'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return ok
+    } catch {
+      return false
+    }
+  }
+
+  // 事件委托：宿主页面 CSP 会阻止内联 onclick，故统一用委托触发复制（绑定一次）
+  if (!window.__mdCopyDelegationBound) {
+    window.__mdCopyDelegationBound = true
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement
+      const btn = target.closest('[data-action="copy-code"]') as HTMLElement | null
+      if (!btn) return
+      const codeId = btn.getAttribute('data-code-id')
+      if (codeId) window.copyCode(codeId)
+    })
+  }
+
   // 立即定义函数
   defineGlobalFunctions()
 
@@ -187,7 +229,7 @@ function renderAsCode(code: string, lang: string, codeId: string): string {
     <div class="enhanced-code-block" data-language="${lang}">
       <div class="code-header">
         <span class="code-language">${lang.toUpperCase()}</span>
-        <button class="copy-button" onclick="copyCode('${codeId}')" title="复制代码">
+        <button class="copy-button" data-action="copy-code" data-code-id="${codeId}" title="复制代码">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
             <rect x="6" y="6" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
