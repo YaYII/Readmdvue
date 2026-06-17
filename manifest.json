@@ -24,6 +24,14 @@
       "matches": [
         "<all_urls>"
       ],
+      "include_globs": [
+        "*://*/*.md",
+        "*://*/*.md?*",
+        "*://*/*.md#*",
+        "*://*/*.markdown",
+        "*://*/*.markdown?*",
+        "*://*/*.markdown#*"
+      ],
       "js": [
         "src/content/main.ts"
       ],

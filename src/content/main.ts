@@ -266,13 +266,10 @@ class ContentScriptApp {
 
         this.debugLog('Content Script 初始化完成')
       } else {
-        this.debugLog('未检测到Markdown文件，自动停止程序运行')
-        // 显示通知告知用户
-        this.showNotification('当前页面不是Markdown文档，程序已自动停止', 'info')
-        this.isActive = false;
-        // 自动停止程序运行
-        this.stopExtension()
-        return;
+        // 非Markdown文档：静默退出，不渲染、不弹通知、不打扰用户
+        this.debugLog('非Markdown文档，静默退出')
+        this.isActive = false
+        return
       }
 
     } catch (error) {
