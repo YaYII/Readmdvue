@@ -154,15 +154,15 @@ body {
   background: var(--color-text-secondary);
 }
 
-/* 选择文本样式 */
+/* 选择文本样式：强调色背景 + 主文字色，避免低对比导致选中文字看不清 */
 ::selection {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text-primary);
 }
 
 ::-moz-selection {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text-primary);
 }
 
 /* 焦点样式 */

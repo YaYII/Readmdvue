@@ -2198,15 +2198,15 @@
   background: var(--md-text-secondary);
 }
 
-/* 选择文本样式 */
+/* 选择文本样式：用强调色作背景块 + 主题主文字色，确保任意强调色/主题下选中文字都清晰可见 */
 .markdown-reader-container ::selection {
-  background: var(--md-accent-light);
-  color: var(--md-accent-primary);
+  background: var(--md-accent-primary);
+  color: var(--md-text-primary);
 }
 
 .markdown-reader-container ::-moz-selection {
-  background: var(--md-accent-light);
-  color: var(--md-accent-primary);
+  background: var(--md-accent-primary);
+  color: var(--md-text-primary);
 }
 
 .restore-original-btn {

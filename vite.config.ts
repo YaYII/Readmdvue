@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import manifest from './manifest.json'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     vue(),
     crx({
@@ -49,6 +49,11 @@ export default defineConfig({
       interval: 1000, // 增加轮询间隔
       binaryInterval: 2000
     }
+  },
+  // 生产构建时移除所有 console.* 和 debugger，避免大量日志拖累用户浏览器性能；
+  // dev (vite serve) 下保留以便调试
+  esbuild: {
+    drop: command === 'build' ? ['console', 'debugger'] : []
   },
   build: {
     outDir: 'dist',
@@ -107,8 +112,8 @@ export default defineConfig({
   define: {
     __VUE_OPTIONS_API__: false,
     __VUE_PROD_DEVTOOLS__: false,
-    // 添加开发环境标识
-    __DEV__: JSON.stringify(true)
+    // 开发环境标识：仅 dev 模式为 true
+    __DEV__: JSON.stringify(command === 'serve')
   },
   // CSS优化
   css: {
@@ -118,4 +123,4 @@ export default defineConfig({
     }
     // 注意：Vite默认会将CSS提取为独立文件，无需额外配置
   }
-})
+}))
