@@ -679,6 +679,50 @@
   }
 }
 
+/* 复制反馈态：显示文字标签时自动变宽 */
+.copy-button.copy-success,
+.copy-button.copy-fail {
+  width: auto;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: copyFeedbackPop var(--duration-fast) ease;
+}
+
+.copy-button.copy-success {
+  background: rgba(48, 209, 88, 0.15);
+  color: #1a8c3a;
+}
+
+.copy-button.copy-fail {
+  background: rgba(255, 59, 48, 0.15);
+  color: #c4271d;
+}
+
+@media (prefers-color-scheme: dark) {
+  .copy-button.copy-success {
+    background: rgba(48, 209, 88, 0.22);
+    color: #4ade80;
+  }
+
+  .copy-button.copy-fail {
+    background: rgba(255, 59, 48, 0.22);
+    color: #ff6b60;
+  }
+}
+
+.copy-button .copy-label {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+@keyframes copyFeedbackPop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
 .code-content {
   padding: var(--spacing-lg);
   font-family: var(--apple-font-mono);

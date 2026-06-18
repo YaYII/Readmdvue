@@ -9,7 +9,7 @@ import type { MarkdownConfig, RenderResult } from '../types'
 // 声明全局window方法
 declare global {
   interface Window {
-    copyCode: (codeId: string) => Promise<void>
+    copyCode: (codeId: string, btn?: HTMLElement) => Promise<void>
     __mdCopyDelegationBound?: boolean
     retryChart: (chartId: string, chartType: string, code: string) => Promise<void>
 
@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
   // 强制定义全局函数，确保在任何时候都可用
   const defineGlobalFunctions = () => {
     // 复制代码：宿主页面 CSP 会阻止内联 onclick，故用全局函数 + 事件委托双保险
-    window.copyCode = async (codeId: string) => {
+    window.copyCode = async (codeId: string, btn?: HTMLElement) => {
       const codeElement = document.getElementById(codeId)
       if (!codeElement) return
 
@@ -36,14 +36,17 @@ if (typeof window !== 'undefined') {
         if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(codeText)
         } else {
-          copyViaExecCommand(codeText)
+          if (!copyViaExecCommand(codeText)) throw new Error('execCommand 复制失败')
         }
+        flashCopyButton(btn, true)
         showSuccess('复制成功', '代码已复制到剪贴板')
       } catch (err) {
         // 主路径异常时再兜底一次 execCommand
         if (copyViaExecCommand(codeText)) {
+          flashCopyButton(btn, true)
           showSuccess('复制成功', '代码已复制到剪贴板')
         } else {
+          flashCopyButton(btn, false)
           console.error('复制失败:', err)
           showError('复制失败', '无法复制到剪贴板')
         }
@@ -180,6 +183,33 @@ if (typeof window !== 'undefined') {
     }
   }
 
+  // 复制按钮即时反馈：成功显示对勾「已复制」，失败显示叉号，短暂后还原
+  const COPY_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="6" y="6" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>`
+  const flashCopyButton = (btn: HTMLElement | undefined, ok: boolean) => {
+    if (!btn) return
+    if (btn.dataset.copyOriginal === undefined) {
+      btn.dataset.copyOriginal = btn.innerHTML
+    }
+    const original = btn.dataset.copyOriginal || COPY_ICON_SVG
+    btn.classList.remove('copy-success', 'copy-fail')
+    if (ok) {
+      btn.classList.add('copy-success')
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="copy-label">已复制</span>`
+    } else {
+      btn.classList.add('copy-fail')
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="copy-label">失败</span>`
+    }
+    const token = (Number(btn.dataset.copyToken) || 0) + 1
+    btn.dataset.copyToken = String(token)
+    setTimeout(() => {
+      // 仅当期间未再次点击时才还原，避免连点错乱
+      if (btn.dataset.copyToken === String(token)) {
+        btn.classList.remove('copy-success', 'copy-fail')
+        btn.innerHTML = original
+      }
+    }, 1600)
+  }
+
   // 事件委托：宿主页面 CSP 会阻止内联 onclick，故统一用委托触发复制（绑定一次）
   if (!window.__mdCopyDelegationBound) {
     window.__mdCopyDelegationBound = true
@@ -188,7 +218,7 @@ if (typeof window !== 'undefined') {
       const btn = target.closest('[data-action="copy-code"]') as HTMLElement | null
       if (!btn) return
       const codeId = btn.getAttribute('data-code-id')
-      if (codeId) window.copyCode(codeId)
+      if (codeId) window.copyCode(codeId, btn)
     })
   }
 
