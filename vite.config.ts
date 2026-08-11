@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { crx } from '@crxjs/vite-plugin'
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import manifest from './manifest.json'
 
@@ -12,7 +14,27 @@ export default defineConfig(({ command }) => ({
       manifest,
       // 减少扩展程序重载频率的配置
       browser: 'chrome'
-    })
+    }),
+    {
+      // 构建后修复：content script 主包中的动态 import（mermaid/KaTeX 懒加载 chunk）
+      // 统一重写为 chrome.runtime.getURL 扩展绝对 URL——
+      // 相对路径在 file:// 页面会被解析为 file:///assets/...（跨源被 CORS 拦截），
+      // 扩展绝对 URL 在任何页面协议下都正确加载
+      name: 'fix-content-dynamic-import',
+      closeBundle() {
+        const assetsDir = join(__dirname, 'dist', 'assets')
+        if (!existsSync(assetsDir)) return
+        const files = readdirSync(assetsDir).filter((f) => /^main-.*\.js$/.test(f))
+        files.forEach((file) => {
+          const path = join(assetsDir, file)
+          let code = readFileSync(path, 'utf8')
+          // import("./NAME.js") → import(chrome.runtime.getURL("assets/NAME.js"))
+          code = code.replace(/import\("\.\/([^"]+\.js)"\)/g, 'import(chrome.runtime.getURL("assets/$1"))')
+          writeFileSync(path, code)
+          console.log(`[fix-content-dynamic-import] 已重写: ${file}`)
+        })
+      }
+    }
   ],
   resolve: {
     alias: {
