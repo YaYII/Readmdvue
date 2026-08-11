@@ -211,7 +211,7 @@
                 <input
                   type="checkbox"
                   :checked="config.maxWidth === 0"
-                  @change="updateConfig({ maxWidth: ($event.target as HTMLInputElement).checked ? 0 : 960 })"
+                  @change="updateConfig({ maxWidth: ($event.target as HTMLInputElement).checked ? 0 : 1200 })"
                   style="accent-color: var(--md-accent-primary); cursor: pointer;"
                 >
                 自适应（按屏幕宽度自动选择最佳阅读宽度）

@@ -862,8 +862,9 @@
 .markdown-reader-container .table-wrapper {
   overflow-x: auto;
   margin: 0;
-  border: 1px solid var(--md-border-primary);
-  border-radius: var(--md-radius-sm);
+  /* 无外框：表格外框与容器内边距组合会显得"框+空隙"，表格自身线条已足够清晰 */
+  border: none;
+  border-radius: 0;
 }
 
 .markdown-reader-container table {
