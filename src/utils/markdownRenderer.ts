@@ -230,10 +230,12 @@ if (typeof window !== 'undefined') {
     btn.classList.remove('copy-success', 'copy-fail')
     if (ok) {
       btn.classList.add('copy-success')
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="copy-label">已复制</span>`
+      // 纯 icon 交互：成功显示对勾（绿色），不显示文字
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     } else {
       btn.classList.add('copy-fail')
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="copy-label">失败</span>`
+      // 失败显示叉（红色）
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
     }
     const token = (Number(btn.dataset.copyToken) || 0) + 1
     btn.dataset.copyToken = String(token)
