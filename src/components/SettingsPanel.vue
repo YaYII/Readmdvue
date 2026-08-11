@@ -1,6 +1,6 @@
 <template>
   <!-- 遮罩层 -->
-  <div class="settings-overlay" @click="$emit('close')">
+  <div class="settings-overlay" @click="handleClose">
     <div class="settings-panel" :class="tocLayoutClass" @click.stop>
       <!-- 头部 -->
       <div class="settings-header">
@@ -13,30 +13,7 @@
           </div>
           <h2 class="header-title">设置</h2>
         </div>
-        <button 
-          class="close-button"
-          data-close-btn
-          @click="$emit('close')"
-          aria-label="关闭设置"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button 
-          class="save-button"
-          @click="saveSettings"
-          aria-label="保存设置"
-          title="保存设置（确认后生效并持久化）"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-            <polyline points="7 3 7 8 15 8"/>
-          </svg>
-          <span>保存</span>
-        </button>
-      </div>
+              </div>
 
     <!-- 设置内容 -->
     <div class="settings-content">
@@ -676,16 +653,14 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
 }
 
 
-// 保存设置：确认后将临时配置写入持久化存储
-const saveSettings = async () => {
+// 点击面板外 = 完成：保存临时配置并关闭（一个操作完成，无需保存/关闭按钮）
+const handleClose = async () => {
   try {
     await markdownStore.saveConfig()
-    if (typeof window.showNotification === 'function') {
-      window.showNotification({ type: 'success', title: '设置已保存', message: '配置已生效并持久化，下次打开依然保留' })
-    }
   } catch (error) {
     console.error('保存设置失败:', error)
   }
+  emit('close')
 }
 
 // 深色主题判断（用于禁用深色强调色）
