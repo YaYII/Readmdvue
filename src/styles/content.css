@@ -359,6 +359,47 @@
   color: var(--md-text-secondary);
 }
 
+/* 标题悬停锚点链接（GitHub 风格） */
+.markdown-reader-container .markdown-heading {
+  position: relative;
+}
+
+.markdown-reader-container .heading-anchor {
+  position: absolute;
+  left: -1.4em;
+  padding: 0 0.35em;
+  color: var(--md-accent-primary);
+  text-decoration: none;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  /* 重置通用链接的流光背景与内边距，保持锚点视觉纯净 */
+  background: none;
+  border-bottom: none;
+  border-radius: var(--md-radius-sm);
+}
+
+.markdown-reader-container .markdown-heading:hover .heading-anchor,
+.markdown-reader-container .heading-anchor:hover {
+  opacity: 1;
+}
+
+.markdown-reader-container .heading-anchor:hover {
+  color: var(--md-accent-hover);
+  background: var(--md-accent-light);
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  /* 移动端空间有限，锚点常显但缩小，避免悬停不可达 */
+  .markdown-reader-container .heading-anchor {
+    left: -1.1em;
+    opacity: 0.45;
+    font-size: 0.9em;
+  }
+}
+
 /* 段落样式 - 增强可读性 */
 .markdown-reader-container p {
   margin-bottom: var(--md-spacing-md);
@@ -1247,37 +1288,52 @@
   }
 }
 
-/* 警告框样式 */
+/* 警告框样式（GitHub 风格：> [!NOTE] 等语法触发，见 markdownRenderer.blockquote） */
 .markdown-reader-container .alert {
   margin: var(--md-spacing-xl) 0;
   padding: var(--md-spacing-lg);
   border-radius: var(--md-radius-lg);
   border-left: 4px solid;
   position: relative;
+  background: transparent;
+  color: var(--md-text-primary);
 }
 
 .markdown-reader-container .alert-info {
-  background: var(--md-accent-blue-light);
-  border-left-color: var(--md-accent-blue);
-  color: var(--md-text-primary);
+  background: var(--md-alert-blue-bg);
+  border-left-color: var(--md-alert-blue);
 }
 
 .markdown-reader-container .alert-warning {
-  background: var(--md-accent-yellow-light);
-  border-left-color: var(--md-accent-yellow);
-  color: var(--md-text-primary);
+  background: var(--md-alert-yellow-bg);
+  border-left-color: var(--md-alert-yellow);
 }
 
 .markdown-reader-container .alert-success {
-  background: var(--md-accent-green-light);
-  border-left-color: var(--md-accent-green);
-  color: var(--md-text-primary);
+  background: var(--md-alert-green-bg);
+  border-left-color: var(--md-alert-green);
 }
 
 .markdown-reader-container .alert-danger {
-  background: var(--md-accent-red-light);
-  border-left-color: var(--md-accent-red);
-  color: var(--md-text-primary);
+  background: var(--md-alert-red-bg);
+  border-left-color: var(--md-alert-red);
+}
+
+.markdown-reader-container .alert-important {
+  background: var(--md-alert-purple-bg);
+  border-left-color: var(--md-alert-purple);
+}
+
+/* 警告框标题行（GitHub 风格加粗标题） */
+.markdown-reader-container .alert .alert-title {
+  margin-bottom: var(--md-spacing-sm);
+  font-weight: 700;
+  color: inherit;
+}
+
+/* 警告框正文首行紧贴标题时保持紧凑 */
+.markdown-reader-container .alert p:not(.alert-title):first-of-type {
+  margin-top: 0;
 }
 
 /* 目录容器样式 - 苹果Liquid Glass设计 */

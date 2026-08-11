@@ -276,6 +276,42 @@ marked.setOptions({
   gfm: true
 })
 
+/* ===== 标题 ID 生成（GitHub 风格，正文与目录共用同一套） ===== */
+
+/** 每次渲染前重置标题 ID 去重状态 */
+function resetHeadingIds(): void {
+  usedHeadingIds.clear()
+}
+
+/** 已使用的标题 ID 集合，用于重复标题自动追加 -1/-2 后缀 */
+const usedHeadingIds = new Set<string>()
+
+/**
+ * 从标题文本生成 GitHub 风格 ID：
+ * 1. 先剥离 HTML 标签（renderer.heading 收到的 text 是 marked 渲染后的 HTML）
+ * 2. 转小写、去特殊字符（保留中文）、空格转连字符
+ */
+function generateHeadingId(text: string): string {
+  return text
+    .replace(/<[^>]+>/g, '') // 去除 HTML 标签
+    .toLowerCase()
+    .replace(/[^\w\s\u4e00-\u9fff-]/g, '') // 保留中文字符
+    .replace(/\s+/g, '-')
+    .replace(/^-+|-+$/g, '') // 移除开头和结尾的连字符
+}
+
+/** 生成唯一标题 ID：重复标题自动追加 -1、-2 后缀（与 GitHub 行为一致） */
+function uniqueHeadingId(text: string): string {
+  const base = generateHeadingId(text) || 'heading'
+  let id = base
+  let suffix = 1
+  while (usedHeadingIds.has(id)) {
+    id = `${base}-${suffix++}`
+  }
+  usedHeadingIds.add(id)
+  return id
+}
+
 // 渲染为代码的独立函数
 function renderAsCode(code: string, lang: string, codeId: string): string {
   // 普通代码块处理 - 手动高亮
@@ -471,19 +507,48 @@ renderer.table = function (header: string, body: string) {
   `
 }
 
-// 自定义标题渲染器 - 添加ID和锚点
+// 自定义标题渲染器 - 生成 GitHub 风格唯一 ID + 悬停锚点链接
 renderer.heading = function (text: string, level: number) {
-  // 生成标题ID
-  const headingId = text
-    .toLowerCase()
-    .replace(/[^\w\s\u4e00-\u9fff-]/g, '') // 保留中文字符
-    .replace(/\s+/g, '-')
-    .replace(/^-+|-+$/g, '') // 移除开头和结尾的连字符
-  
-  // 如果ID为空，使用随机ID
-  const finalId = headingId || `heading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  
-  return `<h${level} id="${finalId}" class="markdown-heading" data-level="${level}">${text}</h${level}>`
+  const finalId = uniqueHeadingId(text)
+
+  return `<h${level} id="${finalId}" class="markdown-heading" data-level="${level}">` +
+    `<a href="#${finalId}" class="heading-anchor" aria-hidden="true" title="标题链接">#</a>${text}` +
+    `</h${level}>`
+}
+
+// 自定义引用块渲染器 - 支持 GitHub 风格警告框（> [!NOTE] / [!WARNING] / [!TIP] / [!IMPORTANT] / [!CAUTION]）
+const ALERT_CLASS_MAP: Record<string, string> = {
+  note: 'alert-info',
+  tip: 'alert-success',
+  important: 'alert-important',
+  warning: 'alert-warning',
+  caution: 'alert-danger'
+}
+
+renderer.blockquote = function (body: string) {
+  // 匹配以 [!TYPE] 或 [!TYPE: 自定义标题] 开头的引用块
+  const alertMatch = body.match(
+    /^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)(?::\s*([^\]]*?))?\]([\s\S]*?)<\/p>/i
+  )
+  if (alertMatch) {
+    const type = alertMatch[1].toLowerCase()
+    const alertClass = ALERT_CLASS_MAP[type]
+    const customTitle = (alertMatch[2] || '').trim()
+    // 标题默认用类型名（Note/Tip/...），支持 [!NOTE: 自定义标题] 覆盖
+    const title = customTitle || type.charAt(0).toUpperCase() + type.slice(1)
+    // 第一段中 [ ] 之后的内容（breaks 模式可能合并多行到同一段，去掉 <br> 前缀恢复为正文段落）
+    const rest = alertMatch[3].replace(/^<br\s*\/?>\s*/, '')
+    // 第一个 </p> 之后的剩余段落
+    const remaining = body.slice(alertMatch[0].length)
+
+    return `<blockquote class="alert ${alertClass}">` +
+      `<p class="alert-title">${title}</p>` +
+      (rest ? `<p>${rest}</p>` : '') +
+      remaining +
+      `</blockquote>`
+  }
+
+  return `<blockquote class="enhanced-blockquote">${body}</blockquote>`
 }
 
 // 设置自定义渲染器
@@ -522,26 +587,21 @@ export class MarkdownRenderer {
   }
 
   /**
-   * 从内容中提取标题并生成目录
+   * 从渲染后的 HTML 中提取标题生成目录。
+   * 与 renderer.heading 使用同一套 ID（正文即目录来源），
+   * 彻底避免此前「原文提取 ID」与「渲染 ID」不一致导致目录跳转失效的问题。
    */
-  private extractTocFromContent(content: string): TocItem[] {
-    const headingRegex = /^(#{1,6})\s+(.+)$/gm
+  private extractTocFromHtml(htmlContent: string): TocItem[] {
+    const headingRegex = /<h([1-6])\s+id="([^"]*)"[^>]*>(.*?)<\/h\1>/g
     const tocItems: TocItem[] = []
     let match
 
-    while ((match = headingRegex.exec(content)) !== null) {
-      const level = match[1].length
-      const text = match[2].trim()
-      const id = text
-        .toLowerCase()
-        .replace(/[^\w\s\u4e00-\u9fff-]/g, '') // 保留中文字符
-        .replace(/\s+/g, '-')
-        .replace(/^-+|-+$/g, '') // 移除开头和结尾的连字符
-      
-      const finalId = id || `heading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      
+    while ((match = headingRegex.exec(htmlContent)) !== null) {
+      const level = Number(match[1])
+      const id = match[2]
+      const text = match[3].replace(/<[^>]+>/g, '').trim()
       tocItems.push({
-        id: finalId,
+        id,
         text,
         level
       })
@@ -555,8 +615,8 @@ export class MarkdownRenderer {
       let processedContent = content
       const warnings: string[] = []
 
-      // 提取目录
-      this.tocItems = this.extractTocFromContent(processedContent)
+      // 重置标题 ID 去重状态，保证每次渲染的 ID 唯一且可预期
+      resetHeadingIds()
 
       // 预处理数学公式
       if (this.config.enableMath) {
@@ -565,6 +625,9 @@ export class MarkdownRenderer {
 
       // 渲染Markdown - 图表处理现在在代码渲染阶段进行智能分析
       const htmlContent = await marked(processedContent)
+
+      // 从渲染后 HTML 提取目录（ID 与正文完全一致）
+      this.tocItems = this.extractTocFromHtml(htmlContent)
 
       // 后处理：添加样式类和属性
       const finalContent = this.postProcess(htmlContent)
@@ -583,11 +646,12 @@ export class MarkdownRenderer {
   }
 
   private processMathFormulas(content: string): string {
-    // 行内数学公式
-    content = content.replace(/\$([^$\n]+)\$/g, '<span class="math-inline">$1</span>')
-
-    // 块级数学公式
+    // 先处理块级公式（$$...$$），再处理行内（$...$），
+    // 修复原实现「先行内后块级」导致 $$ 被行内正则破坏、块级公式永远不生效的问题
     content = content.replace(/\$\$([\s\S]+?)\$\$/g, '<div class="math-block">$1</div>')
+
+    // 行内公式：前置不能是 $ / 反斜杠（\$ 转义场景），内容不含 $ 和换行，后置不能是 $
+    content = content.replace(/(^|[^$\n\\])\$([^$\n]+)\$(?!\$)/g, '$1<span class="math-inline">$2</span>')
 
     return content
   }

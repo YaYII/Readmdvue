@@ -7,6 +7,9 @@ import { smartToolbarManager } from '../utils/smartToolbarManager'
 import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types'
 import { defaultConfig } from '../types'
 
+// KaTeX 样式静态引入（vite 会合并进 content CSS；字体由 @font-face 按需加载）
+import 'katex/dist/katex.min.css'
+
 // CSS文件已通过manifest.json直接加载，无需在此导入
 // 这样可以避免Vite将CSS转换为JS注入的问题
 
@@ -1526,6 +1529,43 @@ class ContentScriptApp {
     }
   }
 
+  /**
+   * 渲染数学公式：将 markdownRenderer 产出的 .math-inline/.math-block 中的
+   * LaTeX 源码交给 KaTeX 真正排版（此前只有 CSS 包裹、从未调用 KaTeX）。
+   * KaTeX 按需懒加载：仅当页面存在公式时才加载 JS/CSS/字体。
+   */
+  private async renderMathInContainer(container: HTMLElement): Promise<void> {
+    try {
+      if (!this.config.enableMath || this.config.mathRenderer !== 'katex') return
+
+      const mathElements = container.querySelectorAll<HTMLElement>('.math-inline, .math-block')
+      if (mathElements.length === 0) return
+
+      // 懒加载 KaTeX（JS + CSS，vite 会将其拆分为独立 chunk，仅含公式页面才加载）
+      const { default: katex } = await import('katex')
+
+      mathElements.forEach((el) => {
+        const displayMode = el.classList.contains('math-block')
+        const tex = (el.textContent || '').trim()
+        try {
+          katex.render(tex, el, {
+            displayMode,
+            throwOnError: false,
+            output: 'html',
+            strict: false
+          })
+        } catch (err) {
+          // 渲染失败时显示红色错误样式并保留源码
+          el.classList.add('math-error')
+          el.textContent = tex
+          this.debugLog('KaTeX 公式渲染失败', { tex, error: err })
+        }
+      })
+    } catch (error) {
+      this.debugLog('KaTeX 加载失败，公式将以源码显示', error)
+    }
+  }
+
   // 调试系统配置
   private debugConfig = {
     enabled: true,
@@ -2074,6 +2114,9 @@ class ContentScriptApp {
 
       // 动态渲染图表 - 这是关键的修复
       await this.renderChartsInContainer(container)
+
+      // 渲染数学公式（KaTeX 懒加载）
+      await this.renderMathInContainer(container)
 
       // 创建目录组件
       this.setupTableOfContents()
