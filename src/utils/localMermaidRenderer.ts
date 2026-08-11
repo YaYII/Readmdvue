@@ -1,4 +1,7 @@
-import mermaid from 'mermaid'
+// 使用 UMD 全量包（mermaid/dist/mermaid.min.js）：所有 diagram 静态包含，无懒加载动态 import——
+// content script 的 import() 在 file:// 页面会按页面 URL 解析（file:///assets/... CORS 拦截），
+// 全量包从根本上消除该问题（体积换取 file:// 场景 100% 可靠性）
+import mermaid from 'mermaid/dist/mermaid.min.js'
 import { showSuccess, showError } from './appleNotification'
 
 /**

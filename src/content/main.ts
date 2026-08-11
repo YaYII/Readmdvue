@@ -9,6 +9,8 @@ import { defaultConfig } from '../types'
 
 // KaTeX 样式静态引入（vite 会合并进 content CSS；字体由 @font-face 按需加载）
 import 'katex/dist/katex.min.css'
+// KaTeX 静态引入（此前动态 import 在 file:// 页面产生相对路径 CORS 问题，改静态 100% 可靠）
+import katex from 'katex'
 
 // CSS文件已通过manifest.json直接加载，无需在此导入
 // 这样可以避免Vite将CSS转换为JS注入的问题
@@ -1621,8 +1623,6 @@ class ContentScriptApp {
       if (mathElements.length === 0) return
 
       // 懒加载 KaTeX（JS + CSS，vite 会将其拆分为独立 chunk，仅含公式页面才加载）
-      const { default: katex } = await import('katex')
-
       mathElements.forEach((el) => {
         const displayMode = el.classList.contains('math-block')
         const tex = (el.textContent || '').trim()
