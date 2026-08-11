@@ -37,7 +37,6 @@ hljs.registerLanguage('cmake', cmake)
 hljs.registerLanguage('gradle', gradle)
 hljs.registerLanguage('matlab', matlab)
 import { asyncChartRenderer } from './asyncChartRenderer'
-import { liquidGlass } from './liquidGlass'
 import { showSuccess, showError } from './appleNotification'
 import { CodeBlockAnalyzer } from './codeBlockAnalyzer'
 import type { MarkdownConfig, RenderResult } from '../types'
@@ -143,12 +142,6 @@ if (typeof window !== 'undefined') {
           timeout: 30000, // 增加到30秒
           retryCount: 3,
           cacheEnabled: false // 重试时不使用缓存
-        })
-
-        liquidGlass.applyLiquidGlass(containerElement, {
-          opacity: 0.95,
-          blur: 15,
-          borderRadius: 12
         })
 
         showSuccess('图表渲染完成', `${chartType.toUpperCase()} 图表重试渲染成功 (Kroki)`)
@@ -445,13 +438,6 @@ renderer.code = function (code: string, language: string | undefined) {
           timeout: 30000, // 增加到30秒
           retryCount: 2,
           cacheEnabled: true
-        })
-
-        // 应用Liquid Glass效果
-        liquidGlass.applyLiquidGlass(containerElement, {
-          opacity: 0.95,
-          blur: 15,
-          borderRadius: 12
         })
 
         showSuccess('图表渲染完成', `${analysis.type.toUpperCase()} 图表已成功渲染`)
