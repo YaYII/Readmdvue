@@ -339,6 +339,14 @@ function renderAsCode(code: string, lang: string, codeId: string): string {
     <div class="enhanced-code-block" data-language="${lang}">
       <div class="code-header">
         <span class="code-language">${lang.toUpperCase()}</span>
+        <button class="copy-button export-svg-button" data-action="export-svg" data-code-id="${codeId}" title="导出为 SVG 图片">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M5.5 13.5h6a1.5 1.5 0 0 0 1.5-1.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            <path d="M5 9.5l2-2 2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M7 7.5V11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </button>
         <button class="copy-button" data-action="copy-code" data-code-id="${codeId}" title="复制代码">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>

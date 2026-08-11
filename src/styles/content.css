@@ -697,6 +697,10 @@
 }
 
 /* 代码块复制按钮 - 苹果风格 */
+.export-svg-button {
+  margin-right: 4px;
+}
+
 .code-copy-button {
   position: absolute;
   top: var(--md-spacing-md);

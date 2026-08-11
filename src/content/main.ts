@@ -249,6 +249,9 @@ class ContentScriptApp {
       // 任何跨源导航/加载都会触发 "Unsafe attempt to load URL" 报错
       this.interceptFileProtocolLinks()
 
+      // 代码块导出 SVG 图片（事件委托）
+      this.setupSvgExport()
+
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
         this.debugLog('扩展上下文无效，尝试重连')
@@ -293,6 +296,78 @@ class ContentScriptApp {
     } catch (error) {
       this.debugLog('Content Script 初始化失败', error, 'error')
       errorHandler.handle(error, 'ContentScript.init')
+    }
+  }
+
+  /**
+   * 代码块「导出为 SVG 图片」：
+   * - 离屏克隆测量内容真实尺寸（width:max-content，脱离 .enhanced-code-block 容器宽度/溢出限制）
+   * - foreignObject 内嵌语法高亮 HTML + 内联 hljs 配色（浅/深主题感知），SVG 独立打开仍保持样式
+   * - 输出矢量 SVG（可无损缩放），不受容器实际大小限制
+   */
+  private setupSvgExport(): void {
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      const btn = target.closest('[data-action="export-svg"]') as HTMLElement | null
+      if (!btn) return
+      const codeId = btn.getAttribute('data-code-id')
+      if (codeId) this.exportCodeAsSvg(codeId)
+    })
+  }
+
+  private exportCodeAsSvg(codeId: string): void {
+    try {
+      const contentEl = document.getElementById(codeId)
+      const pre = contentEl?.querySelector('pre')
+      const codeEl = pre?.querySelector('code')
+      if (!pre || !codeEl) {
+        this.showError('导出失败', '未找到代码块内容')
+        return
+      }
+
+      // 离屏测量真实尺寸（脱离容器限制：max-width/overflow-x:auto 均不影响导出大小）
+      const measure = pre.cloneNode(true) as HTMLElement
+      measure.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;width:max-content;white-space:pre;margin:0;'
+      document.body.appendChild(measure)
+      const PAD = 24
+      const width = Math.ceil(measure.scrollWidth + PAD * 2)
+      const height = Math.ceil(measure.scrollHeight + PAD * 2)
+      document.body.removeChild(measure)
+
+      // 主题感知配色（GitHub Light / GitHub Dark）
+      const rootTheme = document.documentElement.getAttribute('data-theme')
+      const systemTheme = document.documentElement.getAttribute('data-system-theme')
+      const isDark = rootTheme === 'dark' || (rootTheme === 'auto' && systemTheme === 'dark')
+      const bg = isDark ? '#1e1e20' : '#f6f8fa'
+      const fg = isDark ? '#e6e6e6' : '#24292e'
+      const hljsCss = isDark
+        ? '.hljs-comment,.hljs-quote{color:#8b949e;font-style:italic}.hljs-keyword,.hljs-selector-tag,.hljs-subst{color:#ff7b72}.hljs-string,.hljs-doctag{color:#a5d6ff}.hljs-number,.hljs-literal{color:#79c0ff}.hljs-title,.hljs-section{color:#d2a8ff}.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#79c0ff}.hljs-built_in,.hljs-builtin-name{color:#ffa657}.hljs-type{color:#79c0ff}'
+        : '.hljs-comment,.hljs-quote{color:#6a737d;font-style:italic}.hljs-keyword,.hljs-selector-tag,.hljs-subst{color:#d73a49}.hljs-string,.hljs-doctag{color:#032f62}.hljs-number,.hljs-literal{color:#005cc5}.hljs-title,.hljs-section{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#005cc5}.hljs-built_in,.hljs-builtin-name{color:#e36209}.hljs-type{color:#005cc5}'
+
+      const style = `pre{margin:0;padding:${PAD}px;font-family:'SF Mono',Monaco,'Cascadia Code','Roboto Mono',Consolas,monospace;font-size:14px;line-height:1.6;background:${bg};color:${fg};border-radius:8px;white-space:pre;overflow:visible}${hljsCss}`
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="all:initial">${style}<pre><code>${codeEl.innerHTML}</code></pre></div>
+  </foreignObject>
+</svg>`
+
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `code-${codeId}.svg`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      if (typeof window.showNotification === 'function') {
+        window.showNotification({ type: 'success', title: '已导出 SVG 图片', message: '代码块已导出为矢量 SVG，可无损缩放' })
+      }
+      this.debugLog('代码块已导出 SVG', { codeId, width, height })
+    } catch (error) {
+      this.debugLog('导出 SVG 失败', error)
+      this.showError('导出失败', error instanceof Error ? error.message : '未知错误')
     }
   }
 
