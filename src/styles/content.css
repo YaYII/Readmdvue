@@ -322,7 +322,7 @@
 }
 
 .markdown-reader-container h1 {
-  font-size: 2em;
+  font-size: 1.125em;
   font-weight: 700;
   border-bottom: 2px solid var(--md-border-primary);
   padding-bottom: var(--md-spacing-md);
@@ -333,29 +333,29 @@
 }
 
 .markdown-reader-container h2 {
-  font-size: 1.625em;
+  font-size: 1em;
   border-bottom: 1px solid var(--md-border-secondary);
   padding-bottom: var(--md-spacing-sm);
   color: var(--md-accent-primary);
 }
 
 .markdown-reader-container h3 {
-  font-size: 1.375em;
+  font-size: 0.9375em;
   color: var(--md-accent-secondary);
 }
 
 .markdown-reader-container h4 {
-  font-size: 1.125em;
+  font-size: 0.875em;
   color: var(--md-accent-tertiary);
 }
 
 .markdown-reader-container h5 {
-  font-size: 1em;
+  font-size: 0.8125em;
   color: var(--md-accent-tertiary);
 }
 
 .markdown-reader-container h6 {
-  font-size: 0.875em;
+  font-size: 0.75em;
   color: var(--md-text-secondary);
 }
 
@@ -820,12 +820,10 @@
   font-weight: 700;
 }
 
-/* 表格样式 - 标准简洁风格（细线边框 + 浅灰表头，参考 GitHub 文档表格） */
+/* 表格样式 - 无外框极简风格（表头粗线 + 行间细线，参考 Typora/Obsidian 默认） */
 .markdown-reader-container .table-wrapper {
   overflow-x: auto;
   margin: var(--md-spacing-lg) 0;
-  border-radius: var(--md-radius-sm);
-  border: 1px solid var(--md-border-primary);
 }
 
 .markdown-reader-container table {
@@ -839,24 +837,30 @@
 .markdown-reader-container td {
   padding: var(--md-spacing-sm) var(--md-spacing-md);
   text-align: left;
-  border: 1px solid var(--md-border-primary);
+  border: none;
   vertical-align: top;
 }
 
 .markdown-reader-container th {
-  background: var(--md-bg-secondary);
+  background: transparent;
   font-weight: 600;
   color: var(--md-text-primary);
-}
-
-.markdown-reader-container tbody tr:hover {
-  background: var(--md-bg-secondary);
-  transition: background-color 0.2s ease;
+  border-bottom: 2px solid var(--md-border-primary);
 }
 
 .markdown-reader-container td {
   color: var(--md-text-primary);
   background: transparent;
+  border-bottom: 1px solid var(--md-border-secondary);
+}
+
+.markdown-reader-container tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-reader-container tbody tr:hover {
+  background: var(--md-bg-secondary);
+  transition: background-color 0.2s ease;
 }
 
 /* 水平分割线样式 */
