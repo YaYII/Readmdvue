@@ -1670,6 +1670,11 @@
   width: 100%;
 }
 
+/* 图表智能识别信息条：默认隐藏（用户不关心置信度/识别提示，保留 DOM 供将来按需显示） */
+.markdown-reader-container .chart-analysis-info {
+  display: none;
+}
+
 /* 图表容器样式 */
 .chart-container {
   padding: 0px;
