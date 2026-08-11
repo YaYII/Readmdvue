@@ -201,7 +201,7 @@
         </button>
       </div>
       <div class="progress-bar-container" @click="seekProgress" title="点击跳转到对应阅读位置">
-        <div class="progress-bar" :style="{ width: `${readingProgress}%` }"></div>
+        <div class="progress-bar" :style="{ width: readingProgress + '%' }"></div>
         <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
       </div>
       <div style="font-size: 10px; color: #8e8e93; margin-top: 4px;">
@@ -246,26 +246,8 @@ const isPinned = ref(false)
 const activeId = ref<string>('')
 const readingProgress = ref(0)
 
-// 进度条平滑动画：target 为目标值，display 每帧向 target 逼近（rAF 补间），
-// 使滚动时进度条连续流动而非 100ms 节流跳变
-let targetProgress = 0
-let displayProgress = 0
-let progressRafId: number | null = null
-
-const startProgressAnimation = () => {
-  if (progressRafId !== null) return
-  const animate = () => {
-    displayProgress += (targetProgress - displayProgress) * 0.18
-    if (Math.abs(targetProgress - displayProgress) < 0.1) {
-      displayProgress = targetProgress
-      progressRafId = null
-    } else {
-      progressRafId = requestAnimationFrame(animate)
-    }
-    readingProgress.value = displayProgress
-  }
-  progressRafId = requestAnimationFrame(animate)
-}
+// 进度条采用标准动画机制：滚动时直接设定百分比（readingProgress.value），
+// 宽度变化由 CSS transition 平滑过渡，避免补间循环异常导致进度条不更新
 const isHovering = ref(false)
 const hideTimer = ref<number | null>(null)
 
@@ -521,14 +503,12 @@ const handleScroll = () => {
   // 计算阅读进度
   if (documentHeight <= 0 || scrollHeight <= clientHeight) {
     // 如果页面内容不足一屏，进度为100%
-    targetProgress = 100
-    startProgressAnimation()
+    readingProgress.value = 100
     console.log('📄 页面内容不足一屏，进度设为100%')
   } else {
     // 正常计算进度百分比
     const progress = Math.min(Math.max((scrollTop / documentHeight) * 100, 0), 100)
-    targetProgress = progress
-    startProgressAnimation()
+    readingProgress.value = progress
     
     console.log('📈 阅读进度更新:', {
       '原始进度': (scrollTop / documentHeight) * 100,
@@ -699,11 +679,6 @@ onUnmounted(() => {
   
   // 清理定时器
   clearHideTimer()
-  // 清理进度动画
-  if (progressRafId !== null) {
-    cancelAnimationFrame(progressRafId)
-    progressRafId = null
-  }
   // 清理标题观察器
   if (headingObserver) {
     headingObserver.disconnect()

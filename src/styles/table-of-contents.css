@@ -423,9 +423,11 @@
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #007aff, #64d2ff);
+  /* 当前进度颜色 = 用户强调色（黑强调色时渐变末端亮蓝保证可见） */
+  background: linear-gradient(90deg, var(--md-accent-primary), #64d2ff);
   border-radius: 3px;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* 标准动画机制：宽度变化平滑过渡 */
+  transition: width 0.25s ease-out;
 }
 
 .progress-bar-container:hover .progress-bar {
