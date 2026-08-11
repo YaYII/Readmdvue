@@ -174,7 +174,7 @@
               <input 
                 type="range" 
                 :value="config.fontSize" 
-                @input="updateConfig({ fontSize: Number(($event.target as HTMLInputElement).value) })"
+                @change="updateConfig({ fontSize: Number(($event.target as HTMLInputElement).value) })"
                 min="12" 
                 max="24" 
                 step="1"
@@ -192,7 +192,7 @@
               <input 
                 type="range" 
                 :value="config.lineHeight" 
-                @input="updateConfig({ lineHeight: Number(($event.target as HTMLInputElement).value) })"
+                @change="updateConfig({ lineHeight: Number(($event.target as HTMLInputElement).value) })"
                 min="1.2" 
                 max="2.0" 
                 step="0.1"
@@ -219,7 +219,7 @@
               <input 
                 type="range" 
                 :value="config.maxWidth" 
-                @input="updateConfig({ maxWidth: Number(($event.target as HTMLInputElement).value) })"
+                @change="updateConfig({ maxWidth: Number(($event.target as HTMLInputElement).value) })"
                 min="600" 
                 max="1200" 
                 step="50"
