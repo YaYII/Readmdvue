@@ -752,62 +752,8 @@
   overflow-x: auto;
 }
 
-.enhanced-table-container table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--apple-font-family);
-}
-
-.enhanced-table-container th,
-.enhanced-table-container td {
-  padding: var(--spacing-md) var(--spacing-lg);
-  text-align: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-
-  .enhanced-table-container th,
-  .enhanced-table-container td {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-}
-
-.enhanced-table-container th {
-  background: rgba(0, 0, 0, 0.03);
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-  color: var(--apple-space-gray);
-}
-
-@media (prefers-color-scheme: dark) {
-  .enhanced-table-container th {
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--apple-silver);
-  }
-}
-
-.enhanced-table-container td {
-  font-size: var(--font-size-base);
-  color: var(--apple-space-gray);
-}
-
-@media (prefers-color-scheme: dark) {
-  .enhanced-table-container td {
-    color: var(--apple-silver);
-  }
-}
-
-/* 斑马纹：偶数行加底色，避免整表同色导致大表格阅读疲劳 */
-.enhanced-table-container tbody tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.035);
-}
-
-@media (prefers-color-scheme: dark) {
-  .enhanced-table-container tbody tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.045);
-  }
-}
+/* 表格外观（字体/字号/颜色/边框/斑马纹）统一由 content.css 的
+   .markdown-reader-container table 规则接管，此处不再写死，确保跟随用户设置 */
 
 .enhanced-table-container tr:hover {
   background: rgba(0, 0, 0, 0.07);

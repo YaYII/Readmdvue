@@ -1596,6 +1596,53 @@ class ContentScriptApp {
     }
   }
 
+  /**
+   * 表格字体自适应：以用户设置字号为基准，若单元格内容单行放不下（会大量换行），
+   * 逐档缩小表格字号（每次 -1px）直到内容可容纳或达到最小 9px。
+   * 测量法：临时 white-space: nowrap 比较 scrollWidth 与 clientWidth。
+   */
+  private autoFitTableFont(container: HTMLElement): void {
+    try {
+      const MIN_FONT = 9
+      const tables = container.querySelectorAll<HTMLTableElement>('table')
+      if (tables.length === 0) return
+
+      tables.forEach((table) => {
+        const cells = Array.from(table.querySelectorAll<HTMLElement>('th, td'))
+        if (cells.length === 0) return
+
+        // 当前生效字号（继承用户设置）
+        let current = parseFloat(window.getComputedStyle(table).fontSize) || 16
+
+        // 检测是否有单元格单行放不下内容（会触发换行）
+        const hasSingleLineOverflow = (): boolean => {
+          for (const cell of cells) {
+            const original = cell.style.whiteSpace
+            cell.style.whiteSpace = 'nowrap'
+            const overflow = cell.scrollWidth > cell.clientWidth + 1
+            cell.style.whiteSpace = original
+            if (overflow) return true
+          }
+          return false
+        }
+
+        let guard = 0
+        while (hasSingleLineOverflow() && current > MIN_FONT && guard < 12) {
+          current = Math.max(MIN_FONT, current - 1)
+          table.style.fontSize = `${current}px`
+          guard++
+        }
+        this.debugLog('表格字体自适应完成', {
+          table: table.className || 'table',
+          fontSize: current,
+          adjusted: guard > 0
+        })
+      })
+    } catch (error) {
+      this.debugLog('表格字体自适应失败', error)
+    }
+  }
+
   // 调试系统配置
   private debugConfig = {
     enabled: true,
@@ -2149,6 +2196,9 @@ class ContentScriptApp {
 
       // 渲染数学公式（KaTeX 懒加载）
       await this.renderMathInContainer(container)
+
+      // 表格字体自适应：内容放不下时自动缩小字号（最小 9px），减少大量换行
+      this.autoFitTableFont(container)
 
       // 创建目录组件
       this.setupTableOfContents()

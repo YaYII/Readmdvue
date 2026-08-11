@@ -869,7 +869,8 @@
 .markdown-reader-container table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9em;
+  /* 表格字号跟随用户设置（继承容器字号），由 JS 按内容自适应缩小（最小 9px） */
+  font-size: 1em;
   background: transparent;
 }
 
