@@ -260,8 +260,11 @@ export class DocumentExporter {
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = processedContent
     
-    // 移除导航、工具栏等不需要的元素
-    const elementsToRemove = tempDiv.querySelectorAll('.no-print, .toolbar, .navigation, .settings-panel, .export-dialog')
+    // 移除导航、工具栏、目录面板、标题锚点等不需要导出的元素
+    const elementsToRemove = tempDiv.querySelectorAll(
+      '.no-print, .toolbar, .navigation, .settings-panel, .export-dialog, ' +
+      '.toc-panel, .toc-trigger-zone, .markdown-vue-toolbar, .vue-toolbar, .heading-anchor'
+    )
     elementsToRemove.forEach(el => el.remove())
     
     // 处理图片

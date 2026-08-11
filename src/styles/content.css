@@ -2037,7 +2037,7 @@
   /* 页面设置 - 页眉页脚 */
   @page {
     margin: 2cm 1cm;
-    background-color: #eee;
+    background-color: #fff;
     color: #000;
 
     /* 页眉 - 显示文档标题 */
@@ -2073,6 +2073,10 @@
   }
 
   /* 基础容器样式 */
+  html {
+    background: white !important;
+  }
+
   body {
     background: white !important;
     color: black !important;
@@ -2101,6 +2105,7 @@
   .markdown-toc,
   .code-copy-button,
   .code-copy-btn,
+  .heading-anchor,
   .image-modal,
   .chart-modal,
   .markdown-vue-toolbar,
@@ -2112,6 +2117,26 @@
   button,
   .btn {
     display: none !important;
+  }
+
+  /* 表格外层包裹容器边框隐藏（避免线与线拥挤），表格内部线保留 */
+  .markdown-reader-container .table-wrapper {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* 深色模式斑马纹等半透明背景在打印时统一为白色，保证背景一致 */
+  .markdown-reader-container tbody tr:nth-child(even),
+  .markdown-reader-container tbody tr:nth-child(even) td {
+    background: transparent !important;
+  }
+
+  /* 打印时去掉阴影/模糊/渐变等屏幕特效，保持纯黑白干净排版 */
+  .markdown-reader-container * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* 标题样式 */
