@@ -1604,11 +1604,13 @@ class ContentScriptApp {
   /**
    * 表格字体自适应：以用户设置字号为基准，若单元格内容单行放不下（会大量换行），
    * 逐档缩小表格字号（每次 -1px）直到内容可容纳或达到最小 9px。
-   * 测量法：临时 white-space: nowrap 比较 scrollWidth 与 clientWidth。
+   * 测量法（性能优化）：整表批量 nowrap → 单次读取 table.scrollWidth 与 clientWidth
+   * 对比（每轮仅 2 次强制布局，替代逐单元格循环测量——大文档 220+ 表格时避免 layout thrashing）。
    */
   private autoFitTableFont(container: HTMLElement): void {
     try {
       const MIN_FONT = 9
+      const MAX_ROUNDS = 4
       const tables = container.querySelectorAll<HTMLTableElement>('table')
       if (tables.length === 0) return
 
@@ -1619,20 +1621,15 @@ class ContentScriptApp {
         // 当前生效字号（继承用户设置）
         let current = parseFloat(window.getComputedStyle(table).fontSize) || 16
 
-        // 检测是否有单元格单行放不下内容（会触发换行）
-        const hasSingleLineOverflow = (): boolean => {
-          for (const cell of cells) {
-            const original = cell.style.whiteSpace
-            cell.style.whiteSpace = 'nowrap'
-            const overflow = cell.scrollWidth > cell.clientWidth + 1
-            cell.style.whiteSpace = original
-            if (overflow) return true
-          }
-          return false
-        }
-
         let guard = 0
-        while (hasSingleLineOverflow() && current > MIN_FONT && guard < 12) {
+        while (guard < MAX_ROUNDS) {
+          // 批量 nowrap 测量（单次布局）：整表单行宽度 vs 容器宽度
+          const originals = cells.map((cell) => cell.style.whiteSpace)
+          cells.forEach((cell) => { cell.style.whiteSpace = 'nowrap' })
+          const overflow = table.scrollWidth > table.clientWidth + 1
+          cells.forEach((cell, index) => { cell.style.whiteSpace = originals[index] })
+
+          if (!overflow || current <= MIN_FONT) break
           current = Math.max(MIN_FONT, current - 1)
           table.style.fontSize = `${current}px`
           guard++

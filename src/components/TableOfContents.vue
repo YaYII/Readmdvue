@@ -538,27 +538,7 @@ const handleScroll = () => {
   }
   
   // 查找当前可见的标题
-  let currentActiveId = ''
-  const headings = props.tocItems.map(item => ({
-    id: item.id,
-    element: document.getElementById(item.id),
-    level: item.level
-  })).filter(item => item.element)
-  
-  for (let i = headings.length - 1; i >= 0; i--) {
-    const heading = headings[i]
-    if (heading.element) {
-      const rect = heading.element.getBoundingClientRect()
-      if (rect.top <= 100) { // 标题距离顶部100px以内时认为是活跃的
-        currentActiveId = heading.id
-        break
-      }
-    }
-  }
-  
-  if (currentActiveId !== activeId.value) {
-    activeId.value = currentActiveId
-  }
+  // 活跃标题改由 IntersectionObserver 更新（滚动零 JS 开销，不再每帧遍历全部标题）
 }
 
 // 点击进度条跳转到对应阅读位置（按点击位置比例平滑滚动）
@@ -597,6 +577,40 @@ const throttle = <T extends (...args: any[]) => void>(func: T, delay: number): T
 }
 
 const throttledHandleScroll = throttle(handleScroll, 100)
+
+// 活跃标题监听：IntersectionObserver 替代滚动时遍历全部标题（大文档 500+ 标题时每帧 getBoundingClientRect 会卡顿）
+let headingObserver: IntersectionObserver | null = null
+
+const setupHeadingObserver = () => {
+  if (headingObserver) headingObserver.disconnect()
+  const headingElements = props.tocItems
+    .map(item => document.getElementById(item.id))
+    .filter((el): el is HTMLElement => el !== null)
+  if (headingElements.length === 0) return
+
+  headingObserver = new IntersectionObserver((entries) => {
+    // 只处理进入视口上部区域的标题，取最靠上的作为活跃项
+    const visible = entries.filter(entry => entry.isIntersecting)
+    if (visible.length === 0) return
+    let best: Element | null = null
+    let bestTop = Infinity
+    for (const entry of visible) {
+      const top = entry.boundingClientRect.top
+      if (top < bestTop) {
+        bestTop = top
+        best = entry.target
+      }
+    }
+    if (best && best.id !== activeId.value) {
+      activeId.value = best.id
+    }
+  }, {
+    // 触发区域：视口上部约 25%（顶部 80px 以下到 60% 处）
+    rootMargin: '-80px 0px -60% 0px'
+  })
+
+  headingElements.forEach(el => headingObserver?.observe(el))
+}
 
 // 生命周期
 onMounted(() => {
@@ -646,6 +660,11 @@ onMounted(() => {
   
   // 立即添加监听器
   addScrollListener()
+
+  // 活跃标题监听（IntersectionObserver）
+  setTimeout(() => {
+    setupHeadingObserver()
+  }, 100) // 等 DOM 渲染完成后建立观察
   
   // 延迟再次添加，确保页面完全加载后也能监听
   setTimeout(() => {
@@ -684,6 +703,11 @@ onUnmounted(() => {
   if (progressRafId !== null) {
     cancelAnimationFrame(progressRafId)
     progressRafId = null
+  }
+  // 清理标题观察器
+  if (headingObserver) {
+    headingObserver.disconnect()
+    headingObserver = null
   }
 })
 
