@@ -266,7 +266,7 @@
         导出 HTML
       </button>
       <button 
-        @click="emit('close')"
+        @click="handleDone"
         class="action-button primary"
       >
         完成
@@ -668,6 +668,22 @@ const handleClose = async () => {
     console.error('保存设置失败:', error)
   }
   emit('close')
+}
+
+// 点击"完成" = 保存配置 + 刷新页面：
+// 直接刷新一次解决所有重渲染问题（SVG 图表主题色渲染时写死、内容错位等），
+// 避免页面不刷新时图表停留在旧主题导致内容看不清楚
+const handleDone = async () => {
+  try {
+    await markdownStore.saveConfig()
+  } catch (error) {
+    console.error('保存设置失败:', error)
+  }
+  // 先关闭面板（移除遮罩），再刷新页面
+  emit('close')
+  window.setTimeout(() => {
+    location.reload()
+  }, 50)
 }
 
 // 深色主题判断（用于禁用深色强调色）
