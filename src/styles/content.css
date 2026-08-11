@@ -277,12 +277,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg,
-      var(--md-bg-primary) 0%,
-      var(--md-accent-light) 25%,
-      var(--md-accent-light) 50%,
-      var(--md-accent-light) 75%,
-      var(--md-bg-primary) 100%);
+  /* 单一纯色背景（无渐变，简洁不花哨） */
+  background: var(--md-bg-primary);
   z-index: -2;
   pointer-events: none;
 }
@@ -470,11 +466,6 @@
   border-bottom: 1px solid transparent;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-
-  /* Liquid Glass 链接效果 */
-  background: linear-gradient(135deg, transparent 0%, var(--md-accent-light) 50%, transparent 100%);
-  background-size: 200% 100%;
-  background-position: 100% 0;
   padding: 2px 4px;
   border-radius: var(--md-radius-sm);
 }
@@ -1388,10 +1379,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg,
-      rgba(var(--md-accent-primary-rgb), 0.02) 0%,
-      rgba(var(--md-accent-primary-rgb), 0.05) 50%,
-      rgba(var(--md-accent-primary-rgb), 0.02) 100%);
+  background: transparent;
   border-radius: var(--md-radius-lg);
   pointer-events: none;
   z-index: -1;
@@ -1431,10 +1419,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg,
-      rgba(var(--md-accent-primary-rgb), 0.02) 0%,
-      rgba(var(--md-accent-primary-rgb), 0.05) 50%,
-      rgba(var(--md-accent-primary-rgb), 0.02) 100%);
+  background: transparent;
   border-radius: var(--md-radius-lg);
   pointer-events: none;
   z-index: -1;
@@ -2080,15 +2065,15 @@
 
 /* 特定图表类型样式 */
 .mermaid-chart {
-  background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-blue-light) 100%);
+  background: var(--md-bg-secondary);
 }
 
 .plantuml-chart {
-  background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-purple-light) 100%);
+  background: var(--md-bg-secondary);
 }
 
 .kroki-chart {
-  background: linear-gradient(135deg, var(--md-bg-secondary) 0%, var(--md-accent-green-light) 100%);
+  background: var(--md-bg-secondary);
 }
 
 /* 图表标题样式 */
