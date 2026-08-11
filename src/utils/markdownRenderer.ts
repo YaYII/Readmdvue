@@ -599,7 +599,11 @@ export class MarkdownRenderer {
     while ((match = headingRegex.exec(htmlContent)) !== null) {
       const level = Number(match[1])
       const id = match[2]
-      const text = match[3].replace(/<[^>]+>/g, '').trim()
+      // 剔除标题锚点 <a class="heading-anchor">#</a>（否则目录文本会带 # 前缀）
+      const text = match[3]
+        .replace(/<a[^>]*class="heading-anchor"[^>]*>.*?<\/a>/g, '')
+        .replace(/<[^>]+>/g, '')
+        .trim()
       tocItems.push({
         id,
         text,

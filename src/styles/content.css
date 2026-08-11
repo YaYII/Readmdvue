@@ -303,9 +303,9 @@
   font-weight: 600;
   line-height: 1.3;
   color: var(--md-accent-primary);
-  margin-top: var(--md-spacing-xl);
-  margin-bottom: var(--md-spacing-md);
-  scroll-margin-top: var(--md-spacing-xl);
+  margin-top: var(--md-spacing-lg);
+  margin-bottom: var(--md-spacing-sm);
+  scroll-margin-top: var(--md-spacing-lg);
 
   /* Liquid Glass 文字效果 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -322,7 +322,7 @@
 }
 
 .markdown-reader-container h1 {
-  font-size: 2.5em;
+  font-size: 2em;
   font-weight: 700;
   border-bottom: 2px solid var(--md-border-primary);
   padding-bottom: var(--md-spacing-md);
@@ -333,29 +333,29 @@
 }
 
 .markdown-reader-container h2 {
-  font-size: 2em;
+  font-size: 1.625em;
   border-bottom: 1px solid var(--md-border-secondary);
   padding-bottom: var(--md-spacing-sm);
   color: var(--md-accent-primary);
 }
 
 .markdown-reader-container h3 {
-  font-size: 1.5em;
+  font-size: 1.375em;
   color: var(--md-accent-secondary);
 }
 
 .markdown-reader-container h4 {
-  font-size: 1.25em;
-  color: var(--md-accent-tertiary);
-}
-
-.markdown-reader-container h5 {
   font-size: 1.125em;
   color: var(--md-accent-tertiary);
 }
 
-.markdown-reader-container h6 {
+.markdown-reader-container h5 {
   font-size: 1em;
+  color: var(--md-accent-tertiary);
+}
+
+.markdown-reader-container h6 {
+  font-size: 0.875em;
   color: var(--md-text-secondary);
 }
 
@@ -402,7 +402,7 @@
 
 /* 段落样式 - 增强可读性 */
 .markdown-reader-container p {
-  margin-bottom: var(--md-spacing-md);
+  margin-bottom: var(--md-spacing-sm);
   line-height: var(--md-line-height);
   text-align: justify;
   text-justify: inter-ideograph;
@@ -499,7 +499,7 @@
   border: 1px solid var(--md-border-primary);
   border-radius: var(--md-radius-xl);
   padding: var(--md-spacing-lg);
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   overflow-x: auto;
   position: relative;
   box-shadow: var(--md-shadow-lg);
@@ -677,7 +677,7 @@
 
 /* 引用块样式 - Liquid Glass效果 */
 .markdown-reader-container blockquote {
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   padding: var(--md-spacing-lg) var(--md-spacing-xl);
   background: var(--md-bg-secondary);
   border-left: 4px solid var(--md-accent-primary);
@@ -708,7 +708,7 @@
 }
 
 .markdown-reader-container blockquote p {
-  margin-bottom: var(--md-spacing-md);
+  margin-bottom: var(--md-spacing-sm);
   font-size: 1.125em;
   line-height: var(--md-line-height);
 }
@@ -720,7 +720,7 @@
 /* 列表样式 - 苹果风格 */
 .markdown-reader-container ul,
 .markdown-reader-container ol {
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   padding-left: var(--md-spacing-xl);
 }
 
@@ -758,7 +758,7 @@
 }
 
 .markdown-reader-container li {
-  margin-bottom: var(--md-spacing-md);
+  margin-bottom: var(--md-spacing-sm);
   line-height: var(--md-line-height);
   position: relative;
   padding-left: var(--md-spacing-sm);
@@ -823,7 +823,7 @@
 /* 表格样式 - 苹果风格 */
 .markdown-reader-container .table-wrapper {
   overflow-x: auto;
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   border-radius: var(--md-radius-xl);
   border: 1px solid var(--md-border-primary);
   box-shadow: var(--md-shadow-lg);
@@ -875,7 +875,7 @@
   border: none;
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--md-border-primary), transparent);
-  margin: var(--md-spacing-2xl) 0;
+  margin: var(--md-spacing-lg) 0;
 }
 
 /* 图片样式 */
@@ -903,7 +903,7 @@
 
 /* 图片容器样式 */
 .markdown-reader-container .image-container {
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   position: relative;
 }
 
@@ -1160,7 +1160,7 @@
 
 .markdown-reader-container .math-block {
   display: block;
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   padding: var(--md-spacing-lg);
   background: var(--md-bg-secondary);
   border: 1px solid var(--md-border-primary);
@@ -1205,7 +1205,7 @@
 }
 
 .markdown-reader-container .katex-display {
-  margin: var(--md-spacing-xl) 0;
+  margin: var(--md-spacing-lg) 0;
   text-align: center;
   overflow-x: auto;
   padding: var(--md-spacing-lg);

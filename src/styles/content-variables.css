@@ -9,8 +9,8 @@
   --md-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 
-  /* 布局配置 - 默认内容宽度（无 data-max-width 属性时的兜底，与默认配置 1200 保持一致） */
-  --md-max-width: 1200px;
+  /* 布局配置 - 默认内容宽度（无 data-max-width 属性时的兜底，与默认配置 900 保持一致） */
+  --md-max-width: 900px;
 
   /* 间距系统 */
   --md-spacing-xs: 4px;

@@ -57,7 +57,7 @@ export const defaultConfig: MarkdownConfig = {
   enableTaskLists: true,
   fontSize: 16,
   lineHeight: 1.6,
-  maxWidth: 1200,
+  maxWidth: 900,
   fontFamily: 'PingFang SC, Microsoft YaHei UI, Segoe UI Variable, -apple-system, BlinkMacSystemFont, sans-serif',
   codeTheme: 'github',
   mathRenderer: 'katex',
