@@ -79,28 +79,24 @@
   position: relative;
 }
 
-/* 目录显示时的内容偏移 - 内容靠左对齐 */
+/* 目录显示/折叠均不改变内容位置：内容始终居中（菜单悬浮覆盖，不挤占），
+   避免切换时阅读内容晃动 */
 .markdown-reader-container.toc-visible {
-  margin-left: 400px;
-  margin-right: 0;
+  margin: 0 auto;
 }
 
-/* 目录折叠时的内容偏移 - 内容轻微靠左 */
 .markdown-reader-container.toc-collapsed {
-  margin-left: 60px;
-  margin-right: 0;
+  margin: 0 auto;
 }
 
 /* 响应式设计：移动端适配 */
 @media (max-width: 768px) {
   .markdown-reader-container.toc-visible {
-    margin-left: 280px;
-    margin-right: 0;
+    margin: 0 auto;
   }
   
   .markdown-reader-container.toc-collapsed {
-    margin-left: 50px;
-    margin-right: 0;
+    margin: 0 auto;
   }
   
   /* 移动端内容区域调整 */
@@ -272,7 +268,6 @@
 .md-content-restored {
   display: block !important;
   margin-top: 40px;
-  margin-left: 400px;
 }
 
 .markdown-reader-container::before {
