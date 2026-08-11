@@ -881,3 +881,59 @@
     0 0 0 2px rgba(255, 45, 146, 0.1),
     0 2px 8px rgba(255, 45, 146, 0.2);
 }
+
+/* ===== 插件主题（data-theme）深色适配 =====
+   插件主题由 data-theme 驱动（默认强制 dark），而原面板暗色适配依赖
+   @media prefers-color-scheme（系统主题）——系统浅色+插件深色时面板显示浅色半透明，
+   左上角出现"白色透明区"。此处按 data-theme 覆盖为纯深色。 */
+:root[data-theme="dark"] .toc-panel,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel {
+  background: #1c1c1e;
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .toc-panel .toc-item a,
+:root[data-theme="dark"] .toc-panel .toc-item a:hover,
+:root[data-theme="dark"] .toc-panel .toc-item.active a,
+:root[data-theme="dark"] .toc-panel .toc-toolbar-btn,
+:root[data-theme="dark"] .toc-panel .toc-progress,
+:root[data-theme="dark"] .toc-panel .progress-label,
+:root[data-theme="dark"] .toc-panel .progress-text,
+:root[data-theme="dark"] .toc-panel .toc-empty,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-item a,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-item a:hover,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-item.active a,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-toolbar-btn,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-progress,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .progress-label,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .progress-text,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-empty {
+  color: #ebebf5;
+}
+
+:root[data-theme="dark"] .toc-panel .toc-progress,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-progress {
+  background: transparent;
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .toc-panel .progress-bar-container,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .progress-bar-container {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="dark"] .toc-panel .toc-toolbar-btn,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-toolbar-btn {
+  color: #ebebf5;
+}
+
+:root[data-theme="dark"] .toc-panel .toc-toolbar-btn:hover,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .toc-panel .toc-item.active a,
+:root[data-theme="auto"][data-system-theme="dark"] .toc-panel .toc-item.active a {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}

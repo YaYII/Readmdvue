@@ -1860,3 +1860,15 @@
     animation: none !important;
   }
 }
+
+/* ===== data-theme 深色适配（跟随插件主题） ===== */
+:root[data-theme="dark"] .settings-panel,
+:root[data-theme="dark"] .export-dialog,
+:root[data-theme="dark"] .donation-modal,
+:root[data-theme="dark"] .enhanced-chart-renderer,
+:root[data-theme="auto"][data-system-theme="dark"] .settings-panel,
+:root[data-theme="auto"][data-system-theme="dark"] .export-dialog,
+:root[data-theme="auto"][data-system-theme="dark"] .donation-modal,
+:root[data-theme="auto"][data-system-theme="dark"] .enhanced-chart-renderer {
+  background: #1c1c1e;
+}

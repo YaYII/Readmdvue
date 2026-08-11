@@ -280,3 +280,15 @@
     }
   }
 }
+
+/* ===== data-theme 深色适配（跟随插件主题，非系统主题） ===== */
+:root[data-theme="dark"] .markdown-vue-toolbar,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-vue-toolbar {
+  background: #1c1c1e;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme="dark"] .markdown-vue-toolbar .toolbar-btn,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-vue-toolbar .toolbar-btn {
+  color: #ebebf5;
+}
