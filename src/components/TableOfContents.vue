@@ -200,7 +200,7 @@
           🔄
         </button>
       </div>
-      <div class="progress-bar-container">
+      <div class="progress-bar-container" @click="seekProgress" title="点击跳转到对应阅读位置">
         <div class="progress-bar" :style="{ width: `${readingProgress}%` }"></div>
         <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
       </div>
@@ -536,6 +536,20 @@ const handleScroll = () => {
   if (currentActiveId !== activeId.value) {
     activeId.value = currentActiveId
   }
+}
+
+// 点击进度条跳转到对应阅读位置（按点击位置比例平滑滚动）
+const seekProgress = (event: MouseEvent) => {
+  const container = event.currentTarget as HTMLElement | null
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  if (rect.width <= 0) return
+  const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
+  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0
+  const clientHeight = window.innerHeight || document.documentElement.clientHeight || 0
+  const documentHeight = scrollHeight - clientHeight
+  if (documentHeight <= 0) return
+  window.scrollTo({ top: documentHeight * ratio, behavior: 'smooth' })
 }
 
 // 节流函数

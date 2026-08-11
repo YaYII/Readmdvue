@@ -820,18 +820,12 @@
   font-weight: 700;
 }
 
-/* 表格样式 - 苹果风格 */
+/* 表格样式 - 标准简洁风格（细线边框 + 浅灰表头，参考 GitHub 文档表格） */
 .markdown-reader-container .table-wrapper {
   overflow-x: auto;
   margin: var(--md-spacing-lg) 0;
-  border-radius: var(--md-radius-xl);
+  border-radius: var(--md-radius-sm);
   border: 1px solid var(--md-border-primary);
-  box-shadow: var(--md-shadow-lg);
-
-  /* Liquid Glass 表格容器效果 */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: var(--md-accent-light);
 }
 
 .markdown-reader-container table {
@@ -843,30 +837,25 @@
 
 .markdown-reader-container th,
 .markdown-reader-container td {
-  padding: var(--md-spacing-md) var(--md-spacing-lg);
+  padding: var(--md-spacing-sm) var(--md-spacing-md);
   text-align: left;
-  border-bottom: 1px solid var(--md-border-primary);
+  border: 1px solid var(--md-border-primary);
+  vertical-align: top;
 }
 
 .markdown-reader-container th {
   background: var(--md-bg-secondary);
   font-weight: 600;
   color: var(--md-text-primary);
-  border-bottom: 2px solid var(--md-border-primary);
-}
-
-.markdown-reader-container tbody tr:nth-child(even) {
-  background: rgba(var(--md-accent-primary-rgb, 0, 122, 255), 0.02);
 }
 
 .markdown-reader-container tbody tr:hover {
-  background: rgba(var(--md-accent-primary-rgb, 0, 122, 255), 0.05);
+  background: var(--md-bg-secondary);
   transition: background-color 0.2s ease;
 }
 
 .markdown-reader-container td {
   color: var(--md-text-primary);
-  /* 不铺背景，让 tr 的斑马纹/hover 透出 */
   background: transparent;
 }
 

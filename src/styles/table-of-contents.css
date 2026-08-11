@@ -413,6 +413,12 @@
   background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
   overflow: hidden;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.progress-bar-container:hover {
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .progress-bar {
@@ -420,6 +426,10 @@
   background: linear-gradient(90deg, #007aff, #64d2ff);
   border-radius: 3px;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-bar-container:hover .progress-bar {
+  filter: brightness(1.2);
 }
 
 .progress-text {
@@ -444,6 +454,10 @@
 
   .progress-bar-container {
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .progress-bar-container:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 
