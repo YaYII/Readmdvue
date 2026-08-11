@@ -302,7 +302,9 @@
   font-family: var(--md-font-family);
   font-weight: 600;
   line-height: 1.3;
-  color: var(--md-accent-primary);
+  /* 标题文字色与强调色解耦：任何强调色（含黑色）× 任何主题下都保证可见，
+     强调色仅用于装饰（分隔线/锚点） */
+  color: var(--md-text-primary);
   margin-top: var(--md-spacing-lg);
   margin-bottom: var(--md-spacing-sm);
   scroll-margin-top: var(--md-spacing-lg);
@@ -326,32 +328,24 @@
   font-weight: 700;
   border-bottom: 2px solid var(--md-border-primary);
   padding-bottom: var(--md-spacing-md);
-  background: var(--md-accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .markdown-reader-container h2 {
   font-size: 1em;
   border-bottom: 1px solid var(--md-border-secondary);
   padding-bottom: var(--md-spacing-sm);
-  color: var(--md-accent-primary);
 }
 
 .markdown-reader-container h3 {
   font-size: 0.9375em;
-  color: var(--md-accent-secondary);
 }
 
 .markdown-reader-container h4 {
   font-size: 0.875em;
-  color: var(--md-accent-tertiary);
 }
 
 .markdown-reader-container h5 {
   font-size: 0.8125em;
-  color: var(--md-accent-tertiary);
 }
 
 .markdown-reader-container h6 {
@@ -441,19 +435,38 @@
   color: var(--md-accent-tertiary);
 }
 
+/* 暗色主题链接强制亮蓝（苹果 HIG 暗色链接色）：
+   深色模式 + 深色强调色（如黑色）时，强调色链接会不可见，此处保证对比度 */
+:root[data-theme="dark"] .markdown-reader-container a,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a {
+  color: #0A84FF;
+}
+
+:root[data-theme="dark"] .markdown-reader-container a:hover,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:hover {
+  color: #64D2FF;
+  border-bottom-color: #64D2FF;
+}
+
+:root[data-theme="dark"] .markdown-reader-container a:visited,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:visited {
+  color: #6E9BFF;
+}
+
+:root[data-theme="dark"] .markdown-reader-container .heading-anchor,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .heading-anchor {
+  color: #64D2FF;
+}
+
 /* 强调文本样式 - 苹果风格 */
 .markdown-reader-container strong {
   font-weight: 600;
   color: var(--md-text-primary);
-  background: var(--md-accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .markdown-reader-container em {
   font-style: italic;
-  color: var(--md-accent-secondary);
+  color: var(--md-text-secondary);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -730,7 +743,7 @@
 
 .markdown-reader-container ul li::before {
   content: '•';
-  color: var(--md-accent-primary);
+  color: var(--md-text-secondary);
   font-weight: 700;
   position: absolute;
   margin-left: -20px;
