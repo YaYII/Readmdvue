@@ -2813,8 +2813,19 @@ class ContentScriptApp {
         return
       }
 
+      const prevConfig = { ...this.config }
       this.config = { ...this.config, ...newConfig }
       console.log('更新配置:', newConfig)
+
+      // 计算真正变化的字段：广播（persist=false）携带的是完整配置，
+      // 若直接把完整配置交给 scheduleReRenderIfNeeded，任何一次广播都会
+      // 触发全量重渲染（enableMermaid 等键总是存在）→ 重复渲染/内容错位/性能差
+      const changedConfig: Partial<MarkdownConfig> = {}
+      for (const key of Object.keys(newConfig) as Array<keyof MarkdownConfig>) {
+        if (newConfig[key] !== prevConfig[key]) {
+          ;(changedConfig as Record<string, unknown>)[key] = this.config[key]
+        }
+      }
 
       // 立即应用样式更新，但不重新渲染页面
       if (newConfig.accentColor) {
@@ -2870,7 +2881,10 @@ class ContentScriptApp {
       }
 
       // 渲染相关配置变更 → 防抖重新渲染内容，立即生效（此前需刷新页面才生效）
-      this.scheduleReRenderIfNeeded(newConfig)
+      // 仅传入真正变化的字段，避免广播完整配置导致无条件全量重渲染
+      if (Object.keys(changedConfig).length > 0) {
+        this.scheduleReRenderIfNeeded(changedConfig)
+      }
 
       logger.info('配置已更新', newConfig)
     } catch (error) {
@@ -2913,6 +2927,12 @@ class ContentScriptApp {
    * 智能替换页面内容，保留重要的页面元素
    */
   private replaceContentIntelligently(container: HTMLElement): void {
+    // 先移除旧的渲染容器（重渲染时避免新旧容器叠加 → 内容重复渲染、位置错乱到页面底部）
+    // 注意：扩展自身 UI（设置面板/目录/遮罩）挂载在 body 下，不受影响
+    document.querySelectorAll('.markdown-reader-container').forEach((el) => {
+      if (el !== container) el.remove()
+    })
+
     // 保存原始内容的引用
     const originalBody = document.body.cloneNode(true) as HTMLElement
 
