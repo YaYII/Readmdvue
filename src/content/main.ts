@@ -34,6 +34,8 @@ class ContentScriptApp {
   private reRenderTimer: number | null = null
   /** 重渲染前保存的滚动位置 */
   private reRenderScrollY = 0
+  /** 主题切换后重渲染图表（mermaid 等 SVG 颜色渲染时写死，需重渲染跟随主题）的防抖定时器 */
+  private chartsRerenderTimer: number | null = null
   private config: MarkdownConfig = { ...defaultConfig }
   private isActive = false
   private isExtensionValid = true
@@ -2393,6 +2395,10 @@ class ContentScriptApp {
           this.config = { ...this.config, ...renderAffecting }
           this.applyConfigToStyles()
           this.scheduleReRenderIfNeeded(renderAffecting)
+          // 主题切换后图表（mermaid 等 SVG 颜色在渲染时写死，CSS 变量改不了）必须重新渲染跟随新主题
+          if (renderAffecting.theme !== undefined) {
+            this.rerenderChartsOnly()
+          }
         }
       }
     })
@@ -2884,6 +2890,10 @@ class ContentScriptApp {
       // 仅传入真正变化的字段，避免广播完整配置导致无条件全量重渲染
       if (Object.keys(changedConfig).length > 0) {
         this.scheduleReRenderIfNeeded(changedConfig)
+        // 主题切换后图表（mermaid 等 SVG 颜色在渲染时写死）必须重新渲染跟随新主题
+        if (changedConfig.theme !== undefined) {
+          this.rerenderChartsOnly()
+        }
       }
 
       logger.info('配置已更新', newConfig)
@@ -2919,6 +2929,24 @@ class ContentScriptApp {
         window.scrollTo(0, this.reRenderScrollY)
       }).catch(() => {
         this.debugLog('配置变更重渲染失败', undefined, 'error')
+      })
+    }, 0)
+  }
+
+  /**
+   * 主题切换后仅重渲染图表（mermaid 等 SVG 的颜色在渲染时写死，CSS 变量无法改变，
+   * 必须用新主题重新渲染才能跟随浅色/深色）。0ms 防抖合并连续主题切换。
+   */
+  private rerenderChartsOnly(): void {
+    if (!this.currentMarkdownContent) return
+    if (this.chartsRerenderTimer !== null) return
+    this.chartsRerenderTimer = window.setTimeout(() => {
+      this.chartsRerenderTimer = null
+      const container = document.querySelector('.markdown-reader-container') as HTMLElement | null
+      if (!container) return
+      this.debugLog('主题变化，重新渲染图表以跟随主题')
+      this.renderChartsInContainer(container).catch((error) => {
+        this.debugLog('主题切换重渲染图表失败', error, 'error')
       })
     }, 0)
   }
