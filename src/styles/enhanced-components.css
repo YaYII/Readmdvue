@@ -706,10 +706,51 @@
 .code-content {
   /* 零间距：内边距全部归零，避免浪费空间 */
   padding: 0;
+  position: relative;
   font-family: var(--apple-font-mono);
   font-size: var(--font-size-sm);
   line-height: 1.6;
   overflow-x: auto;
+}
+
+/* 代码块悬浮复制按钮（业内标准：hover 代码块右上角显示复制 icon） */
+.code-hover-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(28, 28, 30, 0.72);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.15s ease, background 0.2s ease;
+  z-index: 3;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.code-content:hover .code-hover-copy,
+.code-hover-copy:focus-visible {
+  opacity: 1;
+}
+
+.code-hover-copy:hover {
+  transform: scale(1.08);
+  background: rgba(28, 28, 30, 0.9);
+}
+
+.code-hover-copy.copy-success {
+  background: #2ea44f;
+}
+
+.code-hover-copy.copy-fail {
+  background: #d73a49;
 }
 
 .code-content pre {

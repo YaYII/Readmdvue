@@ -249,9 +249,6 @@ class ContentScriptApp {
       // 任何跨源导航/加载都会触发 "Unsafe attempt to load URL" 报错
       this.interceptFileProtocolLinks()
 
-      // 代码块选中悬浮复制（选中代码后出现复制按钮，VS Code/主流风格）
-      this.setupSelectionCopy()
-
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
         this.debugLog('扩展上下文无效，尝试重连')
@@ -3097,91 +3094,7 @@ class ContentScriptApp {
   /**
    * 打开图片模态框
    */
-    /**
-   * 代码块选中悬浮复制（VS Code 风格）：
-   * 用户选中代码块内文本后，在选区右上角悬浮复制按钮，点击复制选中内容。
-   * 不再在代码块 header 常驻按钮（节省空间、界面简洁）。
-   */
-  private setupSelectionCopy(): void {
-    let copyBtn: HTMLElement | null = null
-
-    const removeBtn = () => {
-      copyBtn?.remove()
-      copyBtn = null
-    }
-
-    document.addEventListener('selectionchange', () => {
-      const selection = window.getSelection()
-      if (!selection || selection.isCollapsed || selection.toString().trim() === '') {
-        removeBtn()
-        return
-      }
-      // 选区是否在代码块内
-      const anchorEl = selection.anchorNode?.parentElement ?? null
-      if (!anchorEl?.closest('.enhanced-code-block')) {
-        removeBtn()
-        return
-      }
-
-      if (!copyBtn) {
-        copyBtn = document.createElement('button')
-        copyBtn.className = 'selection-copy-btn'
-        copyBtn.innerHTML =
-          '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="6" y="6" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>复制'
-        copyBtn.title = '复制选中内容'
-        document.body.appendChild(copyBtn)
-
-        copyBtn.addEventListener('click', (e) => {
-          e.stopPropagation()
-          const text = window.getSelection()?.toString() || ''
-          if (!text) return
-          const done = () => {
-            if (copyBtn) {
-              copyBtn.innerHTML = '✓ 已复制'
-              copyBtn.classList.add('copied')
-              setTimeout(removeBtn, 1200)
-            }
-          }
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(() => {
-              const ta = document.createElement('textarea')
-              ta.value = text
-              document.body.appendChild(ta)
-              ta.select()
-              document.execCommand('copy')
-              ta.remove()
-              done()
-            })
-          } else {
-            const ta = document.createElement('textarea')
-            ta.value = text
-            document.body.appendChild(ta)
-            ta.select()
-            document.execCommand('copy')
-            ta.remove()
-            done()
-          }
-        })
-      }
-
-      // 定位：选区右上角（紧跟选区右边缘上方）
-      try {
-        const rect = selection.getRangeAt(0).getBoundingClientRect()
-        copyBtn.style.top = `${Math.max(rect.top - 38, 8)}px`
-        copyBtn.style.left = `${Math.min(rect.right + 6, window.innerWidth - 90)}px`
-      } catch {
-        removeBtn()
-      }
-    })
-
-    // 点击页面其他区域时隐藏
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement | null
-      if (!target?.closest('.selection-copy-btn')) removeBtn()
-    })
-  }
-
-  /**：双击图表打开模态框，
+    /**：双击图表打开模态框，
    * 支持滚轮缩放（围绕鼠标位置）、拖拽平移、按钮放大/缩小/复位、全屏、Esc/背景关闭。
    */
   private openChartModal(chartId: string): void {
