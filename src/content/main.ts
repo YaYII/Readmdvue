@@ -2894,7 +2894,7 @@ class ContentScriptApp {
       }).catch(() => {
         this.debugLog('配置变更重渲染失败', undefined, 'error')
       })
-    }, 300)
+    }, 0)
   }
 
   /**

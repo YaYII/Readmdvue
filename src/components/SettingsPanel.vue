@@ -624,7 +624,8 @@ onUnmounted(() => {
 // 配置更新（temp）：仅临时生效预览，不写入持久化存储；点击"保存设置"后持久化
 const updateConfig = async (updates: Partial<MarkdownConfig>) => {
   console.log('更新配置(temp):', updates)
-  await markdownStore.updateConfig(updates, false)
+  // 修改即保存（立即生效并持久化）——用户无需点击确定，避免渲染导致面板退出时设置丢失
+  await markdownStore.updateConfig(updates, true)
   
   // 广播完整配置到 content script：实时同步主配置（temp），
   // 避免点击设置/重渲染时恢复设置前的旧值
