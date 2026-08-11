@@ -560,8 +560,9 @@
   background: var(--md-bg-code);
   border: none;
   border-radius: var(--md-radius-sm);
-  padding: 14px 16px;
-  margin: var(--md-spacing-lg) 0;
+  /* 零间距：代码块内边距与外边距全部归零 */
+  padding: 0;
+  margin: 0;
   overflow-x: auto;
   position: relative;
 }

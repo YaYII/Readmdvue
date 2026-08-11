@@ -616,14 +616,14 @@
   /* 无框设计（IDEA 预览风格）：容器不承载任何视觉样式，
      外观由 pre 统一负责——去边框/背景/模糊/阴影/overflow 裁剪，
      不再限制内容的显示与导出尺寸 */
-  margin: 12px 0;
+  margin: 0;
 }
 
 .code-header {
   display: flex;
   align-items: center;
-  /* 紧凑：仅语言标签行，无背景无边框无按钮（复制为选中悬浮） */
-  padding: 2px 14px;
+  /* 极简：仅语言标签行，无背景无边框无按钮（复制为选中悬浮），零间距 */
+  padding: 0;
 }
 
 .code-language {
@@ -704,7 +704,8 @@
 }
 
 .code-content {
-  padding: var(--spacing-lg);
+  /* 零间距：内边距全部归零，避免浪费空间 */
+  padding: 0;
   font-family: var(--apple-font-mono);
   font-size: var(--font-size-sm);
   line-height: 1.6;
