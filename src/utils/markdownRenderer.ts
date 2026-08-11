@@ -65,7 +65,12 @@ if (typeof window !== 'undefined') {
       const codeElement = document.getElementById(codeId)
       if (!codeElement) return
 
-      const codeText = codeElement.textContent || ''
+      // 只取 <pre><code> 内的纯代码文本：
+      // 容器（.code-content）textContent 会包含按钮与 pre 之间的格式空白（换行/缩进），
+      // 导致复制出大量多余空格；并去除首尾多余空白
+      const codeEl = codeElement.querySelector('pre code') as HTMLElement | null
+      const codeText = ((codeEl ? codeEl.textContent : codeElement.textContent) || '').trim()
+      if (!codeText) return
 
       try {
         // navigator.clipboard 仅在安全上下文(https/扩展页)可用，失败时回退 execCommand
