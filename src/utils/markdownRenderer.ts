@@ -516,6 +516,10 @@ renderer.table = function (header: string, body: string) {
 
 // 自定义标题渲染器 - 生成 GitHub 风格唯一 ID + 悬停锚点链接
 renderer.heading = function (text: string, level: number) {
+  // 标题（含小标题）是缩进层级的新起点：重置子缩进状态，
+  // 小标题下的内容按小标题自身的层级缩进，不再继承上一级（冒号子内容）的多余缩进
+  subIndentActive = false
+
   const finalId = uniqueHeadingId(text)
 
   return `<h${level} id="${finalId}" class="markdown-heading" data-level="${level}">` +
