@@ -2377,6 +2377,26 @@ class ContentScriptApp {
       this.showSettingsPanel()
     })
 
+    // 设置面板配置变更（temp）：实时同步到本实例配置，避免点击设置/重渲染时恢复旧值
+    this.addEventListenerManaged('settingsConfigChange', window, 'settingsConfigChange', (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (detail && detail.config) {
+        const newConfig = detail.config as MarkdownConfig
+        // 仅同步与渲染相关字段（temp：不持久化，保存时由 store 写入 storage）
+        const renderAffecting: Partial<MarkdownConfig> = {}
+        ;(['theme', 'skin', 'accentColor', 'customAccentColor', 'fontSize', 'lineHeight', 'maxWidth', 'fontFamily', 'tableStyle'] as const).forEach((key) => {
+          if (newConfig[key] !== undefined && newConfig[key] !== this.config[key]) {
+            ;(renderAffecting as Record<string, unknown>)[key] = newConfig[key]
+          }
+        })
+        if (Object.keys(renderAffecting).length > 0) {
+          this.config = { ...this.config, ...renderAffecting }
+          this.applyConfigToStyles()
+          this.scheduleReRenderIfNeeded(renderAffecting)
+        }
+      }
+    })
+
     // 导出对话框显示事件
     this.addEventListenerManaged('showExportDialog', window, 'showExportDialog', () => {
       this.showExportDialog()

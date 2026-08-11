@@ -626,6 +626,12 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
   console.log('更新配置(temp):', updates)
   await markdownStore.updateConfig(updates, false)
   
+  // 广播完整配置到 content script：实时同步主配置（temp），
+  // 避免点击设置/重渲染时恢复设置前的旧值
+  window.dispatchEvent(new CustomEvent('settingsConfigChange', {
+    detail: { config: markdownStore.config }
+  }))
+  
   // 立即应用样式更新到当前页面
   if (updates.accentColor) {
     updateAccentColor(updates.accentColor)
