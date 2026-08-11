@@ -234,6 +234,11 @@ class ContentScriptApp {
     try {
       this.debugLog('Content Script 初始化开始', { url: window.location.href })
 
+      // 兜底注入 Inter 字体（绝对扩展 URL）：
+      // manifest content_scripts CSS 中的相对 url 在 file:// 等协议页面可能被浏览器按页面 URL 解析而 404，
+      // 动态注入同名 @font-face 覆盖，保证任意页面协议下字体都从扩展根加载
+      this.injectInterFontFace()
+
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
         this.debugLog('扩展上下文无效，尝试重连')
@@ -278,6 +283,25 @@ class ContentScriptApp {
     } catch (error) {
       this.debugLog('Content Script 初始化失败', error, 'error')
       errorHandler.handle(error, 'ContentScript.init')
+    }
+  }
+
+  /**
+   * 动态注入 Inter 字体的 @font-face（使用 chrome.runtime.getURL 绝对路径），
+   * 覆盖 CSS 相对路径在特殊协议（file://）页面解析失败的问题
+   */
+  private injectInterFontFace(): void {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) return
+      const fontUrl = chrome.runtime.getURL('fonts/inter-latin-wght-normal.woff2')
+      if (document.getElementById('inter-font-face')) return
+      const style = document.createElement('style')
+      style.id = 'inter-font-face'
+      style.textContent = `@font-face{font-family:'Inter';src:url('${fontUrl}') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}`
+      ;(document.head || document.documentElement).appendChild(style)
+      this.debugLog('Inter 字体兜底注入完成', fontUrl)
+    } catch (error) {
+      this.debugLog('Inter 字体兜底注入失败', error)
     }
   }
 
