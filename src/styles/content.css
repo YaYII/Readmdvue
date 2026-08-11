@@ -327,9 +327,9 @@
   font-family: var(--md-font-family-heading);
   font-weight: 600;
   line-height: 1.3;
-  /* 三色体系·辅色：标题用深蓝（公文规范 h2 深蓝），不依赖强调色、任何主题下可见；
-     主色=正文文字色、点缀色=链接/选中/表头（强调色） */
-  color: #1a3a5c;
+  /* 标题用强调色（审美化恢复）：亮色主题强调色文字，暗色主题强制亮蓝（见暗色覆盖），
+     黑色强调色 × 深色主题 = 亮蓝仍可见 */
+  color: var(--md-accent-primary);
   margin-top: var(--md-spacing-lg);
   margin-bottom: var(--md-spacing-sm);
   scroll-margin-top: var(--md-spacing-lg);
@@ -351,7 +351,7 @@
 .markdown-reader-container h1 {
   font-size: 1.125em;
   font-weight: 700;
-  border-bottom: 2px solid var(--md-border-primary);
+  border-bottom: 2px solid var(--md-accent-primary);
   padding-bottom: var(--md-spacing-md);
 }
 
@@ -360,7 +360,7 @@
   border-bottom: 1px solid var(--md-border-secondary);
   padding-bottom: var(--md-spacing-sm);
   /* 公文规范：二级标题左侧 4px 竖线标识 */
-  border-left: 4px solid var(--md-text-secondary);
+  border-left: 4px solid var(--md-accent-primary);
   padding-left: var(--md-spacing-sm);
 }
 
@@ -507,7 +507,7 @@
 
 :root[data-theme="dark"] .markdown-reader-container strong,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container strong {
-  color: #8AB4F8;
+  color: #64D2FF;
 }
 
 :root[data-theme="dark"] .markdown-reader-container h1,
@@ -522,14 +522,27 @@
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h4,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h5,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h6 {
-  color: #8AB4F8;
+  color: #64D2FF;
+}
+
+/* 暗色主题下强调色装饰（边框/竖线/圆点/引用线）统一亮蓝——黑色强调色 × 深色主题仍可见 */
+:root[data-theme="dark"] .markdown-reader-container h1,
+:root[data-theme="dark"] .markdown-reader-container h2,
+:root[data-theme="dark"] .markdown-reader-container ul li::before,
+:root[data-theme="dark"] .markdown-reader-container blockquote,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h1,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h2,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container ul li::before,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container blockquote {
+  border-bottom-color: #64D2FF;
+  border-left-color: #64D2FF;
 }
 
 /* 强调文本样式 - 苹果风格 */
 .markdown-reader-container strong {
   font-weight: 600;
-  /* 公文规范：强调文字用深蓝（暗色主题下转亮蓝，见暗色覆盖） */
-  color: #1a3a5c;
+  /* 强调文字用强调色（暗色主题强制亮蓝） */
+  color: var(--md-accent-primary);
 }
 
 .markdown-reader-container em {
@@ -792,7 +805,7 @@
 
 .markdown-reader-container ul li::before {
   content: '•';
-  color: var(--md-text-secondary);
+  color: var(--md-accent-primary);
   font-weight: 700;
   position: absolute;
   margin-left: -20px;
