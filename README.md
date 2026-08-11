@@ -25,7 +25,58 @@
 - **Vite 构建**：快速的开发和构建体验
 - **Manifest V3**：支持最新的浏览器插件标准
 
+## 📊 渲染效果预览
+
+> 以下时序图与流程图由本插件内置的 Mermaid 引擎直接渲染，
+> 打开本 README 即可看到实际效果（图表可双击放大、查看源码、导出 SVG）。
+
+### 插件工作流程（时序图）
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant B as 浏览器
+    participant P as 插件(Content Script)
+    participant R as 渲染管线
+    participant T as 目录/工具栏
+
+    U->>B: 打开 .md / .markdown 文件
+    B->>P: 页面加载完成（document_end 注入）
+    P->>P: 智能检测 Markdown 文档
+    alt 是 Markdown 文档
+        P->>R: 提取原始内容
+        R->>R: 代码高亮 / 图表 / 数学公式
+        R-->>B: 替换页面内容（公文风格排版）
+        P->>T: 创建目录导航与阅读进度
+        T-->>U: 侧边目录 / 进度条 / 主题切换
+        U->>T: 点击目录 / 调整设置
+        T-->>U: 立即生效（无需刷新）
+    else 非 Markdown 页面
+        P-->>B: 不干预页面
+    end
+```
+
+### Markdown 渲染管线（流程图）
+
+```mermaid
+flowchart TD
+    A[打开 Markdown 文件] --> B[Content Script 检测]
+    B --> C{是 Markdown 文档？}
+    C -- 否 --> Z["不干预，保持原页面"]
+    C -- 是 --> D[提取原始内容]
+    D --> E["Markdown 解析（marked）"]
+    E --> F{"内容类型判断"}
+    F -- 代码块 --> G["highlight.js 语法高亮 + 复制/导出SVG"]
+    F -- 图表 --> H[Mermaid / Kroki 按需渲染]
+    F -- 数学公式 --> I[KaTeX 懒加载渲染]
+    F -- 表格 --> J["公文规范表格（表头着色/斑马纹）"]
+    G & H & I & J --> K[替换页面内容]
+    K --> L[后处理：目录提取/表格自适应/图片懒加载]
+    L --> M[交互层：目录导航/阅读进度/主题皮肤/打印导出]
+```
+
 ## 📦 安装
+
 
 ### 开发环境要求
 - Node.js >= 16.0.0
