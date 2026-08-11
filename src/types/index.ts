@@ -58,7 +58,7 @@ export const defaultConfig: MarkdownConfig = {
   fontSize: 16,
   lineHeight: 1.6,
   maxWidth: 0, // 0 = 自适应：CSS 用 min(960px, 100%) 按屏幕宽度自动选择最佳阅读宽度
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei UI', sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', '仿宋', 'FangSong', '宋体', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
   codeTheme: 'github',
   mathRenderer: 'katex',
   tableStyle: 'default',

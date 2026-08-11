@@ -299,7 +299,8 @@
 .markdown-reader-container h4,
 .markdown-reader-container h5,
 .markdown-reader-container h6 {
-  font-family: var(--md-font-family);
+  /* 公文规范：标题用黑体 */
+  font-family: var(--md-font-family-heading);
   font-weight: 600;
   line-height: 1.3;
   /* 标题文字色与强调色解耦：任何强调色（含黑色）× 任何主题下都保证可见，
@@ -400,11 +401,24 @@
   line-height: var(--md-line-height);
   text-align: justify;
   text-justify: inter-ideograph;
+  /* 公文规范：正文首行缩进两字符 */
+  text-indent: 2em;
   color: var(--md-text-primary);
 }
 
 .markdown-reader-container p:last-child {
   margin-bottom: 0;
+}
+
+/* 列表/引用/表格/警告框/图表内的段落不缩进（内容块内保持现代排版） */
+.markdown-reader-container li p,
+.markdown-reader-container blockquote p,
+.markdown-reader-container td p,
+.markdown-reader-container .alert p,
+.markdown-reader-container .chart-analysis-info p,
+.markdown-reader-container .math-block p,
+.markdown-reader-container .enhanced-code-block p {
+  text-indent: 0;
 }
 
 /* 链接样式 - 苹果风格 */
@@ -855,7 +869,8 @@
 }
 
 .markdown-reader-container th {
-  background: transparent;
+  /* 公文规范：表头着色（浅灰底） */
+  background: var(--md-bg-secondary);
   font-weight: 600;
   color: var(--md-text-primary);
   border-bottom: 2px solid var(--md-border-primary);
@@ -871,9 +886,20 @@
   border-bottom: none;
 }
 
+.markdown-reader-container tbody tr:nth-child(even) {
+  /* 公文规范：表格斑马纹（极淡，不喧宾夺主） */
+  background: color-mix(in srgb, var(--md-bg-secondary) 45%, transparent);
+}
+
 .markdown-reader-container tbody tr:hover {
   background: var(--md-bg-secondary);
   transition: background-color 0.2s ease;
+}
+
+/* 表格第一列不换行（常见于序号/名称列，防止列内容折行错乱） */
+.markdown-reader-container th:first-child,
+.markdown-reader-container td:first-child {
+  white-space: nowrap;
 }
 
 /* 水平分割线样式 */
