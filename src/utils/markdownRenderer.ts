@@ -1,5 +1,41 @@
 import { marked } from 'marked'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/common'
+// 补注册 codeBlockAnalyzer 白名单中 common(37 种) 缺失的语言，
+// 保持与全量 highlight.js(192 种) 一致的高亮能力，同时避免主包多打包 ~800KB
+import vhdl from 'highlight.js/lib/languages/vhdl'
+import verilog from 'highlight.js/lib/languages/verilog'
+import scala from 'highlight.js/lib/languages/scala'
+import haskell from 'highlight.js/lib/languages/haskell'
+import erlang from 'highlight.js/lib/languages/erlang'
+import elixir from 'highlight.js/lib/languages/elixir'
+import clojure from 'highlight.js/lib/languages/clojure'
+import scheme from 'highlight.js/lib/languages/scheme'
+import lisp from 'highlight.js/lib/languages/lisp'
+import fortran from 'highlight.js/lib/languages/fortran'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+import powershell from 'highlight.js/lib/languages/powershell'
+import dos from 'highlight.js/lib/languages/dos'
+import cmake from 'highlight.js/lib/languages/cmake'
+import gradle from 'highlight.js/lib/languages/gradle'
+import matlab from 'highlight.js/lib/languages/matlab'
+
+// 注册补充语言（dos 的别名含 cmd/bat；toml 由 common 中的 ini 别名覆盖）
+hljs.registerLanguage('vhdl', vhdl)
+hljs.registerLanguage('verilog', verilog)
+hljs.registerLanguage('scala', scala)
+hljs.registerLanguage('haskell', haskell)
+hljs.registerLanguage('erlang', erlang)
+hljs.registerLanguage('elixir', elixir)
+hljs.registerLanguage('clojure', clojure)
+hljs.registerLanguage('scheme', scheme)
+hljs.registerLanguage('lisp', lisp)
+hljs.registerLanguage('fortran', fortran)
+hljs.registerLanguage('dockerfile', dockerfile)
+hljs.registerLanguage('powershell', powershell)
+hljs.registerLanguage('dos', dos)
+hljs.registerLanguage('cmake', cmake)
+hljs.registerLanguage('gradle', gradle)
+hljs.registerLanguage('matlab', matlab)
 import { asyncChartRenderer } from './asyncChartRenderer'
 import { liquidGlass } from './liquidGlass'
 import { showSuccess, showError } from './appleNotification'
