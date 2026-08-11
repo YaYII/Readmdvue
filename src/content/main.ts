@@ -2405,6 +2405,8 @@ class ContentScriptApp {
     }, () => {
       // 设置面板关闭回调
       smartToolbarManager.setSettingsPanelOpen(false)
+      // 通知目录：设置已关闭，两个一起关闭（层级联动）
+      window.dispatchEvent(new CustomEvent('closeSettingsPanel'))
     })
   }
 

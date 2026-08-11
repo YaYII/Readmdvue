@@ -256,6 +256,23 @@ const progressBarStyle = computed(() => ({
 // 进度条采用标准动画机制：滚动时直接设定百分比（readingProgress.value），
 // 宽度变化由 CSS transition 平滑过渡，避免补间循环异常导致进度条不更新
 const isHovering = ref(false)
+// 设置面板层级锁定：设置打开时菜单保持显示，关闭设置后两个一起关闭
+const settingsLocked = ref(false)
+
+// 设置面板层级联动（打开 → 菜单锁定显示；关闭 → 两个一起关闭）
+const handleSettingsOpen = () => {
+  settingsLocked.value = true
+  isPinned.value = true
+  isVisible.value = true
+  clearHideTimer()
+}
+const handleSettingsClose = () => {
+  settingsLocked.value = false
+  isPinned.value = false
+  isVisible.value = false
+}
+window.addEventListener('showSettingsPanel', handleSettingsOpen)
+window.addEventListener('closeSettingsPanel', handleSettingsClose)
 const hideTimer = ref<number | null>(null)
 
 // 搜索相关状态
@@ -368,11 +385,8 @@ const clearHideTimer = () => {
 const scheduleHide = () => {
   clearHideTimer()
   hideTimer.value = window.setTimeout(() => {
-    // 设置面板打开时保持目录可见：
-    // 否则鼠标移出目录触发自动隐藏，设置面板的布局联动（tocLayoutClass）会随之跳动，
-    // 且第一次打开设置必触发（第二次目录已隐藏则不再触发）——行为不一致
-    const settingsOpen = document.querySelector('.settings-panel') !== null
-    if (!isPinned.value && !isHovering.value && !settingsOpen) {
+    // 设置面板打开（settingsLocked）时保持目录可见，关闭设置后一起关闭
+    if (!isPinned.value && !isHovering.value && !settingsLocked.value) {
       isVisible.value = false
     }
   }, 300) // 300ms 延迟隐藏
@@ -691,6 +705,9 @@ onUnmounted(() => {
     window.clearInterval(progressPollTimer)
     progressPollTimer = null
   }
+  // 清理设置联动监听
+  window.removeEventListener('showSettingsPanel', handleSettingsOpen)
+  window.removeEventListener('closeSettingsPanel', handleSettingsClose)
   // 清理标题观察器
   if (headingObserver) {
     headingObserver.disconnect()
