@@ -18,12 +18,12 @@
 :root {
   /* 默认字体配置 */
   --md-font-size: 16px;
-  --md-line-height: 1.6;
-  /* 正文（公文规范）：拉丁 → Inter；中文优先宋体系（仿宋/宋体，政府文档正文惯例），
-     无宋体时兜底思源宋体/苹方/思源黑体（去掉微软雅黑） */
-  --md-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', '仿宋', 'FangSong', '仿宋_GB2312', 'FangSong_GB2312', '宋体', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', 'STSong', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+  --md-line-height: 1.8;
+  /* 正文（政府公文规范，参考标书 HTML：Noto Serif TC/宋体系 serif）：
+     拉丁 → Inter；中文优先宋体系（思源宋体/仿宋/宋体），无宋体时兜底苹方/思源黑体 */
+  --md-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Noto Serif TC', 'Source Han Serif TC', 'Noto Serif CJK SC', 'Source Han Serif SC', '仿宋', 'FangSong', '仿宋_GB2312', 'FangSong_GB2312', '宋体', 'SimSun', 'STSong', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
   /* 标题（公文规范：标题用黑体） */
-  --md-font-family-heading: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', '黑体', 'SimHei', 'Noto Sans CJK SC', 'Source Han Sans SC', 'PingFang SC', 'HarmonyOS Sans SC', sans-serif;
+  --md-font-family-heading: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Noto Serif TC', 'Source Han Serif TC', 'Noto Sans CJK SC', 'Source Han Sans SC', '黑体', 'SimHei', 'PingFang SC', sans-serif;
   --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 
   /* 布局配置 - 默认内容宽度（0=自适应：小屏全宽、大屏限制 960px 阅读黄金宽度，

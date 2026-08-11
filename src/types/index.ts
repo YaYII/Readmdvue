@@ -56,9 +56,9 @@ export const defaultConfig: MarkdownConfig = {
   enableTables: true,
   enableTaskLists: true,
   fontSize: 16,
-  lineHeight: 1.6,
+  lineHeight: 1.8,
   maxWidth: 0, // 0 = 自适应：CSS 用 min(960px, 100%) 按屏幕宽度自动选择最佳阅读宽度
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', '仿宋', 'FangSong', '宋体', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Noto Serif TC', 'Source Han Serif TC', 'Noto Serif CJK SC', 'Source Han Serif SC', '仿宋', 'FangSong', '宋体', 'SimSun', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
   codeTheme: 'github',
   mathRenderer: 'katex',
   tableStyle: 'default',
