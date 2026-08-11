@@ -8,6 +8,16 @@
   <link rel="stylesheet" href="../styles/apple-design-system.css">
   <link rel="stylesheet" href="../styles/popup.css">
   <style>
+    /* 内置 Inter 字体（SF Pro 开源近似，latin 变量字重，48KB）。
+       inline style 不被 vite 重写 url：相对本页面（dist/src/popup/）两级 ../ 回到扩展根 dist/fonts/ */
+    @font-face {
+      font-family: 'Inter';
+      src: url('../../fonts/inter-latin-wght-normal.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
     body {
       margin: 0;
       padding: 0;

@@ -1,14 +1,5 @@
 /* Markdown Reader Vue - Popup 全局样式 */
 
-/* 内置 Inter 字体（SF Pro 开源近似，latin 变量字重，48KB） */
-@font-face {
-  font-family: 'Inter';
-  src: url('../fonts/inter-latin-wght-normal.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* CSS 变量定义 - 苹果设计系统色彩 */
 :root {
   /* 主色调 */

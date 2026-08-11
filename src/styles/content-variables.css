@@ -5,9 +5,10 @@
    解决非 macOS 平台 -apple-system 失效后拉丁字符回退到 DejaVu 的"丑"问题 */
 @font-face {
   font-family: 'Inter';
-  /* public/fonts 由 vite 原样复制到 dist 根，content-variables.css 位于 dist/src/styles/，
-     故相对路径 ../fonts/ 可正确解析（manifest 直接引用的源码 CSS 不会被 vite 重写 url） */
-  src: url('../fonts/inter-latin-wght-normal.woff2') format('woff2');
+  /* public/fonts 由 vite 原样复制到 dist 根（dist/fonts/）。
+     content-variables.css 位于 dist/src/styles/，需两级 ../ 才能回到 dist 根。
+     （manifest 直接引用的源码 CSS 不会被 vite 重写 url，必须手算相对路径） */
+  src: url('../../fonts/inter-latin-wght-normal.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
