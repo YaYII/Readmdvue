@@ -2605,7 +2605,8 @@ class ContentScriptApp {
           }
 
         case 'UPDATE_CONFIG':
-          await this.updateConfig(message.payload)
+          // 广播接收方：只同步内存与样式，不写回 storage（防写回循环）
+          await this.updateConfig(message.payload, false)
           return { success: true }
 
         case 'UPDATE_STYLE_CONFIG':
@@ -2798,7 +2799,13 @@ class ContentScriptApp {
     console.log('样式重新计算已触发')
   }
 
-  private async updateConfig(newConfig: Partial<MarkdownConfig>): Promise<void> {
+  /**
+   * 更新配置
+   * @param persist 是否写回 chrome.storage（修改方=true；收到广播的接收方=false，
+   *   否则形成 storage→广播→写回→storage 的循环，耗尽 storage.sync 每分钟 120 次写入配额，
+   *   导致用户真实修改保存失败、再次打开设置恢复默认值）
+   */
+  private async updateConfig(newConfig: Partial<MarkdownConfig>, persist = true): Promise<void> {
     try {
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
@@ -2846,11 +2853,14 @@ class ContentScriptApp {
       }
 
       // 保存到chrome.storage（配置变更必须持久化，保证下次打开同样生效）
-      try {
-        await chrome.storage.sync.set({ 'markdown-config': this.config })
-        console.log('配置已保存到存储')
-      } catch (error) {
-        logger.warn('保存配置到存储失败:', error)
+      // 仅修改方写入；接收广播时（persist=false）不写回，避免写回循环
+      if (persist) {
+        try {
+          await chrome.storage.sync.set({ 'markdown-config': this.config })
+          console.log('配置已保存到存储')
+        } catch (error) {
+          logger.warn('保存配置到存储失败:', error)
+        }
       }
 
       // 更新渲染器配置

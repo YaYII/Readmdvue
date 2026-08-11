@@ -1,6 +1,7 @@
 // 后台脚本主文件
 import { logger, errorHandler } from '../utils/index'
 import type { ExtensionMessage, ExtensionResponse } from '../types'
+import { defaultConfig } from '../types'
 
 /**
  * Background Script 主类
@@ -463,17 +464,19 @@ class BackgroundScript {
 
   private async handleFirstInstall(): Promise<void> {
     logger.info('首次安装插件')
-    
-    // 设置默认配置
-    const defaultConfig = {
-      enableMermaid: true,
-      enableMath: true,
-      enableCharts: true,
-      theme: 'auto',
-      fontSize: 16,
-      lineHeight: 1.6
+
+    // 若已存在配置（如重新加载/重装扩展、或多设备同步来的），绝不覆盖——否则用户设置全部丢失
+    try {
+      const existing = await chrome.storage.sync.get('markdown-config')
+      if (existing['markdown-config']) {
+        logger.info('已存在持久化配置，跳过首次安装默认配置写入（保留用户设置）')
+        return
+      }
+    } catch (error) {
+      logger.warn('检查已有配置失败，继续写入默认配置:', error)
     }
     
+    // 设置完整默认配置（与 types/defaultConfig 一致，避免局部字段导致后续加载缺字段）
     await chrome.storage.sync.set({ 'markdown-config': defaultConfig })
     
     // 打开欢迎页面（可选）
@@ -494,14 +497,10 @@ class BackgroundScript {
       
       // 根据版本进行配置迁移
       if (previousVersion && this.compareVersions(previousVersion, '2.0.0') < 0) {
-        // 从1.x版本迁移到2.0.0
+        // 从1.x版本迁移到2.0.0：完整合并默认配置，保留旧值，绝不缩减字段
         config = {
-          enableMermaid: config.enableMermaid ?? true,
-          enableMath: config.enableMath ?? true,
-          enableCharts: config.enableCharts ?? true,
-          theme: config.theme || 'auto',
-          fontSize: config.fontSize || 16,
-          lineHeight: config.lineHeight || 1.6
+          ...defaultConfig,
+          ...config
         }
         
         await chrome.storage.sync.set({ 'markdown-config': config })
