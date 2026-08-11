@@ -283,6 +283,14 @@ function resetHeadingIds(): void {
   usedHeadingIds.clear()
 }
 
+/** 子缩进状态（冒号行尾后的内容持续缩进，直到下一个顶级条目/标题） */
+let subIndentActive = false
+
+/** 每次渲染前重置子缩进状态 */
+function resetSubIndentState(): void {
+  subIndentActive = false
+}
+
 /** 已使用的标题 ID 集合，用于重复标题自动追加 -1/-2 后缀 */
 const usedHeadingIds = new Set<string>()
 
@@ -553,21 +561,31 @@ renderer.blockquote = function (body: string) {
   return `<blockquote class="enhanced-blockquote">${body}</blockquote>`
 }
 
-// 自定义段落渲染器 - 建立正确的"段落"概念：
+// 自定义段落渲染器 - 建立正确的"段落"与"缩进层级"概念（Word 文档规范）：
 // 1. 软换行（<br>，单换行）拆分为独立段落 → 每个换行后的内容都是新段落，享有首行缩进
-// 2. 以冒号（：/:）结尾的段落，其后的段落视为子内容 → 二次缩进（md-sub-indent）
-const originalParagraphRenderer = renderer.paragraph
+// 2. 以冒号（：/:）结尾的段落 → 其后的内容进入"子内容缩进状态"（状态持续到下一个顶级条目）
+//    子内容段落整段左移：首行 4em（padding 2em + 缩进 2em）、续行 2em——与 Word 段落缩进一致
+// 3. 顶级条目（编号/序数开头，如 "一、" "1." "（一）"）→ 重置子缩进状态
 renderer.paragraph = function (text: string) {
   const parts = text.split(/<br\s*\/?>\s*/)
-  if (parts.length <= 1) {
-    return originalParagraphRenderer.call(this, text)
-  }
-
   let html = ''
-  parts.forEach((part, index) => {
-    const isSub = index > 0 && /[：:]\s*$/.test(
-      parts[index - 1].replace(/<[^>]+>/g, '').trim()
-    )
+  parts.forEach((part) => {
+    const clean = part.replace(/<[^>]+>/g, '').trim()
+
+    // 顶级条目（编号/序数开头）→ 重置子缩进状态
+    const isTopLevel = /^(第?[一二三四五六七八九十百]+[、.．]|\d+[、.．]|（[一二三四五六七八九十百]+）|\([0-9]+\))/.test(clean)
+    if (isTopLevel) {
+      subIndentActive = false
+    }
+
+    // 冒号行尾 → 后续内容进入子缩进状态
+    const endsWithColon = /[：:]\s*$/.test(clean)
+    if (endsWithColon) {
+      subIndentActive = true
+    }
+
+    // 子内容：处于缩进状态，且自身不是顶级条目/冒号行
+    const isSub = subIndentActive && !isTopLevel && !endsWithColon
     const cls = isSub ? ' class="md-sub-indent"' : ''
     html += `<p${cls}>${part}</p>\n`
   })
@@ -644,6 +662,8 @@ export class MarkdownRenderer {
 
       // 重置标题 ID 去重状态，保证每次渲染的 ID 唯一且可预期
       resetHeadingIds()
+      // 重置子缩进状态
+      resetSubIndentState()
 
       // 预处理数学公式
       if (this.config.enableMath) {

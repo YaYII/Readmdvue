@@ -428,9 +428,11 @@
   text-indent: 0;
 }
 
-/* 冒号换行后的子内容：二次缩进（首行缩进 4 字符，即在 2 字符基础上再缩 2 字符） */
+/* 冒号换行后的子内容：整段左移（Word 段落缩进规范）——
+   首行 4em（左移 2em + 首行缩进 2em）、续行 2em（左移 2em），换行后缩进不丢失 */
 .markdown-reader-container p.md-sub-indent {
-  text-indent: 4em;
+  padding-left: 2em;
+  text-indent: 2em;
 }
 
 /* 链接样式 - 苹果风格 */
@@ -972,6 +974,7 @@
 
 .markdown-reader-container[data-skin="free"] p.md-sub-indent {
   text-indent: 0;
+  padding-left: 0;
 }
 
 .markdown-reader-container[data-skin="free"] strong {
