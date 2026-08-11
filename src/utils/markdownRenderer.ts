@@ -553,6 +553,27 @@ renderer.blockquote = function (body: string) {
   return `<blockquote class="enhanced-blockquote">${body}</blockquote>`
 }
 
+// 自定义段落渲染器 - 建立正确的"段落"概念：
+// 1. 软换行（<br>，单换行）拆分为独立段落 → 每个换行后的内容都是新段落，享有首行缩进
+// 2. 以冒号（：/:）结尾的段落，其后的段落视为子内容 → 二次缩进（md-sub-indent）
+const originalParagraphRenderer = renderer.paragraph
+renderer.paragraph = function (text: string) {
+  const parts = text.split(/<br\s*\/?>\s*/)
+  if (parts.length <= 1) {
+    return originalParagraphRenderer.call(this, text)
+  }
+
+  let html = ''
+  parts.forEach((part, index) => {
+    const isSub = index > 0 && /[：:]\s*$/.test(
+      parts[index - 1].replace(/<[^>]+>/g, '').trim()
+    )
+    const cls = isSub ? ' class="md-sub-indent"' : ''
+    html += `<p${cls}>${part}</p>\n`
+  })
+  return html
+}
+
 // 设置自定义渲染器
 marked.use({ renderer })
 

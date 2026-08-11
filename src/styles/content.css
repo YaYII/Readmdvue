@@ -428,6 +428,11 @@
   text-indent: 0;
 }
 
+/* 冒号换行后的子内容：二次缩进（首行缩进 4 字符，即在 2 字符基础上再缩 2 字符） */
+.markdown-reader-container p.md-sub-indent {
+  text-indent: 4em;
+}
+
 /* 链接样式 - 苹果风格 */
 .markdown-reader-container a {
   color: var(--md-accent-primary);
@@ -962,6 +967,10 @@
 
 /* 自由皮肤：正文无首行缩进、强调文字用主题色 */
 .markdown-reader-container[data-skin="free"] p {
+  text-indent: 0;
+}
+
+.markdown-reader-container[data-skin="free"] p.md-sub-indent {
   text-indent: 0;
 }
 
