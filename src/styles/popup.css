@@ -163,14 +163,14 @@ body {
   background: var(--color-text-secondary);
 }
 
-/* 选择文本样式：强调色背景 + 主文字色，避免低对比导致选中文字看不清 */
+/* 选择文本样式：强调色半透明背景 + 主文字色，任意场景下选中文字都清晰可见 */
 ::selection {
-  background: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-text-primary);
 }
 
 ::-moz-selection {
-  background: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-text-primary);
 }
 

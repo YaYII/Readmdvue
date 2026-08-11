@@ -2355,14 +2355,16 @@
   background: var(--md-text-secondary);
 }
 
-/* 选择文本样式：用强调色作背景块 + 主题主文字色，确保任意强调色/主题下选中文字都清晰可见 */
+/* 选择文本样式：强调色 35% 半透明做背景 + 主文字色。
+   修复原实现在深色强调色（紫/红/石墨/自定义黑）下"深底深字"选中不可见的问题；
+   半透明背景保证任意强调色/明暗主题下文字对比度都足够（苹果 Safari 风格浅色选区） */
 .markdown-reader-container ::selection {
-  background: var(--md-accent-primary);
+  background: color-mix(in srgb, var(--md-accent-primary) 35%, transparent);
   color: var(--md-text-primary);
 }
 
 .markdown-reader-container ::-moz-selection {
-  background: var(--md-accent-primary);
+  background: color-mix(in srgb, var(--md-accent-primary) 35%, transparent);
   color: var(--md-text-primary);
 }
 
