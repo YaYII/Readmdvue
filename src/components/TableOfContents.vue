@@ -201,7 +201,9 @@
         </button>
       </div>
       <div class="progress-bar-container" @click="seekProgress" title="点击跳转到对应阅读位置">
-        <div class="progress-bar" :style="{ width: readingProgress + '%' }"></div>
+        <!-- progressBarStyle 为 computed 显式返回 { width: 数字 + '%' } 字符串，
+             title 显示实际绑定值便于调试确认（hover 可见） -->
+        <div class="progress-bar" :style="progressBarStyle" :title="'进度宽度: ' + Math.round(readingProgress) + '%'"></div>
         <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
       </div>
       <div style="font-size: 10px; color: #8e8e93; margin-top: 4px;">
@@ -245,6 +247,11 @@ const isCollapsed = ref(false)
 const isPinned = ref(false)
 const activeId = ref<string>('')
 const readingProgress = ref(0)
+
+/** 进度条宽度样式：computed 显式解包 ref → 数字 + '%' 字符串，供 :style 绑定 */
+const progressBarStyle = computed(() => ({
+  width: readingProgress.value + '%'
+}))
 
 // 进度条采用标准动画机制：滚动时直接设定百分比（readingProgress.value），
 // 宽度变化由 CSS transition 平滑过渡，避免补间循环异常导致进度条不更新
