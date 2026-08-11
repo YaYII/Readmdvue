@@ -921,11 +921,12 @@
 }
 
 .markdown-reader-container th {
-  /* 无背景色：表头靠加粗 + 底部粗线区分，避免背景色在主题下出问题 */
+  /* 表头中性化：无背景、无强调色——文字主题主色（深色=白），边框中性色，
+     避免强调色在表头显得突兀 */
   background: transparent;
   color: var(--md-text-primary);
   font-weight: 600;
-  border-color: color-mix(in srgb, var(--md-accent-primary) 80%, #000000);
+  border-color: var(--md-border-primary);
 }
 
 .markdown-reader-container td {
