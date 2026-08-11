@@ -476,6 +476,15 @@ renderer.code = function (code: string, language: string | undefined) {
 
 // 自定义图片渲染器 - 解决打印时图片丢失问题
 renderer.image = function (href: string, title: string | null, text: string) {
+  // 强制约束：非 file:// 页面中引用 file:// 图片必然加载失败（独立安全源），渲染占位提示
+  if (href.startsWith('file:') && typeof window !== 'undefined' && window.location.protocol !== 'file:') {
+    return `
+      <div class="image-container" data-image-container="file-image">
+        <div class="image-error">本地图片（file://）无法在此页面加载，请在本地文件页面中查看</div>
+      </div>
+    `
+  }
+
   const imageId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
   // 构建图片HTML，移除内联事件处理器，确保打印时图片正常显示
