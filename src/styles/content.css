@@ -1339,8 +1339,8 @@
   text-align: center;
   margin: var(--md-spacing-xl) 0;
   padding: 0;
-  /* 深色背景（护眼） */
-  background: #1e1e20;
+  /* 背景跟随主题 */
+  background: var(--md-bg-secondary);
   border: none;
   box-shadow: none;
 }
@@ -1711,8 +1711,8 @@
 /* 图表容器样式 */
 .chart-container {
   padding: 0px;
-  /* 深色背景（护眼）：mermaid 图表默认黑底，光线少、降低视疲劳 */
-  background: #1e1e20;
+  /* 背景跟随主题：浅色主题浅底 / 深色主题深底 */
+  background: var(--md-bg-secondary);
   border: 1px solid var(--md-border-primary);
   border-radius: var(--md-radius-lg);
   box-shadow: var(--md-shadow-sm);

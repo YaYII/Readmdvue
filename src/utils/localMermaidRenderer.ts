@@ -8,6 +8,8 @@ import { showSuccess, showError } from './appleNotification'
 export class LocalMermaidRenderer {
   private static instance: LocalMermaidRenderer
   private initialized = false
+  /** 当前生效的 mermaid 主题（跟随页面主题切换） */
+  private currentTheme = 'default'
 
   private constructor() {
     this.initializeMermaid()
@@ -21,16 +23,24 @@ export class LocalMermaidRenderer {
   }
 
   /**
-   * 初始化 Mermaid
+   * 获取当前主题对应的 mermaid 主题（跟随页面主题：浅色→default，深色→dark）
+   */
+  private getTheme(): 'dark' | 'default' {
+    const rootTheme = document.documentElement.getAttribute('data-theme')
+    const systemTheme = document.documentElement.getAttribute('data-system-theme')
+    const isDark = rootTheme === 'dark' || (rootTheme === 'auto' && systemTheme === 'dark')
+    return isDark ? 'dark' : 'default'
+  }
+
+  /**
+   * 初始化 Mermaid（主题跟随页面当前主题）
    */
   private initializeMermaid(): void {
-    if (this.initialized) return
-
     try {
       mermaid.initialize({
         startOnLoad: false,
-        // 深色主题（护眼）：图表线条/文字用浅色，配合深色背景
-        theme: 'dark',
+        // 跟随页面主题：浅色主题用 default（浅色线条），深色主题用 dark（浅色线条适配深底）
+        theme: this.currentTheme,
         securityLevel: 'loose',
         fontFamily: 'PingFang SC, Microsoft YaHei UI, SF Pro Display, Segoe UI Variable, sans-serif',
         fontSize: 14,
@@ -55,10 +65,19 @@ export class LocalMermaidRenderer {
       })
 
       this.initialized = true
-      console.log('本地 Mermaid 渲染器初始化成功')
     } catch (error) {
-      console.error('Mermaid 初始化失败:', error)
       throw new Error('Mermaid 初始化失败')
+    }
+  }
+
+  /**
+   * 按当前页面主题应用 mermaid 主题（主题切换后重新配置）
+   */
+  private applyTheme(): void {
+    const theme = this.getTheme()
+    if (theme !== this.currentTheme || !this.initialized) {
+      this.currentTheme = theme
+      this.initializeMermaid()
     }
   }
 
@@ -69,10 +88,8 @@ export class LocalMermaidRenderer {
     const startTime = Date.now()
 
     try {
-      // 确保 Mermaid 已初始化
-      if (!this.initialized) {
-        this.initializeMermaid()
-      }
+      // 应用主题（跟随页面主题，首次或主题变化时初始化/重新配置）
+      this.applyTheme()
 
       // 获取容器元素
       const container = document.getElementById(containerId)
@@ -202,8 +219,8 @@ export class LocalMermaidRenderer {
         overflow-x: auto; 
         border-radius: 8px; 
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        /* 深色背景（护眼：黑色光少） */
-        background: #1e1e20;
+        /* 背景跟随主题（浅色主题浅底 / 深色主题深底） */
+        background: var(--md-bg-secondary);
         padding: 16px;
       ">
         ${svg}
