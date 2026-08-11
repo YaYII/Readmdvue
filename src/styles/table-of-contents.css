@@ -423,8 +423,8 @@
 
 .progress-bar {
   height: 100%;
-  /* 当前进度颜色 = 用户强调色（带 #007aff 兜底：
-     --md-accent-primary 仅在 :root[data-accent] 下定义，变量缺失时整个渐变声明会失效导致进度条透明） */
+  /* 双保险：第一层纯色兜底（var 缺失时 #007aff，任何情况可见），第二层渐变覆盖（强调色优先） */
+  background: var(--md-accent-primary, #007aff);
   background: linear-gradient(90deg, var(--md-accent-primary, #007aff), #64d2ff);
   border-radius: 3px;
   /* 标准动画机制：宽度变化平滑过渡 */
