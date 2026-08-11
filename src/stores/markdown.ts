@@ -89,7 +89,8 @@ export const useMarkdownStore = defineStore('markdown', () => {
     }
   }
   
-  const updateConfig = async (newConfig: Partial<MarkdownConfig>) => {
+  // 更新配置：persist=false 时仅临时生效（预览），不写入持久化存储
+  const updateConfig = async (newConfig: Partial<MarkdownConfig>, persist = true) => {
     const oldConfig = { ...config.value }
     config.value = { ...config.value, ...newConfig }
     
@@ -103,10 +104,17 @@ export const useMarkdownStore = defineStore('markdown', () => {
       applyAccentColor(newConfig.accentColor)
     }
     
-    // 保存到存储
-    await saveConfigToStorage()
+    // 仅确认时保存到存储（temp 预览不写入，避免每次调整都持久化）
+    if (persist) {
+      await saveConfigToStorage()
+    }
     
-    console.log('配置已更新:', { old: oldConfig, new: config.value })
+    console.log('配置已更新:', { old: oldConfig, new: config.value, persist })
+  }
+  
+  // 显式保存当前配置到持久化存储（设置面板"保存设置"按钮调用）
+  const saveConfig = async () => {
+    await saveConfigToStorage()
   }
   
   const applyAccentColor = (accentColor: string) => {
@@ -414,6 +422,7 @@ export const useMarkdownStore = defineStore('markdown', () => {
     // 动作
     initialize,
     updateConfig,
+    saveConfig,
     renderMarkdown,
     renderCharts,
     addError,

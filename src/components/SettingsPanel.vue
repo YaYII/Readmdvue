@@ -23,6 +23,19 @@
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+        <button 
+          class="save-button"
+          @click="saveSettings"
+          aria-label="保存设置"
+          title="保存设置（确认后生效并持久化）"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          <span>保存</span>
+        </button>
       </div>
 
     <!-- 设置内容 -->
@@ -71,9 +84,9 @@
                 v-for="color in accentColors" 
                 :key="color.value"
                 class="accent-color-option"
-                :class="[color.value, { active: config.accentColor === color.value }]"
-                @click="updateConfig({ accentColor: color.value })"
-                :title="color.name"
+                :class="[color.value, { active: config.accentColor === color.value, disabled: isDarkTheme && color.value === 'graphite' }]"
+                @click="onAccentClick(color.value)"
+                :title="color.value === 'graphite' && isDarkTheme ? color.name + '（深色模式不可用）' : color.name"
                 :style="color.value === 'custom' ? { backgroundColor: config.customAccentColor } : {}"
               >
                 <!-- 自定义颜色选项显示调色板图标 -->
@@ -631,9 +644,10 @@ onUnmounted(() => {
   // 清理目录菜单状态监听器
   cleanupTocStateListeners()
 })
+// 配置更新（temp）：仅临时生效预览，不写入持久化存储；点击"保存设置"后持久化
 const updateConfig = async (updates: Partial<MarkdownConfig>) => {
-  console.log('更新配置:', updates)
-  await markdownStore.updateConfig(updates)
+  console.log('更新配置(temp):', updates)
+  await markdownStore.updateConfig(updates, false)
   
   // 立即应用样式更新到当前页面
   if (updates.accentColor) {
@@ -658,6 +672,41 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
   
   // 应用样式配置到content script
   applyStyleConfig(markdownStore.config)
+
+}
+
+
+// 保存设置：确认后将临时配置写入持久化存储
+const saveSettings = async () => {
+  try {
+    await markdownStore.saveConfig()
+    if (typeof window.showNotification === 'function') {
+      window.showNotification({ type: 'success', title: '设置已保存', message: '配置已生效并持久化，下次打开依然保留' })
+    }
+  } catch (error) {
+    console.error('保存设置失败:', error)
+  }
+}
+
+// 深色主题判断（用于禁用深色强调色）
+const isDarkTheme = computed(() => {
+  const theme = markdownStore.config.theme
+  if (theme === 'dark') return true
+  if (theme === 'auto') {
+    return document.documentElement.getAttribute('data-system-theme') === 'dark'
+  }
+  return false
+})
+
+// 强调色点击：深色模式下禁止选择石墨色（黑色强调色在深色模式会看不见）
+const onAccentClick = (value: string) => {
+  if (value === 'graphite' && isDarkTheme.value) {
+    if (typeof window.showNotification === 'function') {
+      window.showNotification({ type: 'warning', title: '深色模式不可用', message: '石墨色（黑）在深色模式下会导致文字不可见，请选择其他强调色' })
+    }
+    return
+  }
+  updateConfig({ accentColor: value as any })
 }
 
 const applyStyleConfig = (config: MarkdownConfig) => {
@@ -1107,6 +1156,33 @@ const printPage = () => {
   font-weight: 600;
   margin: 0;
   color: #1d1d1f;
+}
+
+.save-button {
+  background: var(--md-accent-primary, #007AFF);
+  border: none;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.save-button:hover {
+  opacity: 0.88;
+  transform: scale(1.03);
+}
+
+.accent-color-option.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
 }
 
 .close-button {
