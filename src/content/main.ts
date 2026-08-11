@@ -26,9 +26,14 @@ import 'katex/dist/katex.min.css'
  */
 class ContentScriptApp {
   private renderer: MarkdownRenderer | null = null
+  /** 当前渲染的 markdown 内容（配置变更后用于立即重渲染） */
+  private currentMarkdownContent: string | null = null
+  /** 重渲染防抖定时器 */
+  private reRenderTimer: number | null = null
+  /** 重渲染前保存的滚动位置 */
+  private reRenderScrollY = 0
   private config: MarkdownConfig = { ...defaultConfig }
   private isActive = false
-  private lastConfigUpdate = 0
   private isExtensionValid = true
   private reconnectAttempts = 0
   private maxReconnectAttempts = 3
@@ -2141,6 +2146,9 @@ class ContentScriptApp {
     try {
       performanceMonitor.start('renderMarkdown')
 
+      // 保存当前内容，供配置变更后立即重新渲染
+      this.currentMarkdownContent = content
+
       // 等待页面完全加载完成
       await this.waitForPageReady()
 
@@ -2728,17 +2736,8 @@ class ContentScriptApp {
         return
       }
 
-      // 使用节流机制避免频繁更新
-      const now = Date.now()
-      const timeDiff = now - (this.lastConfigUpdate || 0)
-
-      if (timeDiff < 500) { // 500ms内不重复更新
-        return
-      }
-
-      console.log('更新配置:', newConfig)
       this.config = { ...this.config, ...newConfig }
-      this.lastConfigUpdate = now
+      console.log('更新配置:', newConfig)
 
       // 立即应用样式更新，但不重新渲染页面
       if (newConfig.accentColor) {
@@ -2776,29 +2775,56 @@ class ContentScriptApp {
         cssVariableManager.setFontFamily(newConfig.fontFamily)
       }
 
-      // 保存到chrome.storage（使用节流）
-      if (timeDiff > 1000) { // 只有超过1秒才写入存储
-        try {
-          await chrome.storage.sync.set({ 'markdown-config': this.config })
-          console.log('配置已保存到存储')
-        } catch (error) {
-          logger.warn('保存配置到存储失败:', error)
-        }
+      // 保存到chrome.storage（配置变更必须持久化，保证下次打开同样生效）
+      try {
+        await chrome.storage.sync.set({ 'markdown-config': this.config })
+        console.log('配置已保存到存储')
+      } catch (error) {
+        logger.warn('保存配置到存储失败:', error)
       }
 
-      // 更新渲染器配置（但不重新渲染）
+      // 更新渲染器配置
       if (this.renderer) {
         this.renderer.updateConfig(this.config)
         console.log('渲染器配置已更新')
       }
 
-      // 注意：移除重新渲染逻辑，避免影响UI组件
-      // 样式更改会通过CSS变量自动应用到现有内容
+      // 渲染相关配置变更 → 防抖重新渲染内容，立即生效（此前需刷新页面才生效）
+      this.scheduleReRenderIfNeeded(newConfig)
 
       logger.info('配置已更新', newConfig)
     } catch (error) {
       logger.error('更新配置失败:', error)
     }
+  }
+
+  /**
+   * 渲染相关配置变更后，防抖重新渲染内容使其立即生效。
+   * 涉及：皮肤/字体家族/字号/行高/行宽/表格样式/数学/图表/高亮等渲染类配置；
+   * 重渲染前保存滚动位置，渲染后恢复。
+   */
+  private scheduleReRenderIfNeeded(newConfig: Partial<MarkdownConfig>): void {
+    const renderAffectingKeys: Array<keyof MarkdownConfig> = [
+      'skin', 'fontFamily', 'fontSize', 'lineHeight', 'maxWidth',
+      'tableStyle', 'enableMath', 'enableMermaid', 'enableCharts',
+      'enableTables', 'enableHighlight', 'enableTaskLists',
+      'mathRenderer', 'codeTheme', 'enableLineNumbers', 'enableWordWrap'
+    ]
+    const affectsRender = renderAffectingKeys.some((key) => newConfig[key] !== undefined)
+    if (!affectsRender || !this.currentMarkdownContent) return
+
+    this.reRenderScrollY = window.scrollY
+    if (this.reRenderTimer !== null) return
+    this.reRenderTimer = window.setTimeout(() => {
+      this.reRenderTimer = null
+      const content = this.currentMarkdownContent
+      if (!content) return
+      this.renderMarkdown(content).then(() => {
+        window.scrollTo(0, this.reRenderScrollY)
+      }).catch(() => {
+        this.debugLog('配置变更重渲染失败', undefined, 'error')
+      })
+    }, 300)
   }
 
   /**
