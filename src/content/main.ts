@@ -1184,7 +1184,16 @@ class ContentScriptApp {
       // 使用与markdown.ts相同的存储键名
       const result = await chrome.storage.sync.get('markdown-config')
       if (result['markdown-config']) {
-        this.config = { ...this.config, ...result['markdown-config'] }
+        const stored = result['markdown-config'] as Partial<MarkdownConfig>
+        // 强制默认深色：未设置主题或仍为旧的 auto 默认 → 初始化为 dark 并持久化
+        // （用户多数不设置主题，开箱即深色护眼，更纯粹）
+        if (!stored.theme || stored.theme === 'auto') {
+          stored.theme = 'dark'
+          this.config = { ...this.config, ...stored }
+          chrome.storage.sync.set({ 'markdown-config': this.config }).catch(() => {})
+        } else {
+          this.config = { ...this.config, ...stored }
+        }
         logger.info('配置已加载', this.config)
         console.log('配置已从chrome.storage.sync加载')
 
