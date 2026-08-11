@@ -2410,7 +2410,8 @@
   .markdown-reader-container img::before,
   .markdown-reader-container img::after,
   .markdown-reader-container .markdown-image::before,
-  .markdown-reader-container .markdown-image::after {
+  .markdown-reader-container .markdown-image::after,
+  .markdown-reader-container .image-container::after {
     display: none !important;
     content: none !important;
   }
