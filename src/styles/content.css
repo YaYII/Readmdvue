@@ -560,7 +560,7 @@
   background: var(--md-bg-code);
   border: none;
   border-radius: var(--md-radius-sm);
-  padding: var(--md-spacing-lg);
+  padding: 14px 16px;
   margin: var(--md-spacing-lg) 0;
   overflow-x: auto;
   position: relative;
@@ -687,11 +687,36 @@
   color: #ffa657;
 }
 
-/* 代码块复制按钮 - 苹果风格 */
-.export-svg-button {
-  margin-right: 4px;
+/* 代码块选中悬浮复制按钮（VS Code 风格：选中代码后出现） */
+.selection-copy-btn {
+  position: fixed;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(28, 28, 30, 0.85);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.15s ease, background 0.2s ease;
 }
 
+.selection-copy-btn:hover {
+  transform: scale(1.06);
+}
+
+.selection-copy-btn.copied {
+  background: #2ea44f;
+}
+
+/* 代码块复制按钮 - 苹果风格 */
 .code-copy-button {
   position: absolute;
   top: var(--md-spacing-md);

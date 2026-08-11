@@ -339,12 +339,6 @@ function renderAsCode(code: string, lang: string, codeId: string): string {
     <div class="enhanced-code-block" data-language="${lang}">
       <div class="code-header">
         <span class="code-language">${lang.toUpperCase()}</span>
-        <button class="copy-button" data-action="copy-code" data-code-id="${codeId}" title="复制代码">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <rect x="6" y="6" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          </svg>
-        </button>
       </div>
       <div class="code-content" id="${codeId}">
         <pre><code class="hljs language-${lang}">${highlighted}</code></pre>
