@@ -368,7 +368,11 @@ const clearHideTimer = () => {
 const scheduleHide = () => {
   clearHideTimer()
   hideTimer.value = window.setTimeout(() => {
-    if (!isPinned.value && !isHovering.value) {
+    // 设置面板打开时保持目录可见：
+    // 否则鼠标移出目录触发自动隐藏，设置面板的布局联动（tocLayoutClass）会随之跳动，
+    // 且第一次打开设置必触发（第二次目录已隐藏则不再触发）——行为不一致
+    const settingsOpen = document.querySelector('.settings-panel') !== null
+    if (!isPinned.value && !isHovering.value && !settingsOpen) {
       isVisible.value = false
     }
   }, 300) // 300ms 延迟隐藏
