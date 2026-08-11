@@ -559,7 +559,7 @@
 .markdown-reader-container pre {
   background: var(--md-bg-code);
   border: none;
-  border-radius: var(--md-radius-sm);
+  border-radius: var(--md-radius-md);
   /* 零间距：代码块内边距与外边距全部归零 */
   padding: 0;
   margin: 0;
@@ -569,7 +569,8 @@
 
 .markdown-reader-container pre code {
   font-family: var(--md-font-family-mono);
-  font-size: 0.9em;
+  /* 代码字号与正文一致（跟随用户字号设置），避免过小看不清 */
+  font-size: 1em;
   line-height: 1.5;
   color: var(--md-text-code);
   background: none;

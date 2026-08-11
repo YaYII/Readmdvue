@@ -623,14 +623,20 @@
   display: flex;
   align-items: center;
   /* 极简：仅语言标签行，无背景无边框无按钮（复制为选中悬浮），零间距 */
-  padding: 0;
+  padding: 0 0 4px 0;
 }
 
 .code-language {
-  font-size: 10px;
+  /* 语言徽章：浅底圆角小标签，精致不占空间 */
+  font-size: 11px;
   font-weight: 600;
   color: var(--apple-graphite);
   letter-spacing: 0.5px;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 5px;
+  background: rgba(128, 128, 132, 0.12);
+  line-height: 1.6;
 }
 
 .copy-button {
@@ -718,26 +724,29 @@
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: none;
-  border-radius: 6px;
-  background: rgba(28, 28, 30, 0.72);
+  border-radius: 7px;
+  background: rgba(28, 28, 30, 0.8);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
+  transform: translateY(2px);
   transition: opacity 0.2s ease, transform 0.15s ease, background 0.2s ease;
   z-index: 3;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .code-content:hover .code-hover-copy,
 .code-hover-copy:focus-visible {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .code-hover-copy:hover {
