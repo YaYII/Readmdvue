@@ -58,7 +58,7 @@ export const defaultConfig: MarkdownConfig = {
   fontSize: 16,
   lineHeight: 1.6,
   maxWidth: 900,
-  fontFamily: 'PingFang SC, Microsoft YaHei UI, Segoe UI Variable, -apple-system, BlinkMacSystemFont, sans-serif',
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei UI', sans-serif",
   codeTheme: 'github',
   mathRenderer: 'katex',
   tableStyle: 'default',

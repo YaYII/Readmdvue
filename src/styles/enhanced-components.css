@@ -18,14 +18,13 @@
   --apple-silver: #F5F5F7;
   --apple-white: #FFFFFF;
 
-  /* Liquid Glass 材质 */
-  --liquid-glass-light: rgba(255, 255, 255, 0.8);
-  --liquid-glass-dark: rgba(28, 28, 30, 0.8);
-  --liquid-glass-border-light: rgba(255, 255, 255, 0.2);
-  --liquid-glass-border-dark: rgba(255, 255, 255, 0.1);
+  /* Liquid Glass 材质（亮/暗主色引用 apple-design-system 全局变量；
+     边框保留本文件专用变量名，数值与全局 Liquid Glass 标准一致） */
+  --liquid-glass-border-light: rgba(255, 255, 255, 0.4);
+  --liquid-glass-border-dark: rgba(255, 255, 255, 0.12);
 
   /* 字体系统 */
-  --apple-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Segoe UI Variable', sans-serif;
+  --apple-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans CJK SC', 'Microsoft YaHei UI', sans-serif;
   --apple-font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
 
   /* 字号标准 */

@@ -1,5 +1,14 @@
 /* Markdown Reader Vue - Popup 全局样式 */
 
+/* 内置 Inter 字体（SF Pro 开源近似，latin 变量字重，48KB） */
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-latin-wght-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* CSS 变量定义 - 苹果设计系统色彩 */
 :root {
   /* 主色调 */
@@ -31,8 +40,8 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   --glass-backdrop: blur(20px);
   
-  /* 字体系统 */
-  --font-family-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  /* 字体系统：macOS → SF Pro；Linux/Windows 拉丁 → 内置 Inter；中文 → PingFang/思源/雅黑 */
+  --font-family-primary: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans CJK SC', 'Microsoft YaHei UI', sans-serif;
   --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   
   /* 字号标准 */
@@ -492,4 +501,3 @@ p {
     display: none !important;
   }
 }
-

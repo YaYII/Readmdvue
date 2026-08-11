@@ -54,10 +54,10 @@
   --apple-tertiary-background: #FFFFFF;
   
   /* Liquid Glass 材质 */
-  --liquid-glass-light: rgba(255, 255, 255, 0.8);
+  --liquid-glass-light: rgba(255, 255, 255, 0.72);
   --liquid-glass-dark: rgba(0, 0, 0, 0.3);
-  --liquid-glass-blur: blur(20px);
-  --liquid-glass-border: rgba(255, 255, 255, 0.2);
+  --liquid-glass-blur: blur(20px) saturate(180%);
+  --liquid-glass-border: rgba(255, 255, 255, 0.4);
   
   /* 字体系统 */
   --apple-font-family: 'PingFang SC', 'Microsoft YaHei UI', 'SF Pro Display', 'Segoe UI Variable', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -136,8 +136,8 @@
     --apple-tertiary-background: #2C2C2E;
     
     --liquid-glass-light: rgba(255, 255, 255, 0.1);
-    --liquid-glass-dark: rgba(0, 0, 0, 0.8);
-    --liquid-glass-border: rgba(255, 255, 255, 0.1);
+    --liquid-glass-dark: rgba(28, 28, 30, 0.72);
+    --liquid-glass-border: rgba(255, 255, 255, 0.12);
   }
 }
 
