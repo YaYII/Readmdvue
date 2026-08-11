@@ -1286,8 +1286,8 @@ class ContentScriptApp {
       })
     }
 
-    // 应用最大宽度
-    if (this.config.maxWidth) {
+    // 应用最大宽度（0 = 自适应，必须显式判断 !== undefined，否则 0 会被忽略）
+    if (this.config.maxWidth !== undefined) {
       cssVariableManager.setMaxWidth(this.config.maxWidth)
       console.log('已应用最大宽度:', this.config.maxWidth)
     }
@@ -2835,7 +2835,7 @@ class ContentScriptApp {
         )
       }
 
-      if (newConfig.maxWidth) {
+      if (newConfig.maxWidth !== undefined) {
         console.log('应用最大宽度:', newConfig.maxWidth)
         cssVariableManager.setMaxWidth(newConfig.maxWidth)
       }
@@ -2874,8 +2874,10 @@ class ContentScriptApp {
    * 重渲染前保存滚动位置，渲染后恢复。
    */
   private scheduleReRenderIfNeeded(newConfig: Partial<MarkdownConfig>): void {
+    // 注：skin/fontFamily/fontSize/lineHeight/maxWidth 由 CSS 变量 / data-* 属性即时驱动，
+    // 无需重渲染（重渲染大文档慢，且会连带触发内容替换导致设置面板被隐藏）。
+    // 仅保留真正改变 HTML 结构的渲染开关类配置。
     const renderAffectingKeys: Array<keyof MarkdownConfig> = [
-      'skin', 'fontFamily', 'fontSize', 'lineHeight', 'maxWidth',
       'tableStyle', 'enableMath', 'enableMermaid', 'enableCharts',
       'enableTables', 'enableHighlight', 'enableTaskLists',
       'mathRenderer', 'codeTheme', 'enableLineNumbers', 'enableWordWrap'
@@ -2975,6 +2977,19 @@ class ContentScriptApp {
     for (let i = 0; i < originalContent.length; i++) {
       const element = originalContent[i] as HTMLElement
       if (element) {
+        // 跳过扩展自身的容器（设置面板/目录/遮罩等），否则重渲染时会把这些 UI 一并隐藏，
+        // 导致设置面板"因渲染问题直接退出"、用户修改的设置无法继续保存
+        if (
+          element.id?.startsWith('vue-component-') ||
+          element.id?.startsWith('vue-overlay-') ||
+          element.id === 'vue-table-of-contents' ||
+          element.classList?.contains('vue-component-container') ||
+          element.classList?.contains('vue-component-overlay') ||
+          element.classList?.contains('markdown-reader-container') ||
+          element.classList?.contains('markdown-overlay-mode')
+        ) {
+          continue
+        }
         // 使用CSS类而非内联样式
         element.classList.add('md-original-content-hidden')
         element.setAttribute('data-original-display', getComputedStyle(element).display || 'block')

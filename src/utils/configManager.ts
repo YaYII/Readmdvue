@@ -219,7 +219,8 @@ export class ConfigManager {
       theme: config.theme || defaultConfig.theme,
       fontSize: config.fontSize || defaultConfig.fontSize,
       lineHeight: config.lineHeight || defaultConfig.lineHeight,
-      maxWidth: config.maxWidth || defaultConfig.maxWidth,
+      // maxWidth=0 表示自适应，必须显式判断，否则 0 会被 || 吞掉变成 1200
+      maxWidth: config.maxWidth !== undefined ? config.maxWidth : defaultConfig.maxWidth,
       fontFamily: config.fontFamily || defaultConfig.fontFamily,
       // 确保favoriteColors是数组
       favoriteColors: Array.isArray(config.favoriteColors) ? config.favoriteColors : defaultConfig.favoriteColors,

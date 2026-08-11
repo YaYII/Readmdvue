@@ -646,7 +646,7 @@ const updateConfig = async (updates: Partial<MarkdownConfig>) => {
     applyTypography(updates.fontSize || markdownStore.config.fontSize, updates.lineHeight || markdownStore.config.lineHeight)
   }
   
-  if (updates.maxWidth) {
+  if (updates.maxWidth !== undefined) {
     applyMaxWidth(updates.maxWidth)
   }
   
