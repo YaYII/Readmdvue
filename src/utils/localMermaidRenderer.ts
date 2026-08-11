@@ -196,6 +196,7 @@ export class LocalMermaidRenderer {
     // 设置 SVG 内容
     contentElement.innerHTML = `
       <div class="mermaid-chart-wrapper" style="
+        width: 100%;
         max-width: 100%; 
         overflow-x: auto; 
         border-radius: 8px; 
@@ -230,6 +231,7 @@ export class LocalMermaidRenderer {
     if (!svg) return
 
     // 设置响应式
+    svg.style.width = '100%'
     svg.style.maxWidth = '100%'
     svg.style.height = 'auto'
     
