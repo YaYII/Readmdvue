@@ -192,6 +192,15 @@
           <label class="control-label-full">
             <span class="label-text">最大宽度</span>
             <div class="range-container">
+              <label class="auto-width-toggle" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--md-text-secondary); cursor: pointer; margin-bottom: 4px;">
+                <input
+                  type="checkbox"
+                  :checked="config.maxWidth === 0"
+                  @change="updateConfig({ maxWidth: ($event.target as HTMLInputElement).checked ? 0 : 960 })"
+                  style="accent-color: var(--md-accent-primary); cursor: pointer;"
+                >
+                自适应（按屏幕宽度自动选择最佳阅读宽度）
+              </label>
               <input 
                 type="range" 
                 :value="config.maxWidth" 
@@ -199,9 +208,10 @@
                 min="600" 
                 max="1200" 
                 step="50"
+                :disabled="config.maxWidth === 0"
                 class="control-range"
               >
-              <span class="range-value">{{ config.maxWidth }}px</span>
+              <span class="range-value">{{ config.maxWidth === 0 ? '自适应' : config.maxWidth + 'px' }}</span>
             </div>
           </label>
         </div>

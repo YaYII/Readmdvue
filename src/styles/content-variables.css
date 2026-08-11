@@ -22,8 +22,9 @@
   --md-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Microsoft YaHei UI', sans-serif;
   --md-font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 
-  /* 布局配置 - 默认内容宽度（无 data-max-width 属性时的兜底，与默认配置 900 保持一致） */
-  --md-max-width: 900px;
+  /* 布局配置 - 默认内容宽度（0=自适应：小屏全宽、大屏限制 960px 阅读黄金宽度，
+     中文约 45 字/行，符合人体工学最佳行长；无 data-max-width 属性时的兜底） */
+  --md-max-width: min(960px, 100%);
 
   /* 间距系统 */
   --md-spacing-xs: 4px;
@@ -367,6 +368,10 @@
 }
 
 /* 通过data属性动态设置最大宽度 */
+[data-max-width="0"] {
+  --md-max-width: min(960px, 100%);
+}
+
 [data-max-width="800"] {
   --md-max-width: 800px;
 }

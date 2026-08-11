@@ -242,8 +242,8 @@ export class ConfigManager {
       throw new Error('行高必须在 1.2-2.0 之间')
     }
 
-    // 验证最大宽度
-    if (config.maxWidth < 600 || config.maxWidth > 1200) {
+    // 验证最大宽度（0 = 自适应，不限制固定宽度）
+    if (config.maxWidth !== 0 && (config.maxWidth < 600 || config.maxWidth > 1200)) {
       throw new Error('最大宽度必须在 600-1200px 之间')
     }
 
