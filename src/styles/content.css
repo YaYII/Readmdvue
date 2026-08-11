@@ -1129,8 +1129,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: default;
+  cursor: grab;
   position: relative;
+  transform-origin: center;
+  transition: transform 0.15s ease-out;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .chart-modal-content svg,
@@ -1174,6 +1178,45 @@
   content: '×';
   font-weight: bold;
   line-height: 1;
+}
+
+/* 图表查看器工具栏（VS Code 风格：放大/缩小/复位/全屏/关闭） */
+.chart-modal-toolbar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+  background: rgba(20, 20, 24, 0.6);
+  border-radius: 12px;
+  padding: 6px 8px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.chart-modal-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.chart-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.08);
+}
+
+.chart-modal-btn:active {
+  transform: scale(0.95);
 }
 
 /* 图片懒加载样式 */

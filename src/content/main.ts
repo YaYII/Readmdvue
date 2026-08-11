@@ -250,7 +250,6 @@ class ContentScriptApp {
       this.interceptFileProtocolLinks()
 
       // 代码块导出 SVG 图片（事件委托）
-      this.setupSvgExport()
 
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
@@ -299,84 +298,6 @@ class ContentScriptApp {
     }
   }
 
-  /**
-   * 代码块「导出为 SVG 图片」：
-   * - 离屏克隆测量内容真实尺寸（width:max-content，脱离 .enhanced-code-block 容器宽度/溢出限制）
-   * - foreignObject 内嵌语法高亮 HTML + 内联 hljs 配色（浅/深主题感知），SVG 独立打开仍保持样式
-   * - 输出矢量 SVG（可无损缩放），不受容器实际大小限制
-   */
-  private setupSvgExport(): void {
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement | null
-      if (!target) return
-      const btn = target.closest('[data-action="export-svg"]') as HTMLElement | null
-      if (!btn) return
-      const codeId = btn.getAttribute('data-code-id')
-      if (codeId) this.exportCodeAsSvg(codeId)
-    })
-  }
-
-  private exportCodeAsSvg(codeId: string): void {
-    try {
-      const contentEl = document.getElementById(codeId)
-      const pre = contentEl?.querySelector('pre')
-      const codeEl = pre?.querySelector('code')
-      if (!pre || !codeEl) {
-        this.showError('导出失败', '未找到代码块内容')
-        return
-      }
-
-      // 离屏测量真实尺寸（脱离容器限制：max-width/overflow-x:auto 均不影响导出大小）
-      const measure = pre.cloneNode(true) as HTMLElement
-      measure.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;width:max-content;white-space:pre;margin:0;'
-      document.body.appendChild(measure)
-      const PAD = 24
-      const width = Math.ceil(measure.scrollWidth + PAD * 2)
-      const height = Math.ceil(measure.scrollHeight + PAD * 2)
-      document.body.removeChild(measure)
-
-      // 主题感知配色（GitHub Light / GitHub Dark）
-      const rootTheme = document.documentElement.getAttribute('data-theme')
-      const systemTheme = document.documentElement.getAttribute('data-system-theme')
-      const isDark = rootTheme === 'dark' || (rootTheme === 'auto' && systemTheme === 'dark')
-      const bg = isDark ? '#1e1e20' : '#f6f8fa'
-      const fg = isDark ? '#e6e6e6' : '#24292e'
-      const hljsCss = isDark
-        ? '.hljs-comment,.hljs-quote{color:#8b949e;font-style:italic}.hljs-keyword,.hljs-selector-tag,.hljs-subst{color:#ff7b72}.hljs-string,.hljs-doctag{color:#a5d6ff}.hljs-number,.hljs-literal{color:#79c0ff}.hljs-title,.hljs-section{color:#d2a8ff}.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#79c0ff}.hljs-built_in,.hljs-builtin-name{color:#ffa657}.hljs-type{color:#79c0ff}'
-        : '.hljs-comment,.hljs-quote{color:#6a737d;font-style:italic}.hljs-keyword,.hljs-selector-tag,.hljs-subst{color:#d73a49}.hljs-string,.hljs-doctag{color:#032f62}.hljs-number,.hljs-literal{color:#005cc5}.hljs-title,.hljs-section{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#005cc5}.hljs-built_in,.hljs-builtin-name{color:#e36209}.hljs-type{color:#005cc5}'
-
-      const style = `pre{margin:0;padding:${PAD}px;font-family:'SF Mono',Monaco,'Cascadia Code','Roboto Mono',Consolas,monospace;font-size:14px;line-height:1.6;background:${bg};color:${fg};border-radius:8px;white-space:pre;overflow:visible}${hljsCss}`
-
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <foreignObject width="100%" height="100%">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="all:initial">${style}<pre><code>${codeEl.innerHTML}</code></pre></div>
-  </foreignObject>
-</svg>`
-
-      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `code-${codeId}.svg`
-      link.click()
-      URL.revokeObjectURL(url)
-
-      if (typeof window.showNotification === 'function') {
-        window.showNotification({ type: 'success', title: '已导出 SVG 图片', message: '代码块已导出为矢量 SVG，可无损缩放' })
-      }
-      this.debugLog('代码块已导出 SVG', { codeId, width, height })
-    } catch (error) {
-      this.debugLog('导出 SVG 失败', error)
-      this.showError('导出失败', error instanceof Error ? error.message : '未知错误')
-    }
-  }
-
-  /**
-   * 强制拦截所有 file:// 链接点击：
-   * - 文档内相对路径链接（[章节](01_xxx.md) 解析后为 file:///...）
-   * - 显式 file:// 链接
-   * 锚点（#id）、http/https/mailto/tel 链接不受影响。
-   */
   private interceptFileProtocolLinks(): void {
     try {
       document.addEventListener('click', (e) => {
@@ -2378,6 +2299,13 @@ class ContentScriptApp {
       if (target.tagName === 'IMG' && target.closest('.markdown-reader-container')) {
         e.preventDefault()
         this.openImageModal(target as HTMLImageElement)
+      } else {
+        // 图表（mermaid/kroki SVG）双击 → VS Code 风格查看器（缩放/平移/全屏）
+        const chartContainer = target.closest('[data-action="open-modal"]') as HTMLElement | null
+        if (chartContainer && chartContainer.querySelector('.chart-content svg, .chart-content img')) {
+          e.preventDefault()
+          this.openChartModal(chartContainer.id)
+        }
       }
     })
 
@@ -3168,6 +3096,141 @@ class ContentScriptApp {
   /**
    * 打开图片模态框
    */
+    /**
+   * 图表查看器（VS Code 风格）：双击图表打开模态框，
+   * 支持滚轮缩放（围绕鼠标位置）、拖拽平移、按钮放大/缩小/复位、全屏、Esc/背景关闭。
+   */
+  private openChartModal(chartId: string): void {
+    try {
+      const container = document.getElementById(chartId)
+      const chartEl = container?.querySelector('.chart-content svg, .chart-content img') as HTMLElement | null
+      if (!chartEl) return
+
+      // 已有模态框先移除
+      document.getElementById('chart-modal')?.remove()
+
+      const modal = document.createElement('div')
+      modal.className = 'chart-modal'
+      modal.id = 'chart-modal'
+
+      const content = document.createElement('div')
+      content.className = 'chart-modal-content'
+
+      // 克隆图表元素（SVG/图片）
+      const clone = chartEl.cloneNode(true) as HTMLElement
+      clone.removeAttribute('style')
+      content.appendChild(clone)
+
+      // 缩放/平移状态
+      let scale = 1
+      let tx = 0
+      let ty = 0
+
+      const applyTransform = () => {
+        content.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+      }
+
+      const zoomBy = (factor: number) => {
+        scale = Math.min(8, Math.max(0.2, scale * factor))
+        applyTransform()
+      }
+
+      const resetView = () => {
+        scale = 1
+        tx = 0
+        ty = 0
+        applyTransform()
+      }
+
+      // 工具栏
+      const toolbar = document.createElement('div')
+      toolbar.className = 'chart-modal-toolbar'
+      const mkBtn = (label: string, title: string, action: () => void) => {
+        const btn = document.createElement('button')
+        btn.className = 'chart-modal-btn'
+        btn.innerHTML = label
+        btn.title = title
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          action()
+        })
+        return btn
+      }
+      toolbar.appendChild(mkBtn('＋', '放大', () => zoomBy(1.25)))
+      toolbar.appendChild(mkBtn('－', '缩小', () => zoomBy(0.8)))
+      toolbar.appendChild(mkBtn('⤾', '复位', resetView))
+      toolbar.appendChild(mkBtn('⛶', '全屏', () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {})
+        } else {
+          modal.requestFullscreen?.().catch(() => {})
+        }
+      }))
+      toolbar.appendChild(mkBtn('×', '关闭', () => window.closeChartModal()))
+
+      modal.appendChild(toolbar)
+      modal.appendChild(content)
+
+      // 点击背景关闭
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) window.closeChartModal()
+      })
+      // Esc 关闭
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.closeChartModal()
+      }, { once: true })
+
+      // 拖拽平移
+      let isDragging = false
+      let startX = 0
+      let startY = 0
+      content.addEventListener('mousedown', (e) => {
+        isDragging = true
+        startX = e.clientX
+        startY = e.clientY
+        content.style.cursor = 'grabbing'
+        content.style.transition = 'none'
+        e.preventDefault()
+      })
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return
+        tx += e.clientX - startX
+        ty += e.clientY - startY
+        startX = e.clientX
+        startY = e.clientY
+        applyTransform()
+      })
+      document.addEventListener('mouseup', () => {
+        isDragging = false
+        content.style.cursor = 'grab'
+        content.style.transition = ''
+      })
+
+      // 滚轮缩放（围绕鼠标位置）
+      content.addEventListener('wheel', (e) => {
+        e.preventDefault()
+        const rect = content.getBoundingClientRect()
+        // 鼠标相对内容中心的偏移（缩放后换算）
+        const mx = e.clientX - rect.left - rect.width / 2
+        const my = e.clientY - rect.top - rect.height / 2
+        const factor = e.deltaY < 0 ? 1.15 : 0.87
+        const newScale = Math.min(8, Math.max(0.2, scale * factor))
+        const ratio = newScale / scale
+        // 保持鼠标下的点不动
+        tx = tx - mx * (ratio - 1)
+        ty = ty - my * (ratio - 1)
+        scale = newScale
+        applyTransform()
+      }, { passive: false })
+
+      document.body.appendChild(modal)
+      requestAnimationFrame(() => modal.classList.add('show'))
+      this.debugLog('图表查看器已打开', { chartId })
+    } catch (error) {
+      this.debugLog('打开图表查看器失败', error)
+    }
+  }
+
   private openImageModal(img: HTMLImageElement): void {
     // 检查是否已存在模态框
     const existingModal = document.getElementById('image-modal')
