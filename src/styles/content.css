@@ -908,9 +908,9 @@
 }
 
 .markdown-reader-container th {
-  /* 公文规范：表头深色底 + 白字（强调色作底，黑强调色 = 黑底白字仍可见） */
-  background: var(--md-accent-primary);
-  color: #ffffff;
+  /* 无背景色：表头靠加粗 + 底部粗线区分，避免背景色在主题下出问题 */
+  background: transparent;
+  color: var(--md-text-primary);
   font-weight: 600;
   border-color: color-mix(in srgb, var(--md-accent-primary) 80%, #000000);
 }
@@ -921,12 +921,12 @@
 }
 
 .markdown-reader-container tbody tr:nth-child(even) {
-  /* 公文规范：表格斑马纹（极淡，不喧宾夺主） */
-  background: color-mix(in srgb, var(--md-bg-secondary) 45%, transparent);
+  /* 无斑马纹（用户要求表格无背景色） */
+  background: transparent;
 }
 
 .markdown-reader-container tbody tr:hover {
-  background: var(--md-bg-secondary);
+  background: transparent;
   transition: background-color 0.2s ease;
 }
 
@@ -1000,7 +1000,7 @@
 }
 
 .markdown-reader-container[data-skin="free"] th {
-  background: var(--md-bg-secondary);
+  background: transparent;
   color: var(--md-text-primary);
   border: none;
   border-bottom: 2px solid var(--md-border-primary);
