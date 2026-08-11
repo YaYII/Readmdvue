@@ -485,40 +485,28 @@ const scrollToHeading = (id: string, event: Event) => {
 // 监听滚动事件，更新活跃标题和阅读进度
 const handleScroll = () => {
   console.log('🔄 handleScroll 被调用了！')
-  
-  // 获取滚动信息 - 兼容不同的滚动容器
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0
-  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0
-  const clientHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0
+  updateProgress()
+}
+
+/**
+ * 更新阅读进度：使用 document.scrollingElement（标准滚动元素，自动适配 html/body/怪异模式）
+ * + window.pageYOffset 双保险计算；不依赖 scroll 事件绑定，配合定时轮询兜底，
+ * 确保任何滚动容器/渲染模式下进度条都能动态显示。
+ */
+const updateProgress = () => {
+  const scrollingElement = document.scrollingElement || document.documentElement
+  const scrollTop = window.pageYOffset || scrollingElement.scrollTop || document.body.scrollTop || 0
+  const scrollHeight = scrollingElement.scrollHeight || document.body.scrollHeight || 0
+  const clientHeight = window.innerHeight || scrollingElement.clientHeight || 0
   const documentHeight = scrollHeight - clientHeight
-  
-  console.log('📊 滚动数据:', {
-    scrollTop,
-    scrollHeight,
-    clientHeight,
-    documentHeight,
-    '页面是否可滚动': documentHeight > 0
-  })
-  
-  // 计算阅读进度
-  if (documentHeight <= 0 || scrollHeight <= clientHeight) {
-    // 如果页面内容不足一屏，进度为100%
+
+  if (documentHeight <= 0) {
+    // 页面内容不足一屏，进度为100%
     readingProgress.value = 100
-    console.log('📄 页面内容不足一屏，进度设为100%')
   } else {
     // 正常计算进度百分比
-    const progress = Math.min(Math.max((scrollTop / documentHeight) * 100, 0), 100)
-    readingProgress.value = progress
-    
-    console.log('📈 阅读进度更新:', {
-      '原始进度': (scrollTop / documentHeight) * 100,
-      '最终进度': Math.round(progress),
-      'readingProgress.value': readingProgress.value
-    })
+    readingProgress.value = Math.min(Math.max((scrollTop / documentHeight) * 100, 0), 100)
   }
-  
-  // 查找当前可见的标题
-  // 活跃标题改由 IntersectionObserver 更新（滚动零 JS 开销，不再每帧遍历全部标题）
 }
 
 // 点击进度条跳转到对应阅读位置（按点击位置比例平滑滚动）
@@ -528,8 +516,9 @@ const seekProgress = (event: MouseEvent) => {
   const rect = container.getBoundingClientRect()
   if (rect.width <= 0) return
   const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
-  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0
-  const clientHeight = window.innerHeight || document.documentElement.clientHeight || 0
+  const scrollingElement = document.scrollingElement || document.documentElement
+  const scrollHeight = scrollingElement.scrollHeight || document.body.scrollHeight || 0
+  const clientHeight = window.innerHeight || scrollingElement.clientHeight || 0
   const documentHeight = scrollHeight - clientHeight
   if (documentHeight <= 0) return
   window.scrollTo({ top: documentHeight * ratio, behavior: 'smooth' })
@@ -557,6 +546,10 @@ const throttle = <T extends (...args: any[]) => void>(func: T, delay: number): T
 }
 
 const throttledHandleScroll = throttle(handleScroll, 100)
+
+// 进度轮询兜底：不依赖 scroll 事件（部分环境滚动容器非 window/怪异模式下事件不触发），
+// 定时读取 scrollingElement 进度，保证进度条动态显示
+let progressPollTimer: number | null = null
 
 // 活跃标题监听：IntersectionObserver 替代滚动时遍历全部标题（大文档 500+ 标题时每帧 getBoundingClientRect 会卡顿）
 let headingObserver: IntersectionObserver | null = null
@@ -641,6 +634,9 @@ onMounted(() => {
   // 立即添加监听器
   addScrollListener()
 
+  // 进度轮询兜底（400ms）
+  progressPollTimer = window.setInterval(updateProgress, 400)
+
   // 活跃标题监听（IntersectionObserver）
   setTimeout(() => {
     setupHeadingObserver()
@@ -679,6 +675,11 @@ onUnmounted(() => {
   
   // 清理定时器
   clearHideTimer()
+  // 清理进度轮询
+  if (progressPollTimer !== null) {
+    window.clearInterval(progressPollTimer)
+    progressPollTimer = null
+  }
   // 清理标题观察器
   if (headingObserver) {
     headingObserver.disconnect()
