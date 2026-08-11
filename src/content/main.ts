@@ -244,6 +244,11 @@ class ContentScriptApp {
       // 动态注入同名 @font-face 覆盖，保证任意页面协议下字体都从扩展根加载
       this.injectInterFontFace()
 
+      // 拦截 file:// 页面中的本地相对链接点击：
+      // file:// 被视为独立安全源，点击本地链接导航必然触发 "Unsafe attempt to load URL" 报错，
+      // 这里阻止默认导航并给出友好提示（锚点 # 与 http/https 链接不受影响）
+      this.interceptFileProtocolLinks()
+
       // 检查扩展上下文
       if (!this.checkExtensionContext()) {
         this.debugLog('扩展上下文无效，尝试重连')
@@ -288,6 +293,33 @@ class ContentScriptApp {
     } catch (error) {
       this.debugLog('Content Script 初始化失败', error, 'error')
       errorHandler.handle(error, 'ContentScript.init')
+    }
+  }
+
+  /**
+   * 拦截 file:// 页面中的本地链接点击（文档内相对路径链接，如 [章节](01_xxx.md)），
+   * 阻止浏览器安全策略报错并提示用户手动打开。
+   */
+  private interceptFileProtocolLinks(): void {
+    try {
+      if (window.location.protocol !== 'file:') return
+      document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement | null
+        if (!target) return
+        const anchor = target.closest('a[href]') as HTMLAnchorElement | null
+        if (!anchor) return
+        const rawHref = anchor.getAttribute('href') || ''
+        // 锚点跳转（#id）与 http/https 链接不拦截
+        if (rawHref.startsWith('#') || !anchor.href.startsWith('file:')) return
+        e.preventDefault()
+        this.showError(
+          '无法打开本地链接',
+          '当前为 file:// 本地文件页面，浏览器安全策略禁止打开文档内的本地相对链接。\n请在浏览器地址栏手动打开该文件。'
+        )
+        this.debugLog('已拦截 file:// 本地链接点击', rawHref)
+      }, true)
+    } catch (error) {
+      this.debugLog('本地链接拦截器安装失败', error)
     }
   }
 
