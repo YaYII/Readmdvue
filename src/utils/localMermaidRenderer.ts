@@ -29,7 +29,8 @@ export class LocalMermaidRenderer {
     try {
       mermaid.initialize({
         startOnLoad: false,
-        theme: 'default',
+        // 深色主题（护眼）：图表线条/文字用浅色，配合深色背景
+        theme: 'dark',
         securityLevel: 'loose',
         fontFamily: 'PingFang SC, Microsoft YaHei UI, SF Pro Display, Segoe UI Variable, sans-serif',
         fontSize: 14,
@@ -201,6 +202,8 @@ export class LocalMermaidRenderer {
         overflow-x: auto; 
         border-radius: 8px; 
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        /* 深色背景（护眼：黑色光少） */
+        background: #1e1e20;
         padding: 16px;
       ">
         ${svg}

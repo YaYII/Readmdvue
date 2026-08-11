@@ -47,7 +47,7 @@ export interface MarkdownConfig {
 
 // 默认配置
 export const defaultConfig: MarkdownConfig = {
-  theme: 'auto',
+  theme: 'dark',
   skin: 'gov',
   accentColor: 'blue',
   customAccentColor: '#007AFF', // 默认为蓝色

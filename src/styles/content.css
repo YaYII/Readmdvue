@@ -1306,8 +1306,8 @@
   text-align: center;
   margin: var(--md-spacing-xl) 0;
   padding: 0;
-  /* 背景透明：图表跟随页面/主题背景 */
-  background: transparent;
+  /* 深色背景（护眼） */
+  background: #1e1e20;
   border: none;
   box-shadow: none;
 }
@@ -1678,8 +1678,8 @@
 /* 图表容器样式 */
 .chart-container {
   padding: 0px;
-  /* 背景透明：图表跟随页面/主题背景（mermaid SVG 本身透明） */
-  background: transparent;
+  /* 深色背景（护眼）：mermaid 图表默认黑底，光线少、降低视疲劳 */
+  background: #1e1e20;
   border: 1px solid var(--md-border-primary);
   border-radius: var(--md-radius-lg);
   box-shadow: var(--md-shadow-sm);
