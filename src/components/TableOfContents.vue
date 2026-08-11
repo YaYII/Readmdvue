@@ -190,7 +190,7 @@
 
     <!-- 阅读进度指示器 -->
     <div class="toc-progress" v-show="!isCollapsed">
-      <div class="progress-label">
+      <div class="toc-progress-label">
         阅读进度
         <button 
           @click="handleScroll" 
@@ -200,11 +200,11 @@
           🔄
         </button>
       </div>
-      <div class="progress-bar-container" @click="seekProgress" title="点击跳转到对应阅读位置">
+      <div class="toc-progress-bar-container" @click="seekProgress" title="点击跳转到对应阅读位置">
         <!-- progressBarStyle 为 computed 显式返回 { width: 数字 + '%' } 字符串，
              title 显示实际绑定值便于调试确认（hover 可见） -->
-        <div class="progress-bar" :style="progressBarStyle" :title="'进度宽度: ' + Math.round(readingProgress) + '%'"></div>
-        <div class="progress-text">{{ Math.round(readingProgress) }}%</div>
+        <div class="toc-progress-bar" :style="progressBarStyle" :title="'进度宽度: ' + Math.round(readingProgress) + '%'"></div>
+        <div class="toc-progress-text">{{ Math.round(readingProgress) }}%</div>
       </div>
       <div style="font-size: 10px; color: #8e8e93; margin-top: 4px;">
         当前进度: {{ readingProgress.toFixed(1) }}% ({{ Math.round(readingProgress) }}%)
