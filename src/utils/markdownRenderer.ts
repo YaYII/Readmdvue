@@ -512,7 +512,9 @@ renderer.heading = function (text: string, level: number) {
   const finalId = uniqueHeadingId(text)
 
   return `<h${level} id="${finalId}" class="markdown-heading" data-level="${level}">` +
-    `<a href="#${finalId}" class="heading-anchor" aria-hidden="true" title="标题链接">#</a>${text}` +
+    // 锚点 # 由 CSS ::before 生成（伪元素文本不进入鼠标选区），
+    // 避免用户选中标题时复制出 # 前缀
+    `<a href="#${finalId}" class="heading-anchor" aria-hidden="true" title="标题链接"></a>${text}` +
     `</h${level}>`
 }
 
