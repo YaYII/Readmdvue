@@ -1204,6 +1204,12 @@ class ContentScriptApp {
   private applyConfigToStyles(): void {
     console.log('应用配置到样式:', this.config)
 
+    // 应用渲染皮肤（gov=政府公文 / free=自由现代），通过 data-skin 属性切换 CSS 覆盖
+    const markdownContainer = document.querySelector('.markdown-reader-container') as HTMLElement | null
+    if (markdownContainer) {
+      markdownContainer.setAttribute('data-skin', this.config.skin || 'gov')
+    }
+
     // 应用强调色
     if (this.config.accentColor) {
       const customColor = this.config.accentColor === 'custom' ? this.config.customAccentColor : undefined
@@ -2121,6 +2127,8 @@ class ContentScriptApp {
           </div>
         `
       })
+      // 渲染皮肤（gov=政府公文 / free=自由现代）
+      container.setAttribute('data-skin', this.config.skin || 'gov')
 
       // 显示警告信息
       if (result.warnings && result.warnings.length > 0) {
@@ -2692,6 +2700,12 @@ class ContentScriptApp {
       if (newConfig.theme) {
         console.log('应用主题:', newConfig.theme)
         cssVariableManager.setTheme(newConfig.theme)
+      }
+
+      if (newConfig.skin) {
+        console.log('应用渲染皮肤:', newConfig.skin)
+        const container = document.querySelector('.markdown-reader-container') as HTMLElement | null
+        container?.setAttribute('data-skin', newConfig.skin)
       }
 
       if (newConfig.fontSize || newConfig.lineHeight) {

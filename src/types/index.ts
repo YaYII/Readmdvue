@@ -14,6 +14,8 @@ export interface AccentColorInfo {
 
 export interface MarkdownConfig {
   theme: Theme
+  /** 渲染皮肤：gov=政府公文风格（宋体/首行缩进/表头深色）；free=自由现代风格（强调色标题/无缩进） */
+  skin: 'gov' | 'free'
   accentColor: AccentColor
   customAccentColor: string // 自定义强调色的十六进制值
   
@@ -46,6 +48,7 @@ export interface MarkdownConfig {
 // 默认配置
 export const defaultConfig: MarkdownConfig = {
   theme: 'auto',
+  skin: 'gov',
   accentColor: 'blue',
   customAccentColor: '#007AFF', // 默认为蓝色
   favoriteColors: [], // 默认为空，等待用户添加

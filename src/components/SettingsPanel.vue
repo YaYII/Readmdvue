@@ -50,6 +50,21 @@
 
         <div class="control-item">
           <label class="control-label-full">
+            <span class="label-text">渲染皮肤</span>
+            <select 
+              :value="config.skin" 
+              @change="updateConfig({ skin: ($event.target as HTMLSelectElement).value as any })"
+              class="control-select"
+            >
+              <option value="gov">政府公文（宋体/首行缩进/表头深色）</option>
+              <option value="free">自由现代（强调色标题/无缩进）</option>
+            </select>
+          </label>
+          <p class="control-description">政府皮肤按公文规范渲染；自由皮肤充分使用你的强调色设置</p>
+        </div>
+
+        <div class="control-item">
+          <label class="control-label-full">
             <span class="label-text">强调色</span>
             <div class="accent-color-grid">
               <div 

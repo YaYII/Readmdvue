@@ -743,20 +743,9 @@
 
 /* ===== 增强表格 ===== */
 .enhanced-table-container {
-  background: var(--liquid-glass-light);
-  backdrop-filter: blur(15px);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--liquid-glass-border-light);
-  overflow: hidden;
-  margin: var(--spacing-lg) 0;
-  box-shadow: var(--shadow-sm);
-}
-
-@media (prefers-color-scheme: dark) {
-  .enhanced-table-container {
-    background: var(--liquid-glass-dark);
-    border: 1px solid var(--liquid-glass-border-dark);
-  }
+  /* 结构容器：不承载任何视觉样式，外观由 .table-wrapper 统一负责；
+     上下间距归零，避免与 table-wrapper 间距叠加成双倍 */
+  margin: 0;
 }
 
 .table-wrapper {

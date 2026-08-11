@@ -303,9 +303,9 @@
   font-family: var(--md-font-family-heading);
   font-weight: 600;
   line-height: 1.3;
-  /* 标题文字色与强调色解耦：任何强调色（含黑色）× 任何主题下都保证可见，
-     强调色仅用于装饰（分隔线/锚点） */
-  color: var(--md-text-primary);
+  /* 三色体系·辅色：标题用深蓝（公文规范 h2 深蓝），不依赖强调色、任何主题下可见；
+     主色=正文文字色、点缀色=链接/选中/表头（强调色） */
+  color: #1a3a5c;
   margin-top: var(--md-spacing-lg);
   margin-bottom: var(--md-spacing-sm);
   scroll-margin-top: var(--md-spacing-lg);
@@ -342,7 +342,6 @@
 
 .markdown-reader-container h3 {
   font-size: 0.9375em;
-  color: var(--md-text-secondary);
 }
 
 .markdown-reader-container h4 {
@@ -355,7 +354,6 @@
 
 .markdown-reader-container h6 {
   font-size: 0.75em;
-  color: var(--md-text-secondary);
 }
 
 /* 标题悬停锚点链接（GitHub 风格） */
@@ -478,6 +476,21 @@
 
 :root[data-theme="dark"] .markdown-reader-container strong,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container strong {
+  color: #8AB4F8;
+}
+
+:root[data-theme="dark"] .markdown-reader-container h1,
+:root[data-theme="dark"] .markdown-reader-container h2,
+:root[data-theme="dark"] .markdown-reader-container h3,
+:root[data-theme="dark"] .markdown-reader-container h4,
+:root[data-theme="dark"] .markdown-reader-container h5,
+:root[data-theme="dark"] .markdown-reader-container h6,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h1,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h2,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h3,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h4,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h5,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h6 {
   color: #8AB4F8;
 }
 
@@ -848,7 +861,7 @@
 /* 表格样式 - 公文规范（表头深色底白字 + 细边框 + 斑马纹，参考标书 HTML） */
 .markdown-reader-container .table-wrapper {
   overflow-x: auto;
-  margin: var(--md-spacing-lg) 0;
+  margin: 0;
   border: 1px solid var(--md-border-primary);
   border-radius: var(--md-radius-sm);
 }
@@ -895,6 +908,91 @@
 .markdown-reader-container th:first-child,
 .markdown-reader-container td:first-child {
   white-space: nowrap;
+}
+
+/* ================= 自由皮肤（data-skin="free"）=================
+   现代自由风格：强调色标题、无首行缩进、极简表格、简洁引用块、
+   无衬线字体——充分利用用户强调色/自定义色设置 */
+.markdown-reader-container[data-skin="free"] {
+  /* 字体：现代无衬线（拉丁 Inter + 中文思源黑体/苹方） */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+}
+
+/* 自由皮肤：标题用强调色（点缀色体系），暗色主题强制亮蓝保证可见 */
+.markdown-reader-container[data-skin="free"] h1,
+.markdown-reader-container[data-skin="free"] h2,
+.markdown-reader-container[data-skin="free"] h3,
+.markdown-reader-container[data-skin="free"] h4,
+.markdown-reader-container[data-skin="free"] h5,
+.markdown-reader-container[data-skin="free"] h6 {
+  color: var(--md-accent-primary);
+}
+
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h1,
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h2,
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h3,
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h4,
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h5,
+:root[data-theme="dark"] .markdown-reader-container[data-skin="free"] h6,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h1,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h2,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h3,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h4,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h5,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container[data-skin="free"] h6 {
+  color: #64D2FF;
+}
+
+/* 自由皮肤：标题黑体 → 无衬线 */
+.markdown-reader-container[data-skin="free"] h1,
+.markdown-reader-container[data-skin="free"] h2,
+.markdown-reader-container[data-skin="free"] h3,
+.markdown-reader-container[data-skin="free"] h4,
+.markdown-reader-container[data-skin="free"] h5,
+.markdown-reader-container[data-skin="free"] h6 {
+  font-family: inherit;
+}
+
+/* 自由皮肤：正文无首行缩进、强调文字用主题色 */
+.markdown-reader-container[data-skin="free"] p {
+  text-indent: 0;
+}
+
+.markdown-reader-container[data-skin="free"] strong {
+  color: var(--md-text-primary);
+}
+
+/* 自由皮肤：表格极简（无外框、表头浅灰、行间细线） */
+.markdown-reader-container[data-skin="free"] .table-wrapper {
+  border: none;
+  border-radius: 0;
+}
+
+.markdown-reader-container[data-skin="free"] th {
+  background: var(--md-bg-secondary);
+  color: var(--md-text-primary);
+  border: none;
+  border-bottom: 2px solid var(--md-border-primary);
+}
+
+.markdown-reader-container[data-skin="free"] td {
+  border: none;
+  border-bottom: 1px solid var(--md-border-secondary);
+}
+
+.markdown-reader-container[data-skin="free"] tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 自由皮肤：引用块简洁现代（无首行加粗、无竖线） */
+.markdown-reader-container[data-skin="free"] blockquote {
+  border-left: 3px solid var(--md-accent-primary);
+  border-radius: var(--md-radius-md);
+  font-style: normal;
+}
+
+.markdown-reader-container[data-skin="free"] blockquote::first-line {
+  font-weight: normal;
 }
 
 /* 水平分割线样式 */

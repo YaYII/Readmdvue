@@ -253,6 +253,12 @@ export class ConfigManager {
       throw new Error('无效的主题设置')
     }
 
+    // 验证渲染皮肤
+    const validSkins = ['gov', 'free']
+    if (!validSkins.includes(config.skin)) {
+      throw new Error('无效的渲染皮肤设置')
+    }
+
     // 验证强调色
     const validAccentColors = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'graphite']
     if (!validAccentColors.includes(config.accentColor)) {

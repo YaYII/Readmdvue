@@ -289,6 +289,15 @@
 
 /* ===== 动态字体配置 - 基于data属性 ===== */
 
+/* 大屏适配：4K（≥3000px）自动增大基准字号与内容宽度，避免文字过小；
+   2K（2560px）保持默认不动。用户手动设置的 data-font-size 位于其后，优先级更高 */
+@media (min-width: 3000px) {
+  :root {
+    --md-font-size: 19px;
+    --md-max-width: 1100px;
+  }
+}
+
 /* 通过data属性动态设置字体大小 */
 [data-font-size="12"] {
   --md-font-size: 12px;
