@@ -217,10 +217,9 @@ export class LocalMermaidRenderer {
         width: 100%;
         max-width: 100%; 
         overflow-x: auto; 
-        border-radius: 8px; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        /* 背景跟随主题（浅色主题浅底 / 深色主题深底） */
-        background: var(--md-bg-secondary);
+        border-radius: 0;
+        /* 背景跟随主题主背景色（深色主题 = 纯黑 #000） */
+        background: var(--md-bg-primary);
         padding: 16px;
       ">
         ${svg}

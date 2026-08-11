@@ -1325,8 +1325,8 @@
   text-align: center;
   margin: var(--md-spacing-xl) 0;
   padding: 0;
-  /* 背景跟随主题 */
-  background: var(--md-bg-secondary);
+  /* 背景跟随主题主背景色（深色 = 纯黑） */
+  background: var(--md-bg-primary);
   border: none;
   box-shadow: none;
 }
@@ -1691,11 +1691,10 @@
 /* 图表容器样式 */
 .chart-container {
   padding: 0px;
-  /* 背景跟随主题：浅色主题浅底 / 深色主题深底 */
-  background: var(--md-bg-secondary);
-  border: 1px solid var(--md-border-primary);
+  /* 背景跟随主题主背景色：深色主题 = 纯黑 #000，浅色主题 = 纯白；无边框 */
+  background: var(--md-bg-primary);
+  border: none;
   border-radius: var(--md-radius-lg);
-  box-shadow: var(--md-shadow-sm);
   position: relative;
   min-height: 200px;
   display: flex;
