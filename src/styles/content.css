@@ -555,24 +555,15 @@
   font-weight: 500;
 }
 
-/* 代码块样式 - 苹果风格 */
+/* 代码块样式 - IDEA 预览风格（淡灰底、无边框、无阴影，不限制内容） */
 .markdown-reader-container pre {
   background: var(--md-bg-code);
-  border: 1px solid var(--md-border-primary);
-  border-radius: var(--md-radius-xl);
+  border: none;
+  border-radius: var(--md-radius-sm);
   padding: var(--md-spacing-lg);
   margin: var(--md-spacing-lg) 0;
   overflow-x: auto;
   position: relative;
-  box-shadow: var(--md-shadow-lg);
-
-  /* Liquid Glass 代码块效果 */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background: linear-gradient(135deg,
-      var(--md-bg-code) 100%,
-      rgba(182, 182, 182, 0.877) 50%,
-      var(--md-bg-code) 100%);
 }
 
 .markdown-reader-container pre code {

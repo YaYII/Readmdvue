@@ -613,20 +613,10 @@
 
 /* ===== 增强代码块 ===== */
 .enhanced-code-block {
-  background: var(--liquid-glass-light);
-  backdrop-filter: blur(15px);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--liquid-glass-border-light);
-  overflow: hidden;
+  /* 无框设计（IDEA 预览风格）：容器不承载任何视觉样式，
+     外观由 pre 统一负责——去边框/背景/模糊/阴影/overflow 裁剪，
+     不再限制内容的显示与导出尺寸 */
   margin: var(--spacing-lg) 0;
-  box-shadow: var(--shadow-sm);
-}
-
-@media (prefers-color-scheme: dark) {
-  .enhanced-code-block {
-    background: var(--liquid-glass-dark);
-    border: 1px solid var(--liquid-glass-border-dark);
-  }
 }
 
 .code-header {
