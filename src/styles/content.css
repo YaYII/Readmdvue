@@ -292,6 +292,24 @@
   pointer-events: none;
 }
 
+/* 页面背景跟随主题：容器外区域（页边距/右上角等）不再是宿主页面白色 */
+:root[data-theme="light"] body,
+:root[data-theme="dark"] body,
+:root[data-theme="eyecare"] body,
+:root[data-theme="auto"] body,
+:root[data-theme="light"] html,
+:root[data-theme="dark"] html,
+:root[data-theme="eyecare"] html,
+:root[data-theme="auto"] html {
+  background: var(--md-bg-primary);
+}
+
+/* 深色主题下背景渐变层纯黑（去掉 accent-light 浅色区，全黑护眼） */
+:root[data-theme="dark"] .markdown-reader-container::before,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container::before {
+  background: var(--md-bg-primary);
+}
+
 /* 标题样式 - 苹果风格 */
 .markdown-reader-container h1,
 .markdown-reader-container h2,
