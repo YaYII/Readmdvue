@@ -89,8 +89,7 @@ export default defineConfig(({ command }) => ({
   // 生产构建时移除所有 console.* 和 debugger，避免大量日志拖累用户浏览器性能；
   // dev (vite serve) 下保留以便调试
   esbuild: {
-    // 临时排查（2026-08-12 SAVE_FILE 链路）：保留 console 便于用户控制台定位；排查完恢复 drop
-    drop: command === 'build' ? ['debugger'] : []
+    drop: command === 'build' ? ['console', 'debugger'] : []
   },
   build: {
     outDir: 'dist',
