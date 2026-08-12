@@ -2408,6 +2408,11 @@ class ContentScriptApp {
       this.showExportDialog()
     })
 
+    // 编辑器显示事件（编辑后另存为新版本文件）
+    this.addEventListenerManaged('showEditor', window, 'showEditor', () => {
+      this.showEditor()
+    })
+
     // 打赏组件显示事件
     this.addEventListenerManaged('toggleDonation', window, 'toggle-donation', () => {
       this.showDonationModal()
@@ -2444,6 +2449,14 @@ class ContentScriptApp {
     vueComponentManager.toggleExportDialog(content, this.config, (format, options) => {
       this.handleExport(format, options)
     })
+  }
+
+  /**
+   * 显示 Markdown 编辑器（编辑后另存为新版本文件，不覆盖原文件）
+   */
+  private showEditor(): void {
+    const originalFilename = this.extractFileName()
+    vueComponentManager.toggleEditor(this.currentMarkdownContent ?? '', originalFilename, this.config)
   }
 
   /**

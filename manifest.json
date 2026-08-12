@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Markdown Reader Vue",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "基于Vue.js 3.0的现代化Markdown阅读器浏览器插件",
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>",
+    "file:///*",
     "https://kroki.io/*",
     "https://*.githubusercontent.com/*",
     "https://*.github.com/*",
@@ -22,7 +24,8 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>"
+        "<all_urls>",
+        "file:///*"
       ],
       "include_globs": [
         "*://*/*.md",

@@ -19,6 +19,17 @@
   >
     <!-- 顶部工具栏区域 -->
     <div class="toc-toolbar">
+      <!-- 编辑按钮 -->
+      <button 
+        class="toc-toolbar-btn" 
+        @click="openEditor"
+        title="编辑文档"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+      </button>
+
       <!-- 设置按钮 -->
       <button 
         class="toc-toolbar-btn" 
@@ -405,6 +416,13 @@ const openExport = () => {
   window.dispatchEvent(event)
 }
 
+/** 打开 Markdown 编辑器（编辑后另存为新版本文件，不覆盖原文件） */
+const openEditor = () => {
+  // 触发全局编辑事件
+  const event = new CustomEvent('showEditor')
+  window.dispatchEvent(event)
+}
+
 // 搜索功能
 const toggleSearch = async () => {
   showSearchBox.value = !showSearchBox.value
@@ -486,6 +504,9 @@ const toggleCollapse = () => {
 
 const scrollToHeading = (id: string, event: Event) => {
   event.preventDefault()
+
+  // 通知编辑弹窗（若打开）：预览+编辑区同步定位到该标题；弹窗未打开时无副作用
+  window.dispatchEvent(new CustomEvent('tocNavigate', { detail: { id } }))
   
   const element = document.getElementById(id)
   if (element) {

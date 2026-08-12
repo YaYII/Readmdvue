@@ -1,6 +1,9 @@
 import { showSuccess, showError } from './appleNotification'
 import { localMermaidRenderer } from './localMermaidRenderer'
 
+/** 离线模式图表降级消息：不发起网络请求，图表源码展示（可复制） */
+const OFFLINE_CHART_MESSAGE = '离线模式：该图表需联网渲染，以下为源码（可复制）'
+
 // 统一的图表渲染选项
 export interface ChartRenderOptions {
   type: string // 支持所有Kroki图表类型
@@ -136,7 +139,14 @@ export class AsyncChartRenderer {
       const renderTime = Date.now() - startTime
       const errorMessage = lastError?.message || '渲染失败'
 
-      this.showErrorInContainer(container, errorMessage, type)
+      // 离线降级：把图表源码展示在错误块（textContent 安全注入，防 XSS）
+      const isOffline = lastError?.message === OFFLINE_CHART_MESSAGE
+      this.showErrorInContainer(
+        container,
+        errorMessage,
+        type,
+        isOffline ? this.getContentFromContainer(container) : undefined
+      )
 
       showError(
         '图表渲染失败',
@@ -180,6 +190,11 @@ export class AsyncChartRenderer {
     timeout: number,
     useCache: boolean
   ): Promise<{ content: string; cached: boolean }> {
+    // 离线模式：不发起网络请求，直接降级（源码展示由调用方处理）
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      throw new Error(OFFLINE_CHART_MESSAGE)
+    }
+
     // 生成缓存键
     const cacheKey = this.generateCacheKey(type, content)
 
@@ -301,7 +316,12 @@ export class AsyncChartRenderer {
   /**
    * 在容器中显示错误信息
    */
-  private showErrorInContainer(container: HTMLElement, message: string, type: string): void {
+  private showErrorInContainer(
+    container: HTMLElement,
+    message: string,
+    type: string,
+    sourceCode?: string
+  ): void {
     // 隐藏加载状态
     const loading = container.querySelector('.chart-loading')
     if (loading) loading.remove()
@@ -331,6 +351,16 @@ export class AsyncChartRenderer {
       </div>
     `
     errorElement.style.display = 'block'
+
+    // 离线降级：展示图表源码（textContent 安全注入，不执行 HTML）
+    if (sourceCode) {
+      const pre = document.createElement('pre')
+      pre.className = 'chart-source-code'
+      const code = document.createElement('code')
+      code.textContent = sourceCode
+      pre.appendChild(code)
+      errorElement.appendChild(pre)
+    }
   }
 
   /**

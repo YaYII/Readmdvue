@@ -123,6 +123,10 @@ class BackgroundScript {
           this.logEvent(message.payload, tabId)
           return { success: true }
 
+        case 'SAVE_FILE':
+          // 保存编辑后的文档（downloads/tabs API 仅 background 可用，content script 无权限）
+          return await this.saveFileAndOpen(message.payload, tabId)
+
         case 'PING':
           return { success: true, data: { status: 'alive' } }
 
@@ -144,6 +148,126 @@ class BackgroundScript {
       logger.error('处理消息失败:', { errorMsg, message, sender })
       return { success: false, error: errorMsg }
     }
+  }
+
+  /**
+   * 保存编辑后的 Markdown 文件并自动打开：
+   * saveAs 弹系统保存框（用户选位置）→ onChanged 拿完成状态 → search 拿最终路径
+   * → tabs.create(file://) 新页签打开（需开启「允许访问文件网址」）
+   * → 失败降级 downloads.open 系统默认程序
+   * @returns data: { path?: string; canceled?: boolean; opened?: boolean }
+   */
+  private async saveFileAndOpen(
+    payload: { content?: string; filename?: string } | undefined,
+    _tabId?: number
+  ): Promise<ExtensionResponse> {
+    const content = payload?.content ?? ''
+    const filename = payload?.filename ?? 'document.md'
+    console.log('[SAVE_FILE] 收到保存请求:', { filename, contentLength: content.length, hasDownloads: !!chrome.downloads })
+    if (!content) {
+      return { success: false, error: '保存内容为空' }
+    }
+
+    return new Promise((resolve) => {
+      // MV3 service worker 中 URL.createObjectURL 不可用（Chrome 限制），
+      // 改用 data URL 传输内容（downloads API 原生支持 data: URL）
+      const url = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(content)
+      let downloadId: number | undefined
+      let settled = false
+
+      // 用户未确认保存框（保存框一直开着/取消）→ 30s 后视为取消
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true
+          chrome.downloads.onChanged.removeListener(listener)
+          console.log('[SAVE_FILE] 30s 超时，视为用户取消')
+          resolve({ success: false, data: { canceled: true } })
+        }
+      }, 30000)
+
+      const finish = (path: string | null, id: number): void => {
+        settled = true
+        clearTimeout(timeout)
+        chrome.downloads.onChanged.removeListener(listener)
+        console.log('[SAVE_FILE] 保存完成:', { path, downloadId: id })
+        if (!path) {
+          resolve({ success: true, data: { path: null } })
+          return
+        }
+        // 自动打开：file:// 新页签 → 失败降级系统默认程序
+        this.openSavedFile(path, id)
+        resolve({ success: true, data: { path } })
+      }
+
+      // 时序竞争修复：complete 事件可能早于 download 回调到达（downloadId 未设置），
+      // 单文件场景下未设置时也接受事件；download 回调里再主动 search 兜底
+      const listener = (delta: chrome.downloads.DownloadDelta): void => {
+        console.log('[SAVE_FILE] onChanged:', JSON.stringify({ id: delta.id, downloadId, state: delta.state?.current, error: delta.error?.current }))
+        if (settled) return
+        if (downloadId !== undefined && delta.id !== downloadId) return
+        if (delta.state?.current === 'complete') {
+          chrome.downloads.search({ id: delta.id }, (items) => {
+            console.log('[SAVE_FILE] search(complete) filename:', items[0]?.filename ?? null)
+            finish(items[0]?.filename ?? null, delta.id)
+          })
+        } else if (delta.state?.current === 'interrupted' || delta.error?.current) {
+          settled = true
+          clearTimeout(timeout)
+          chrome.downloads.onChanged.removeListener(listener)
+          console.log('[SAVE_FILE] 下载中断:', delta.error?.current)
+          resolve({ success: false, data: { canceled: true } })
+        }
+      }
+
+      chrome.downloads.onChanged.addListener(listener)
+      chrome.downloads.download({ url, filename, saveAs: true }, (id) => {
+        if (chrome.runtime.lastError) {
+          settled = true
+          clearTimeout(timeout)
+          chrome.downloads.onChanged.removeListener(listener)
+          console.log('[SAVE_FILE] download 启动失败:', chrome.runtime.lastError.message)
+          resolve({ success: false, error: chrome.runtime.lastError.message || '下载启动失败' })
+          return
+        }
+        downloadId = id
+        console.log('[SAVE_FILE] download 已启动, id =', id)
+        // 双保险：complete 可能已早于本回调触发
+        chrome.downloads.search({ id }, (items) => {
+          if (settled) return
+          const item = items[0]
+          if (item?.state === 'complete') {
+            console.log('[SAVE_FILE] search(启动回调) 已 complete, filename:', item.filename ?? null)
+            finish(item.filename ?? null, id)
+          }
+        })
+      })
+    })
+  }
+
+  /** 本地路径 → file:// URL（Windows 盘符路径需 /C:/ 形式） */
+  private toFileUrl(path: string): string {
+    if (/^[a-zA-Z]:[\\/]/.test(path)) {
+      return 'file:///' + path.replace(/\\/g, '/')
+    }
+    return 'file://' + path
+  }
+
+  /** 打开已保存文件：file:// 新页签优先，失败降级系统默认程序 */
+  private openSavedFile(path: string, downloadId: number): void {
+    chrome.tabs.create({ url: this.toFileUrl(path) }, () => {
+      if (chrome.runtime.lastError) {
+        console.log('[SAVE_FILE] tabs.create(file://) 失败:', chrome.runtime.lastError.message, '→ 降级 downloads.open')
+        // 未开启「允许访问文件网址」→ 降级系统默认程序打开
+        try {
+          chrome.downloads.open(downloadId)
+          console.log('[SAVE_FILE] 已调用 downloads.open 系统程序打开')
+        } catch {
+          // 忽略：文件已保存，用户可手动打开
+        }
+      } else {
+        console.log('[SAVE_FILE] tabs.create(file://) 成功:', this.toFileUrl(path))
+      }
+    })
   }
 
   /**

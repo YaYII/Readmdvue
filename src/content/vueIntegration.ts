@@ -5,6 +5,7 @@ import ExportDialog from '../components/ExportDialog.vue'
 import PerformanceMonitor from '../components/PerformanceMonitor.vue'
 import TableOfContents from '../components/TableOfContents.vue'
 import DonationModal from '../components/DonationModal.vue'
+import MarkdownEditor from '../components/MarkdownEditor.vue'
 import type { MarkdownConfig } from '../types'
 import type { TocItem } from '../utils/markdownRenderer'
 
@@ -234,6 +235,49 @@ class VueComponentManager {
    */
   createDonationModal(): void {
     this.toggleDonationModal()
+  }
+
+  /**
+   * 切换 Markdown 编辑器显示状态（互斥逻辑）
+   * 编辑后「另存为新文件」（版本号文件名），不覆盖原文件
+   */
+  toggleEditor(originalContent: string, originalFilename: string, config?: MarkdownConfig): void {
+    // 如果编辑器已显示，则隐藏
+    if (this.apps.has('editor')) {
+      console.log('隐藏编辑器')
+      this.hideComponent('editor')
+      return
+    }
+
+    // 如果设置面板正在显示，先关闭它
+    if (this.apps.has('settings')) {
+      console.log('关闭设置面板以显示编辑器')
+      this.hideComponent('settings')
+    }
+
+    // 如果导出对话框正在显示，先关闭它
+    if (this.apps.has('export')) {
+      console.log('关闭导出对话框以显示编辑器')
+      this.hideComponent('export')
+    }
+
+    // 如果打赏组件正在显示，先关闭它
+    if (this.apps.has('donation')) {
+      console.log('关闭打赏组件以显示编辑器')
+      this.hideComponent('donation')
+    }
+
+    // 显示编辑器
+    console.log('显示编辑器:', originalFilename)
+    this.createComponent('editor', MarkdownEditor, {
+      originalContent,
+      originalFilename,
+      config,
+      onClose: () => {
+        console.log('编辑器关闭')
+        this.hideComponent('editor')
+      }
+    })
   }
 
   /**

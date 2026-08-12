@@ -6,6 +6,9 @@
 
 import type { MarkdownConfig } from '@/types'
 
+/** 离线模式图表降级消息：不发起网络请求，图表源码展示（可复制） */
+const OFFLINE_CHART_MESSAGE = '离线模式：该图表需联网渲染，以下为源码（可复制）'
+
 // 图表渲染器接口
 export interface ChartRenderer {
   readonly type: string
@@ -66,7 +69,12 @@ abstract class BaseChartRenderer implements ChartRenderer {
     }
   }
 
-  protected showAsyncError(loadingElement: HTMLElement, errorElement: HTMLElement, message: string): void {
+  protected showAsyncError(
+    loadingElement: HTMLElement,
+    errorElement: HTMLElement,
+    message: string,
+    sourceCode?: string
+  ): void {
     if (loadingElement) loadingElement.classList.remove('chart-loading-visible')
     if (errorElement) {
       errorElement.innerHTML = `
@@ -76,6 +84,16 @@ abstract class BaseChartRenderer implements ChartRenderer {
         </div>
       `
       errorElement.classList.add('chart-error-visible')
+
+      // 离线降级：展示图表源码（textContent 安全注入，不执行 HTML）
+      if (sourceCode) {
+        const pre = document.createElement('pre')
+        pre.className = 'chart-source-code'
+        const code = document.createElement('code')
+        code.textContent = sourceCode
+        pre.appendChild(code)
+        errorElement.appendChild(pre)
+      }
     }
   }
 
@@ -139,6 +157,11 @@ export class UnifiedKrokiRenderer extends BaseChartRenderer {
     errorElement: HTMLElement
   ): Promise<void> {
     try {
+      // 离线模式：不发起网络请求，直接降级（源码展示由 catch 处理）
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error(OFFLINE_CHART_MESSAGE)
+      }
+
       // 生成缓存键
       const cacheKey = this.generateCacheKey(content)
       
@@ -179,9 +202,13 @@ export class UnifiedKrokiRenderer extends BaseChartRenderer {
     } catch (err) {
       console.error(`${this.currentChartType}图表渲染失败:`, err)
       let errorMessage = '图表渲染失败'
-      
+      let sourceCode: string | undefined
+
       if (err instanceof Error) {
-        if (err.name === 'AbortError') {
+        if (err.message === OFFLINE_CHART_MESSAGE) {
+          errorMessage = err.message
+          sourceCode = content
+        } else if (err.name === 'AbortError') {
           errorMessage = '图表渲染超时，请检查网络连接'
         } else if (err.message.includes('Failed to fetch')) {
           errorMessage = '无法连接到 Kroki 服务器，请检查网络连接'
@@ -190,7 +217,7 @@ export class UnifiedKrokiRenderer extends BaseChartRenderer {
         }
       }
       
-      this.showAsyncError(loadingElement, errorElement, errorMessage)
+      this.showAsyncError(loadingElement, errorElement, errorMessage, sourceCode)
     }
   }
 
