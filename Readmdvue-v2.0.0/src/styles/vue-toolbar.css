@@ -1,0 +1,294 @@
+/* Vue工具栏样式 - 苹果Liquid Glass设计风格 */
+
+.markdown-vue-toolbar {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+
+  /* Liquid Glass材质效果（统一引用苹果材质变量） */
+  background: var(--liquid-glass-light);
+  backdrop-filter: var(--liquid-glass-blur);
+  -webkit-backdrop-filter: var(--liquid-glass-blur);
+
+  /* 边框和阴影 */
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  /* 动画过渡 */
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* 响应式设计 */
+  padding: 8px;
+  min-width: 200px;
+  max-width: 90vw; /* 防止在小屏幕上溢出 */
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .markdown-vue-toolbar {
+    background: var(--liquid-glass-dark);
+    border-color: var(--liquid-glass-border);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 工具栏悬停效果 */
+.markdown-vue-toolbar:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 工具栏区域 */
+.toolbar-section {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 工具栏按钮基础样式 */
+.toolbar-btn {
+  /* 重置默认样式 */
+  border: none;
+  outline: none;
+  background: none;
+  cursor: pointer;
+
+  /* 尺寸和布局 */
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Liquid Glass按钮效果 */
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  /* 阴影效果 */
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+  /* 动画过渡 */
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* 图标颜色 */
+  color: #1d1d1f;
+}
+
+/* 暗色模式按钮 */
+@media (prefers-color-scheme: dark) {
+  .toolbar-btn {
+    background: rgba(48, 48, 52, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f5f5f7;
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 按钮悬停效果 */
+.toolbar-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toolbar-btn:hover {
+    background: rgba(72, 72, 76, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* 按钮激活效果 */
+.toolbar-btn:active {
+  transform: translateY(0) scale(0.98);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toolbar-btn:active {
+    background: rgba(58, 58, 62, 0.9);
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.2),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* 按钮焦点效果（键盘导航） */
+.toolbar-btn:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+/* 特定按钮的强调色 */
+.toolbar-btn#vue-settings-btn:hover {
+  color: #8e8e93;
+  /* 石墨色 */
+}
+
+.toolbar-btn#vue-export-btn:hover {
+  color: #30d158;
+  /* 绿色 */
+}
+
+.toolbar-btn#vue-search-btn:hover {
+  color: #007aff;
+  /* 蓝色 */
+}
+
+.toolbar-btn#vue-performance-btn:hover {
+  color: #ff9500;
+  /* 橙色 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .markdown-vue-toolbar {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px;
+    min-width: 160px;
+    max-width: 85vw; /* 在小屏幕上留更多边距 */
+  }
+
+  .markdown-vue-toolbar:hover {
+    transform: translateX(-50%) translateY(-2px);
+  }
+
+  .toolbar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .toolbar-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .toolbar-section {
+    gap: 6px;
+  }
+}
+
+/* 搜索高亮样式 */
+.search-highlight {
+  background: rgba(255, 204, 0, 0.3) !important;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 2px;
+  animation: searchPulse 1s ease-in-out;
+}
+
+@keyframes searchPulse {
+  0% {
+    background: rgba(255, 204, 0, 0.6);
+  }
+
+  50% {
+    background: rgba(255, 204, 0, 0.3);
+  }
+
+  100% {
+    background: rgba(255, 204, 0, 0.3);
+  }
+}
+
+/* 工具栏进入动画 */
+@keyframes toolbarSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100px) scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.markdown-vue-toolbar {
+  animation: toolbarSlideIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 无障碍设计 */
+@media (prefers-reduced-motion: reduce) {
+
+  .markdown-vue-toolbar,
+  .toolbar-btn {
+    transition: none;
+    animation: none;
+  }
+
+  .toolbar-btn:hover {
+    transform: none;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .markdown-vue-toolbar {
+    border: 2px solid #000;
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  .toolbar-btn {
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .markdown-vue-toolbar {
+      border-color: #fff;
+      background: rgba(0, 0, 0, 0.95);
+    }
+
+    .toolbar-btn {
+      border-color: #fff;
+      background: #000;
+      color: #fff;
+    }
+  }
+}
+
+/* ===== data-theme 深色适配（跟随插件主题，非系统主题） ===== */
+:root[data-theme="dark"] .markdown-vue-toolbar,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-vue-toolbar {
+  background: #1c1c1e;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme="dark"] .markdown-vue-toolbar .toolbar-btn,
+:root[data-theme="auto"][data-system-theme="dark"] .markdown-vue-toolbar .toolbar-btn {
+  color: #ebebf5;
+}

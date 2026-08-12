@@ -1,0 +1,319 @@
+/* 打赏弹窗样式 - DonationModal.vue */
+
+/* 模态框遮罩层 */
+.donation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* 模态框主体 */
+.donation-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--liquid-glass-light);
+  backdrop-filter: var(--liquid-glass-blur);
+  -webkit-backdrop-filter: var(--liquid-glass-blur);
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.15);
+  transform-origin: center;
+  /* 添加与设置面板相同的过渡动画 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 推拉式布局样式 - 采用与设置面板完全相同的left定位方式 */
+.donation-modal.toc-expanded {
+  /* 当目录完全展开时，对话框向右偏移更多 */
+  left: calc(50% + 150px);
+}
+
+.donation-modal.toc-collapsed {
+  /* 当目录折叠时，对话框偏移较少 */
+  left: calc(50% + 60px);
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .donation-modal.toc-expanded {
+    left: calc(50% + 120px);
+  }
+  
+  .donation-modal.toc-collapsed {
+    left: calc(50% + 50px);
+  }
+}
+
+/* 响应式适配 - 小屏幕时回退到居中显示 */
+@media (max-width: 768px) {
+  .donation-modal.toc-expanded,
+  .donation-modal.toc-collapsed {
+    left: 50%;
+    width: 95vw;
+  }
+}
+
+/* 关闭按钮 */
+.donation-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 20px;
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.donation-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(0, 0, 0, 0.8);
+  transform: scale(1.05);
+}
+
+.donation-modal-close:active {
+  transform: scale(0.95);
+}
+
+/* 标题区域 */
+.donation-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.donation-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.donation-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 12px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable', system-ui, sans-serif;
+}
+
+.donation-subtitle {
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.7);
+  margin: 0;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* 二维码容器 */
+.donation-qr-container {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.donation-qr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.donation-qr-item:hover {
+  transform: translateY(-4px);
+}
+
+.donation-qr-wrapper {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.donation-qr-item:hover .donation-qr-wrapper {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.donation-qr-img {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  background: #ffffff;
+}
+
+.donation-qr-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+
+/* 底部区域 */
+.donation-footer {
+  text-align: center;
+}
+
+.donation-thanks {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ff2d92;
+  margin: 0 0 8px 0;
+}
+
+.donation-note {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0;
+  font-style: italic;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .donation-modal {
+    background: rgba(28, 28, 30, 0.95);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 20px 60px rgba(0, 0, 0, 0.4),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .donation-modal-close {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .donation-modal-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .donation-title {
+    color: #f5f5f7;
+  }
+
+  .donation-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .donation-qr-wrapper {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .donation-qr-item:hover .donation-qr-wrapper {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .donation-qr-label {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .donation-note {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .donation-modal {
+    padding: 24px;
+    margin: 16px;
+    border-radius: 20px;
+  }
+
+  .donation-title {
+    font-size: 24px;
+  }
+
+  .donation-subtitle {
+    font-size: 15px;
+  }
+
+  .donation-qr-container {
+    gap: 16px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .donation-qr-img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .donation-qr-wrapper {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .donation-modal {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .donation-icon {
+    font-size: 32px;
+  }
+
+  .donation-title {
+    font-size: 22px;
+  }
+
+  .donation-qr-img {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+    object-position: center;
+  }
+}
