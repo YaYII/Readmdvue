@@ -28,6 +28,9 @@
       <div class="editor-footer">
         <span class="editor-status">{{ charCount }} 字符</span>
         <span class="editor-hint">左侧编辑实时渲染到右侧预览，滚动双向联动；保存为新的版本文件，不覆盖原文件</span>
+        <button class="editor-format-btn" @click="formatMarkdown" :disabled="isFormatting" title="规范 Markdown 书写（标题/列表/引用符号间隔、表格对齐、多余空行）">
+          {{ isFormatting ? '格式化中…' : '格式化' }}
+        </button>
         <button class="editor-save-btn" @click="save" :disabled="isSaving">
           {{ isSaving ? '保存中…' : `保存为 ${targetFilename}` }}
         </button>
@@ -44,6 +47,7 @@ import { oneDark } from '@codemirror/theme-one-dark'
 import { showSuccess, showError } from '../utils/appleNotification'
 import { generateVersionedFilename } from '../utils/versionedFilename'
 import { MarkdownRenderer, type TocItem } from '../utils/markdownRenderer'
+import { normalizeMarkdown } from '../utils/markdownNormalizer'
 import { asyncChartRenderer } from '../utils/asyncChartRenderer'
 import katex from 'katex'
 import type { MarkdownConfig } from '../types'
@@ -62,6 +66,7 @@ const editorHostRef = ref<HTMLElement>()
 const previewHostRef = ref<HTMLElement>()
 const overlayRef = ref<HTMLElement>()
 const isSaving = ref(false)
+const isFormatting = ref(false)
 const charCount = ref(0)
 
 let view: EditorView | null = null
@@ -250,6 +255,53 @@ function schedulePreviewRender(): void {
     renderTimer = null
     void renderPreview()
   }, 400)
+}
+
+/**
+ * Markdown 格式化：
+ * 自研规范化器修复符号间隔（#标题→# 标题、-项目→- 项目、>引用→> 引用、行尾空白、多余空行）
+ * → Prettier 收尾（表格列对齐、引用、块间空行规范）
+ * Prettier 动态加载（standalone + markdown parser，仅首次点击时加载，不影响初始包体）
+ */
+async function formatMarkdown(): Promise<void> {
+  if (!view || isFormatting.value) return
+  const original = view.state.doc.toString()
+  if (!original.trim()) return
+
+  isFormatting.value = true
+  try {
+    const [prettierModule, markdownParser] = await Promise.all([
+      import('prettier/standalone'),
+      import('prettier/plugins/markdown')
+    ])
+
+    // 1) 规范化器修复符号间隔（代码块内不动）
+    const normalized = normalizeMarkdown(original)
+    // 2) Prettier 收尾
+    const formatted = await prettierModule.format(normalized, {
+      parser: 'markdown',
+      plugins: [markdownParser],
+      proseWrap: 'preserve' // 不重排段落文本，避免大改动
+    })
+
+    if (formatted === original) {
+      showSuccess('格式化完成', '文档格式已经很规范，无需调整')
+      return
+    }
+
+    // 3) 替换编辑器内容（光标按字符偏移近似保留），预览防抖自动更新
+    const cursor = view.state.selection.main.head
+    view.dispatch({
+      changes: { from: 0, to: original.length, insert: formatted },
+      selection: { anchor: Math.min(cursor, formatted.length) }
+    })
+    showSuccess('格式化完成', '已规范标题/列表/引用间隔、表格对齐与空行')
+  } catch (err) {
+    console.error('[编辑器] 格式化失败:', err)
+    showError('格式化失败', err instanceof Error ? err.message : '无法格式化该文档（请检查代码块等语法）')
+  } finally {
+    isFormatting.value = false
+  }
 }
 
 /**
@@ -658,6 +710,29 @@ async function save(): Promise<void> {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.editor-format-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--md-border-primary, rgba(0, 0, 0, 0.15));
+  background: var(--md-bg-secondary, rgba(0, 0, 0, 0.05));
+  color: var(--md-text-primary, #1d1d1f);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.editor-format-btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.editor-format-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .editor-save-btn {
