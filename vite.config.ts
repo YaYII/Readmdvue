@@ -97,6 +97,12 @@ export default defineConfig(({ command }) => ({
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
     copyPublicDir: true, // 确保public目录下的文件被复制
+    // 禁用 modulepreload 链接注入：@crxjs 把 popup HTML 作为 Vite 入口处理时，
+    // 会向 dist/src/popup/index.html 注入 <link rel="modulepreload">，
+    // 在 chrome-extension:// 页面触发 "cross-world extension resource mismatch"
+    // 与 "preloaded but not used" 控制台警告（模块加载与 preload 分属不同 world）。
+    // 扩展 popup 场景无 preload 收益，禁用后链接与 polyfill 一并移除（纯配置开关）。
+    modulePreload: false,
     rollupOptions: {
       input: {
         // 明确指定入口文件
