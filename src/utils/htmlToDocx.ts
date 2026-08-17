@@ -31,6 +31,21 @@ function mimeToDocxType(mime: string | undefined): DocxImageType {
   return 'png' // png / webp（webp 会被 canvas 重编码为 png）/ 未知
 }
 
+/** 长行在空格处换行（主动拆分，避免代码块/目录树单行过长；不硬断单词） */
+function wrapLongLine(line: string, max: number): string[] {
+  if (line.length <= max) return [line]
+  const parts: string[] = []
+  let rest = line
+  while (rest.length > max) {
+    let cut = rest.lastIndexOf(' ', max)
+    if (cut <= 0) cut = Math.min(max, rest.length) // 无空格长串：不得已才在 max 处截断
+    parts.push(rest.slice(0, cut))
+    rest = rest.slice(cut).replace(/^ +/, '')
+  }
+  if (rest) parts.push(rest)
+  return parts
+}
+
 /** 图片转换过程日志（控制台可观测：用户通过日志判断图片是否插入成功） */
 let docxImgSeq = 0
 function logImage(msg: string, ...rest: unknown[]): void {
@@ -488,8 +503,12 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             // 压缩超长连续空格（目录树/代码里用于对齐的长空格 → 2 个）+ 去掉行尾空格：
             // 避免 Word 里显示几十个连续空格导致内容又长又难看
             const cleaned = line.replace(/ {3,}/g, '  ').replace(/ +$/g, '')
-            if (i > 0) codeRuns.push(new TextRun({ break: 1 }))
-            codeRuns.push(new TextRun({ text: cleaned, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 }))
+            // 长行在空格处主动换行（单行不超过 70 字符，保持紧凑）
+            const wrapped = wrapLongLine(cleaned, 70)
+            wrapped.forEach((seg, j) => {
+              if (i > 0 || j > 0) codeRuns.push(new TextRun({ break: 1 }))
+              codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 }))
+            })
           })
           result.push(new Paragraph({
             children: codeRuns,
