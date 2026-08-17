@@ -18,9 +18,18 @@ import {
   AlignmentType,
   LineRuleType,
 } from 'docx'
+import mermaid from 'mermaid/dist/mermaid.min.js'
 
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
+
+/** docx 图片结果（数据 + 尺寸 + 类型） */
+interface DocxImageResult {
+  data: Uint8Array
+  width: number
+  height: number
+  type: DocxImageType
+}
 
 /** data URL / mime 格式 → docx 图片类型 */
 function mimeToDocxType(mime: string | undefined): DocxImageType {
@@ -44,6 +53,70 @@ function wrapLongLine(line: string, max: number): string[] {
   }
   if (rest) parts.push(rest)
   return parts
+}
+
+/** mermaid label 转义（引号/括号/方括号等特殊字符） */
+function sanitizeMermaidLabel(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\[/g, '【').replace(/\]/g, '】')
+}
+
+/** 目录树代码 → mermaid graph TD（只取前 maxDepth 层，结构精简图） */
+function dirTreeToMermaid(code: string, maxDepth: number): string | null {
+  const lines = code.split('\n').map((l) => l.replace(/\r$/, ''))
+  if (lines.length < 2) return null
+  const root = lines[0].trim().replace(/\/+$/, '') || 'root'
+  const nodeIds = new Map<string, string>()
+  const nodeLines: string[] = []
+  const edgeLines: string[] = []
+  const getId = (label: string): string => {
+    if (!nodeIds.has(label)) {
+      const id = `N${nodeIds.size}`
+      nodeIds.set(label, id)
+      nodeLines.push(`${id}["${sanitizeMermaidLabel(label)}"]`)
+    }
+    return nodeIds.get(label)!
+  }
+  const rootId = getId(root)
+  const stack: string[] = [rootId] // stack[depth] = 该层当前节点 id
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i]
+    const m = line.match(/^([│ ]*)(?:├|└)──\s*(.+)$/)
+    if (!m) continue
+    const prefix = m[1]
+    const name = m[2].trim().replace(/\s{2,}.*$/, '').replace(/\/$/, '').trim()
+    if (!name) continue
+    const depth = (prefix.match(/│/g) || []).length
+    if (depth >= maxDepth) continue
+    const id = getId(name)
+    const parentId = depth === 0 ? rootId : stack[depth - 1] || rootId
+    edgeLines.push(`${parentId} --> ${id}`)
+    stack[depth] = id
+    stack.length = depth + 1
+  }
+  if (nodeLines.length <= 1) return null // 只有根 → 无结构可画
+  return `graph TD\n    ${nodeLines.join('\n    ')}\n    ${edgeLines.join('\n    ')}`
+}
+
+/** 目录树 → 精简树图 PNG（mermaid 渲染 + SVG→PNG 复用 svgToDocxImage） */
+async function renderTreeImage(code: string): Promise<DocxImageResult | null> {
+  try {
+    const mermaidCode = dirTreeToMermaid(code, 2)
+    if (!mermaidCode) return null
+    // 树图用浅色主题 + 纯 text 节点（htmlLabels:false），白底可读、canvas 绘制无 foreignObject 问题
+    try {
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'default', flowchart: { htmlLabels: false } })
+    } catch {
+      // 忽略初始化失败，用现有配置
+    }
+    const { svg } = await mermaid.render(`tree-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, mermaidCode)
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml')
+    const svgEl = parsed.documentElement as unknown as SVGSVGElement
+    if (!svgEl) return null
+    return await svgToDocxImage(svgEl)
+  } catch (e) {
+    warnImage(`项目结构转图失败，保持文本: ${e instanceof Error ? e.message : e}`)
+    return null
+  }
 }
 
 /** 图片转换过程日志（控制台可观测：用户通过日志判断图片是否插入成功） */
@@ -155,7 +228,7 @@ async function drawLoadedImage(src: string): Promise<string | null> {
 }
 
 /** 图片 src → base64 + 宽高 + 类型（优先 data URL 直解；其次已加载 DOM 图；再 fetch；失败返回 null） */
-async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width: number; height: number; type: DocxImageType } | null> {
+async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
   try {
     // data URL（粘贴/拖拽插入的 base64 图）：直接解析，无 canvas/fetch 限制
     const dataMatch = src.match(/^data:image\/(png|jpeg|jpg|gif|bmp);base64,(.+)$/)
@@ -277,7 +350,7 @@ async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width:
 }
 
 /** mermaid SVG → PNG（canvas 绘制；foreignObject 文字可能缺失，结构/连线保留） */
-async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; width: number; height: number; type: DocxImageType } | null> {
+async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | null> {
   try {
     let w = 800
     let h = 600
@@ -495,6 +568,21 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           if (isChartCode) {
             docxImgSeq++
             warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
+          }
+          // 目录树（README 项目结构等）→ 生成精简树图（前 2 层），完整文本仍保留供查细节
+          if (/[├└]──/.test(codeText)) {
+            const treeImg = await renderTreeImage(codeText)
+            if (treeImg) {
+              docxImgSeq++
+              logImage(`✅ 项目结构已生成精简树图（前 2 层）${treeImg.width}x${treeImg.height}`)
+              result.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
+                children: [new ImageRun({ data: treeImg.data, transformation: { width: treeImg.width, height: treeImg.height }, type: treeImg.type })],
+              }))
+            } else {
+              logImage('目录树转图失败 → 保持文本')
+            }
           }
           // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
           const codeLines = (el.textContent || '').split('\n')
