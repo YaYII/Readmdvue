@@ -11,21 +11,13 @@ import {
   Table,
   TableRow,
   TableCell,
-  HeadingLevel,
   ImageRun,
   BorderStyle,
   WidthType,
   ShadingType,
+  AlignmentType,
+  LineRuleType,
 } from 'docx'
-
-const HEADING_MAP: Record<string, string> = {
-  h1: HeadingLevel.HEADING_1,
-  h2: HeadingLevel.HEADING_2,
-  h3: HeadingLevel.HEADING_3,
-  h4: HeadingLevel.HEADING_4,
-  h5: HeadingLevel.HEADING_5,
-  h6: HeadingLevel.HEADING_6,
-}
 
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
@@ -48,14 +40,29 @@ function warnImage(msg: string, ...rest: unknown[]): void {
   console.warn(`[docx-image][${docxImgSeq}] ${msg}`, ...rest)
 }
 
-/** 提取块内 inline 内容为 TextRun（strong/em/code/a/br/普通文本） */
-function extractRuns(el: HTMLElement): TextRun[] {
+/** 提取块内 inline 内容为 TextRun（strong/em/code/a/br/普通文本）；overrides 可统一覆盖样式 */
+interface RunOverrides {
+  bold?: boolean
+  italics?: boolean
+  size?: number
+  color?: string
+  font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
+}
+function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
   const runs: TextRun[] = []
+  const apply = (opts: {
+    text?: string
+    bold?: boolean
+    italics?: boolean
+    size?: number
+    color?: string
+    font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
+  }): Record<string, unknown> => ({ ...opts, ...overrides })
   const walk = (node: Node): void => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = child.textContent || ''
-        if (text) runs.push(new TextRun({ text }))
+        if (text) runs.push(new TextRun(apply({ text }) as never))
       } else if (child.nodeType === Node.ELEMENT_NODE) {
         const c = child as HTMLElement
         const tag = c.tagName.toLowerCase()
@@ -63,16 +70,16 @@ function extractRuns(el: HTMLElement): TextRun[] {
           runs.push(new TextRun({ break: 1 }))
         } else if (tag === 'strong' || tag === 'b') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun({ text: t, bold: true }))
+          if (t) runs.push(new TextRun(apply({ text: t, bold: true }) as never))
         } else if (tag === 'em' || tag === 'i') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun({ text: t, italics: true }))
+          if (t) runs.push(new TextRun(apply({ text: t, italics: true }) as never))
         } else if (tag === 'code') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun({ text: t, font: 'Consolas' }))
+          if (t) runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
         } else if (tag === 'a') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun({ text: t, color: '2E9FFF' }))
+          if (t) runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
         } else {
           walk(c)
         }
@@ -375,11 +382,36 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'h3':
         case 'h4':
         case 'h5':
-        case 'h6':
-          result.push(new Paragraph({ heading: HEADING_MAP[tag] as (typeof HeadingLevel)[keyof typeof HeadingLevel], children: extractRuns(el) }))
+        case 'h6': {
+          // 自定义标题样式：黑体加粗、深色、逐级字号（不用 Word 默认蓝色 Heading）
+          const HEADING_STYLES: Record<string, { size: number; before: number; after: number }> = {
+            h1: { size: 32, before: 360, after: 200 },
+            h2: { size: 28, before: 300, after: 160 },
+            h3: { size: 24, before: 240, after: 120 },
+            h4: { size: 22, before: 200, after: 100 },
+            h5: { size: 22, before: 160, after: 80 },
+            h6: { size: 22, before: 120, after: 60 },
+          }
+          const hs = HEADING_STYLES[tag]
+          result.push(new Paragraph({
+            spacing: { before: hs.before, after: hs.after, line: 300, lineRule: LineRuleType.AUTO },
+            keepNext: true,
+            children: extractRuns(el, {
+              bold: true,
+              size: hs.size,
+              color: '1D1D1F',
+              font: { ascii: 'Calibri', eastAsia: '黑体' },
+            }),
+          }))
           break
+        }
         case 'p':
-          result.push(new Paragraph({ children: extractRuns(el), spacing: { after: 120 } }))
+          result.push(new Paragraph({
+            children: extractRuns(el),
+            alignment: AlignmentType.JUSTIFIED,
+            indent: { firstLine: 480 }, // 首行缩进 2 字符
+            spacing: { line: 320, lineRule: LineRuleType.AUTO, before: 60, after: 60 },
+          }))
           break
         case 'ul':
         case 'ol': {
@@ -392,7 +424,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             result.push(new Paragraph({
               children: [new TextRun(prefix), ...extractRuns(li as HTMLElement)],
               indent: { left: 360 },
-              spacing: { after: 60 },
+              spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
             }))
           }
           break
@@ -403,13 +435,32 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
               new TableRow({
                 children: Array.from(tr.children)
                   .filter((td) => ['td', 'th'].includes(td.tagName.toLowerCase()))
-                  .map((td) => new TableCell({
-                    children: convertInlineBlock(td as HTMLElement),
-                    shading: td.tagName.toLowerCase() === 'th' ? { type: ShadingType.CLEAR, fill: 'F2F2F7' } : undefined,
-                  })),
+                  .map((td) => {
+                    const isHead = td.tagName.toLowerCase() === 'th'
+                    return new TableCell({
+                      // 表头加粗 + 浅灰底；正文单元格正常
+                      children: isHead
+                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true }) })]
+                        : convertInlineBlock(td as HTMLElement),
+                      shading: { type: ShadingType.CLEAR, fill: isHead ? 'EDEDF2' : 'FFFFFF' },
+                      margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                      verticalAlign: 'center',
+                    })
+                  }),
               })
             )
-          result.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }))
+          result.push(new Table({
+            rows,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 4, color: '8A8A8E' },
+              bottom: { style: BorderStyle.SINGLE, size: 4, color: '8A8A8E' },
+              left: { style: BorderStyle.SINGLE, size: 4, color: 'C7C7CC' },
+              right: { style: BorderStyle.SINGLE, size: 4, color: 'C7C7CC' },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: 'D1D1D6' },
+              insideVertical: { style: BorderStyle.SINGLE, size: 4, color: 'D1D1D6' },
+            },
+          }))
           break
         }
         case 'pre':
@@ -424,9 +475,10 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
           }
           result.push(new Paragraph({
-            children: [new TextRun({ text: el.textContent || '', font: 'Consolas', size: 18 })],
+            children: [new TextRun({ text: el.textContent || '', font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 })],
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
-            spacing: { before: 120, after: 120 },
+            indent: { left: 120, right: 120 },
+            spacing: { before: 120, after: 120, line: 280, lineRule: LineRuleType.AUTO },
           }))
           break
         }
@@ -436,6 +488,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
             shading: { type: ShadingType.CLEAR, fill: 'F0F7FF' },
+            spacing: { before: 120, after: 120, line: 300, lineRule: LineRuleType.AUTO },
           }))
           break
         case 'img': {
@@ -454,7 +507,11 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           const img = await imageToDocxImage(src)
           if (img) {
             logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height}`)
-            result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })] }))
+            result.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
+              children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })],
+            }))
           } else {
             warnImage(`❌ 转换失败 → 占位文本（图未插入）`)
             result.push(new Paragraph({ children: [new TextRun({ text: `[图片: ${el.getAttribute('alt') || '未加载'}]`, italics: true, color: '8E8E93' })] }))
@@ -467,7 +524,11 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           const img = await svgToDocxImage(el as unknown as SVGSVGElement)
           if (img) {
             logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height}`)
-            result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })] }))
+            result.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
+              children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })],
+            }))
           } else {
             warnImage(`❌ 图表转换失败 → 占位文本（图未插入）`)
             result.push(new Paragraph({ children: [new TextRun({ text: '[图表]', italics: true, color: '8E8E93' })] }))
@@ -482,7 +543,10 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           break
         default:
           // 其他元素：有文本则作为段落输出
-          if (el.textContent?.trim()) result.push(new Paragraph({ children: extractRuns(el) }))
+          if (el.textContent?.trim()) result.push(new Paragraph({
+            children: extractRuns(el),
+            spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
+          }))
           break
       }
     } catch {
@@ -519,7 +583,27 @@ export async function htmlToDocx(html: string): Promise<Blob> {
   tempDiv.innerHTML = html
   const children = await convertChildren(tempDiv)
   const doc = new Document({
-    sections: [{ properties: {}, children }],
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: { ascii: 'Calibri', hAnsi: 'Calibri', eastAsia: '宋体' },
+            size: 22, // 11pt
+          },
+          paragraph: {
+            spacing: { line: 300, lineRule: LineRuleType.AUTO },
+          },
+        },
+      },
+    },
+    sections: [{
+      properties: {
+        page: {
+          margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 },
+        },
+      },
+      children,
+    }],
   })
   return Packer.toBlob(doc)
 }
