@@ -462,6 +462,8 @@
 /* 链接样式 - 苹果风格 */
 .markdown-reader-container a {
   color: var(--md-accent-primary);
+  /* 用户规则：所有链接一律加粗 */
+  font-weight: 600;
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -486,24 +488,25 @@
    深色模式 + 深色强调色（如黑色）时，强调色链接会不可见，此处保证对比度 */
 :root[data-theme="dark"] .markdown-reader-container a,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a {
-  /* 超链接高亮保留（可辨识链接，阅读体验）：深色下用高亮蓝（亮度提高，避免黑糊糊） */
-  color: #58A6FF;
+  /* 超链接高亮保留（可辨识链接，阅读体验）：深色下用高亮蓝（亮度继续提高）+ 加粗 */
+  color: #6CB6FF;
+  font-weight: 600;
 }
 
 :root[data-theme="dark"] .markdown-reader-container a:hover,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:hover {
-  color: #79C0FF;
-  border-bottom-color: #79C0FF;
+  color: #9AD0FF;
+  border-bottom-color: #9AD0FF;
 }
 
 :root[data-theme="dark"] .markdown-reader-container a:visited,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:visited {
-  color: #8CA8FF;
+  color: #9CB8FF;
 }
 
 :root[data-theme="dark"] .markdown-reader-container .heading-anchor,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .heading-anchor {
-  color: #79C0FF;
+  color: #9AD0FF;
 }
 
 :root[data-theme="dark"] .markdown-reader-container strong,
@@ -535,8 +538,8 @@
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h2,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container ul li::before,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container blockquote {
-  border-bottom-color: #79C0FF;
-  border-left-color: #79C0FF;
+  border-bottom-color: #9AD0FF;
+  border-left-color: #9AD0FF;
 }
 
 /* 强调文本样式 - 苹果风格 */
@@ -1656,6 +1659,8 @@
   display: block;
   padding: var(--md-spacing-sm) 0;
   color: var(--md-text-secondary);
+  /* 用户规则：所有链接一律加粗 */
+  font-weight: 600;
   text-decoration: none;
   font-size: 0.75em;
   line-height: 1.5;
