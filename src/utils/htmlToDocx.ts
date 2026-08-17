@@ -416,6 +416,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           result.push(new Paragraph({
             children: extractRuns(el),
             alignment: AlignmentType.JUSTIFIED,
+            wordWrap: true, // 允许长英文/URL 断行
             indent: { firstLine: 480 }, // 首行缩进 2 字符
             spacing: { line: 320, lineRule: LineRuleType.AUTO, before: 60, after: 60 },
           }))
@@ -431,6 +432,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             result.push(new Paragraph({
               children: [new TextRun(prefix), ...extractRuns(li as HTMLElement)],
               indent: { left: 360 },
+              wordWrap: true,
               spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
             }))
           }
@@ -491,6 +493,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           result.push(new Paragraph({
             children: codeRuns,
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
+            wordWrap: true, // 允许长英文/路径在单词中间断行，避免行被撑宽导致间隔很大
             // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
             spacing: { before: 60, after: 60, line: 240, lineRule: LineRuleType.AUTO },
           }))
@@ -502,6 +505,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
             shading: { type: ShadingType.CLEAR, fill: 'F0F7FF' },
+            wordWrap: true,
             spacing: { before: 120, after: 120, line: 300, lineRule: LineRuleType.AUTO },
           }))
           break
@@ -559,6 +563,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           // 其他元素：有文本则作为段落输出
           if (el.textContent?.trim()) result.push(new Paragraph({
             children: extractRuns(el),
+            wordWrap: true,
             spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
           }))
           break
@@ -573,7 +578,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
 /** 表格单元格内容（可能含多个段落） */
 function convertInlineBlock(el: HTMLElement): Paragraph[] {
   const blocks = Array.from(el.querySelectorAll(':scope > p, :scope > div, :scope > ul, :scope > ol'))
-  if (blocks.length === 0) return [new Paragraph({ children: extractRuns(el) })]
+  if (blocks.length === 0) return [new Paragraph({ children: extractRuns(el), wordWrap: true })]
   const result: Paragraph[] = []
   for (const b of blocks) {
     const t = b.tagName.toLowerCase()
@@ -585,7 +590,7 @@ function convertInlineBlock(el: HTMLElement): Paragraph[] {
         result.push(new Paragraph({ children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement)] }))
       }
     } else {
-      result.push(new Paragraph({ children: extractRuns(b as HTMLElement) }))
+      result.push(new Paragraph({ children: extractRuns(b as HTMLElement), wordWrap: true }))
     }
   }
   return result
