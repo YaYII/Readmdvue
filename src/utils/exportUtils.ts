@@ -7,6 +7,7 @@
 import type { ExportOptions } from '../types'
 import { showNotification, showSuccess, showError } from './appleNotification'
 import { KATEX_FONTS_CSS } from './katexFontsData'
+import { htmlToDocx } from './htmlToDocx'
 
 /**
  * 文档导出管理器
@@ -127,13 +128,43 @@ export class DocumentExporter {
   }
 
   /**
-   * 导出为 Word（.doc）：
-   * 用渲染后的 HTML 内容存为 .doc 扩展名——Word/WPS 打开时按 HTML 渲染，
-   * 与页面所见一致（表格/代码块/标题等均保留）。
+   * 导出为 Word（标准 .docx）：
+   * 渲染后的 HTML 转成 docx 结构（docx 库生成标准 Word 文档），
+   * 标题/表格/代码块/图片/mermaid 图表（转 PNG）均保留。
    */
   private async exportAsWord(content: string, options: ExportOptions): Promise<void> {
-    const htmlContent = await this.generateHTMLContent(content, options)
-    await this.downloadFile(htmlContent, options.filename, 'application/msword')
+    const processedContent = this.processContent(content, options)
+    const blob = await htmlToDocx(processedContent)
+    await this.downloadBlob(blob, options.filename)
+  }
+
+  /**
+   * 下载 Blob（docx 等二进制）
+   */
+  private async downloadBlob(blob: Blob, filename: string): Promise<void> {
+    const url = URL.createObjectURL(blob)
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.downloads?.download) {
+        await new Promise<void>((resolve) => {
+          chrome.downloads.download({ url, filename }, () => {
+            if (chrome.runtime.lastError) {
+              console.warn('[export] chrome.downloads.download(blob) 失败:', chrome.runtime.lastError.message)
+            }
+            resolve()
+          })
+        })
+        return
+      }
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    }
   }
 
   /**

@@ -435,8 +435,8 @@ const formatOptions = [
     value: 'word',
     label: 'Word',
     icon: '📘',
-    description: 'Word 文档（.doc，Word/WPS 可打开）',
-    extension: 'doc',
+    description: 'Word 文档（标准 .docx）',
+    extension: 'docx',
     supportsCharts: true,
     supportsMath: true,
     supportsFonts: true
