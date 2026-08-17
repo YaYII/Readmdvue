@@ -240,6 +240,14 @@ export class DocumentExporter {
             overflow-wrap: break-word;
             white-space: normal;
         }
+
+        /* 用户硬性规则：表格第一列永远不换行（与页面渲染一致） */
+        th:first-child,
+        td:first-child {
+            white-space: nowrap;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
         
         th {
             background: #f5f5f7;
