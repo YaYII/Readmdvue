@@ -260,15 +260,61 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; w
         h = Math.round(p[3])
       }
     }
-    const xml = new XMLSerializer().serializeToString(svg)
+
+    // 克隆 SVG 并处理 foreignObject（mermaid flowchart/ER 图节点标签默认用 foreignObject）：
+    // canvas 绘制 SVG 时 foreignObject 内 HTML 不渲染（文字丢失），且 XML 序列化可能含 <br> 等
+    // 导致 blob 加载失败（流程图整图丢失）。把 foreignObject 文本提取为 SVG <text> 元素：
+    // 保留文字 + 纯 SVG 结构，canvas 绘制即可正常显示。
+    const clone = svg.cloneNode(true) as SVGSVGElement
+    const foreignObjects = Array.from(clone.querySelectorAll('foreignObject'))
+    foreignObjects.forEach((fo) => {
+      const fx = parseFloat(fo.getAttribute('x') || '0')
+      const fy = parseFloat(fo.getAttribute('y') || '0')
+      const fw = parseFloat(fo.getAttribute('width') || '0')
+      const raw = (fo.textContent || '').replace(/\u00a0/g, ' ').trim()
+      if (!raw) {
+        fo.remove()
+        return
+      }
+      const lines = raw.split(/\n|<br\s*\/?>/i).map((s) => s.trim()).filter(Boolean)
+      if (lines.length === 0) {
+        fo.remove()
+        return
+      }
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+      const cx = fx + fw / 2
+      t.setAttribute('x', String(cx))
+      t.setAttribute('y', String(fy))
+      t.setAttribute('text-anchor', 'middle')
+      t.setAttribute('font-size', '13')
+      t.setAttribute('font-family', 'PingFang SC, Microsoft YaHei UI, Segoe UI Variable, sans-serif')
+      t.setAttribute('fill', '#1d1d1f')
+      lines.forEach((line, i) => {
+        const tsp = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
+        tsp.setAttribute('x', String(cx))
+        tsp.setAttribute('dy', i === 0 ? '0.9em' : '1.2em')
+        tsp.textContent = line
+        t.appendChild(tsp)
+      })
+      fo.parentNode?.replaceChild(t, fo)
+    })
+
+    const xml = new XMLSerializer().serializeToString(clone)
     const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    const img = new Image()
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve()
-      img.onerror = () => reject(new Error('svg load error'))
-      img.src = url
-    })
+    let img: HTMLImageElement | null = null
+    try {
+      img = new Image()
+      await new Promise<void>((resolve, reject) => {
+        img!.onload = () => resolve()
+        img!.onerror = () => reject(new Error('svg load error'))
+        img!.src = url
+      })
+    } catch {
+      // blob 加载失败（仍可能存在 XML 问题）：降级直接用页面原 SVG 元素绘制（同文档绘制）
+      logImage('svgToDocxImage: blob 加载失败，降级直接绘制页面 SVG 元素（foreignObject 文字可能缺失）')
+      img = null
+    }
     const canvas = document.createElement('canvas')
     canvas.width = w
     canvas.height = h
@@ -276,7 +322,16 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; w
     if (!ctx) return null
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, w, h)
-    ctx.drawImage(img, 0, 0, w, h)
+    if (img) {
+      ctx.drawImage(img, 0, 0, w, h)
+    } else {
+      try {
+        ctx.drawImage(svg as unknown as CanvasImageSource, 0, 0, w, h)
+      } catch (e) {
+        warnImage(`svgToDocxImage: 直接绘制页面 SVG 也失败 ${e instanceof Error ? e.message : e} → 占位`)
+        return null
+      }
+    }
     URL.revokeObjectURL(url)
     const dataUrl = canvas.toDataURL('image/png')
     const data = dataUrlToBytes(dataUrl)
