@@ -491,8 +491,8 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           result.push(new Paragraph({
             children: codeRuns,
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
-            indent: { left: 120, right: 120 },
-            spacing: { before: 120, after: 120, line: 280, lineRule: LineRuleType.AUTO },
+            // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
+            spacing: { before: 60, after: 60, line: 240, lineRule: LineRuleType.AUTO },
           }))
           break
         }
