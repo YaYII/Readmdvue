@@ -953,12 +953,13 @@
   transition: background-color 0.2s ease;
 }
 
-/* 用户硬性规则：表格第一列永远不换行（序号/名称列保持单行，防止列内容折行错乱） */
+/* 用户规则：表格第一列短内容单行；内容超过 200px 时换行（避免无限长撑破表格） */
 .markdown-reader-container th:first-child,
 .markdown-reader-container td:first-child {
-  white-space: nowrap;
-  word-break: normal;
-  overflow-wrap: normal;
+  max-width: 200px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ================= 自由皮肤（data-skin="free"）=================
