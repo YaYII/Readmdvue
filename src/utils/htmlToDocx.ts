@@ -580,6 +580,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
                 spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
                 children: [new ImageRun({ data: treeImg.data, transformation: { width: treeImg.width, height: treeImg.height }, type: treeImg.type })],
               }))
+              break // 目录树只要图，不再输出完整文本
             } else {
               logImage('目录树转图失败 → 保持文本')
             }
