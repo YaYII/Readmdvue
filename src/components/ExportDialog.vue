@@ -428,7 +428,18 @@ const formatOptions = [
     description: '纯文本标记格式',
     extension: 'md',
     supportsCharts: false,
-    supportsMath: false
+    supportsMath: false,
+    supportsFonts: false
+  },
+  {
+    value: 'word',
+    label: 'Word',
+    icon: '📘',
+    description: 'Word 文档（.doc，Word/WPS 可打开）',
+    extension: 'doc',
+    supportsCharts: true,
+    supportsMath: true,
+    supportsFonts: true
   },
   { 
     value: 'png', 
@@ -465,7 +476,7 @@ const handleExport = async () => {
     // 构建导出选项
     const options: ExportOptions = {
       ...exportOptions.value,
-      format: selectedFormat.value as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
+      format: selectedFormat.value as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg' | 'word'
     }
 
     console.log('开始导出:', options)
@@ -508,7 +519,7 @@ const generateFilename = () => {
 watch(selectedFormat, (newFormat, oldFormat) => {
   // 避免重复赋值
   if (newFormat !== oldFormat) {
-    exportOptions.value.format = newFormat as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
+    exportOptions.value.format = newFormat as 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg' | 'word'
     updateFilename(newFormat)
   }
 }, { immediate: false }) // 不立即执行，避免初始化时的重复调用

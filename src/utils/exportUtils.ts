@@ -47,6 +47,9 @@ export class DocumentExporter {
         case 'markdown':
           await this.exportAsMarkdown(content, options)
           break
+        case 'word':
+          await this.exportAsWord(content, options)
+          break
         case 'png':
           await this.exportAsPNG(content, options)
           break
@@ -121,6 +124,16 @@ export class DocumentExporter {
     }
     
     await this.downloadFile(markdownContent, options.filename, 'text/markdown')
+  }
+
+  /**
+   * 导出为 Word（.doc）：
+   * 用渲染后的 HTML 内容存为 .doc 扩展名——Word/WPS 打开时按 HTML 渲染，
+   * 与页面所见一致（表格/代码块/标题等均保留）。
+   */
+  private async exportAsWord(content: string, options: ExportOptions): Promise<void> {
+    const htmlContent = await this.generateHTMLContent(content, options)
+    await this.downloadFile(htmlContent, options.filename, 'application/msword')
   }
 
   /**

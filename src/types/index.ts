@@ -324,7 +324,7 @@ export interface SearchOptions {
 
 // 导出选项
 export interface ExportOptions {
-  format: 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg'
+  format: 'html' | 'pdf' | 'markdown' | 'png' | 'jpeg' | 'word'
   filename: string
   includeStyles: boolean
   includeImages?: boolean
