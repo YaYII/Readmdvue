@@ -261,7 +261,7 @@ export class ConfigManager {
     }
 
     // 验证强调色
-    const validAccentColors = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'graphite']
+    const validAccentColors = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'graphite', 'white']
     if (!validAccentColors.includes(config.accentColor)) {
       throw new Error('无效的强调色设置')
     }

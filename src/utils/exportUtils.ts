@@ -6,6 +6,7 @@
 
 import type { ExportOptions } from '../types'
 import { showNotification, showSuccess, showError } from './appleNotification'
+import { KATEX_FONTS_CSS } from './katexFontsData'
 
 /**
  * 文档导出管理器
@@ -67,7 +68,7 @@ export class DocumentExporter {
    * 导出为HTML格式
    */
   private async exportAsHTML(content: string, options: ExportOptions): Promise<void> {
-    const htmlContent = this.generateHTMLContent(content, options)
+    const htmlContent = await this.generateHTMLContent(content, options)
     await this.downloadFile(htmlContent, options.filename, 'text/html')
   }
 
@@ -76,7 +77,7 @@ export class DocumentExporter {
    */
   private async exportAsPDF(content: string, options: ExportOptions): Promise<void> {
     // 使用浏览器的打印功能生成PDF
-    const htmlContent = this.generateHTMLContent(content, options)
+    const htmlContent = await this.generateHTMLContent(content, options)
     const printWindow = window.open('', '_blank')
     
     if (!printWindow) {
@@ -144,27 +145,32 @@ export class DocumentExporter {
   /**
    * 生成HTML内容
    */
-  private generateHTMLContent(content: string, options: ExportOptions): string {
-    const styles = options.includeStyles ? this.getDocumentStyles() : ''
+  private async generateHTMLContent(content: string, options: ExportOptions): Promise<string> {
+    const styles = options.includeStyles ? await this.getDocumentStyles(!!options.includeFonts) : ''
+    // 仅当用户选择「包含公式字体」时才内嵌 KaTeX 字体 base64（默认关闭：导出文件更小、源码干净）
+    const katexFonts = options.includeFonts ? KATEX_FONTS_CSS : ''
+    const themeOverrides = this.getCurrentThemeOverrides()
     const processedContent = this.processContent(content, options)
     
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="${this.getCurrentThemeAttr()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- export-version: 2.1.4 (theme+image-viewer) -->
     <title>${this.getDocumentTitle()}</title>
     ${styles}
+    ${katexFonts}
+    ${themeOverrides}
     <style>
         /* 导出专用样式 */
         body {
             font-family: 'PingFang SC', 'Microsoft YaHei UI', 'Segoe UI Variable', -apple-system, BlinkMacSystemFont, sans-serif;
             line-height: 1.6;
-            color: #1d1d1f;
-            max-width: 800px;
+            color: var(--md-text-primary, #1d1d1f);
             margin: 0 auto;
             padding: 20px;
-            background: #ffffff;
+            background: var(--md-bg-primary, #ffffff);
         }
         
         @media print {
@@ -229,6 +235,10 @@ export class DocumentExporter {
             border: 1px solid #d1d1d6;
             padding: 8px 12px;
             text-align: left;
+            /* 长内容强制换行：禁止单元格内容撑破页面（长英文/URL/数字串），打印也不会被隐藏 */
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
         }
         
         th {
@@ -242,12 +252,114 @@ export class DocumentExporter {
             border-radius: 8px;
             margin: 1em 0;
         }
+
+        /* 图片完整显示：覆盖 content.css 的 height:300px 固定高度
+           （阅读器靠双击放大看全图；导出文档应直接显示原始完整比例） */
+        .markdown-reader-container img,
+        .markdown-reader-container .markdown-image {
+            height: auto !important;
+            max-height: none !important;
+            width: auto !important;
+            max-width: 100% !important;
+            object-fit: contain;
+        }
+
+        /* 图片容器居中 */
+        .markdown-reader-container .image-container {
+            text-align: center;
+        }
+
+        /* Mermaid 图表：智能宽度（小图按 viewBox 本宽、大图才缩 100%）+ 不裁切 */
+        .markdown-reader-container .mermaid {
+            overflow-x: auto;
+            max-height: none;
+        }
+        .markdown-reader-container .mermaid svg {
+            width: auto !important;
+            max-width: none !important;
+            height: auto !important;
+        }
+        .markdown-reader-container .mermaid svg foreignObject div,
+        .markdown-reader-container .mermaid svg foreignObject span,
+        .markdown-reader-container .mermaid svg foreignObject p,
+        .markdown-reader-container .mermaid svg text {
+            line-height: normal !important;
+            letter-spacing: normal !important;
+            word-spacing: normal !important;
+        }
     </style>
 </head>
 <body>
-    ${processedContent}
+    <!-- 与页面渲染结构一致：正文样式（content.css）大量使用 .markdown-reader-container 后代选择器，
+         导出内容必须包同样容器，否则样式全部失效 -->
+    <div class="markdown-reader-container">
+      <div class="markdown-reader-content">
+        ${processedContent}
+      </div>
+    </div>
+    <script>
+      /* 图片点击放大查看（导出文档保留 md 阅读器的图片查看交互） */
+      (function () {
+        function showViewer(img) {
+          var mask = document.createElement('div');
+          mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;' +
+            'align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;';
+          var big = document.createElement('img');
+          big.src = img.currentSrc || img.src;
+          big.alt = img.alt || '';
+          big.style.cssText = 'max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;' +
+            'box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+          mask.appendChild(big);
+          var close = function () { if (mask.parentNode) mask.parentNode.removeChild(mask); };
+          mask.addEventListener('click', close);
+          document.addEventListener('keydown', function esc(e) {
+            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+          });
+          document.body.appendChild(mask);
+        }
+        document.addEventListener('click', function (e) {
+          var t = e.target;
+          if (t && t.tagName === 'IMG' && !t.closest('a') && t.closest('.markdown-reader-container')) {
+            e.preventDefault();
+            showViewer(t);
+          }
+        });
+      })();
+    </script>
 </body>
 </html>`
+  }
+
+  /**
+   * 当前主题属性（导出 HTML 保留 data-theme，使 :root[data-theme=...] 规则生效）
+   */
+  private getCurrentThemeAttr(): string {
+    return document.documentElement.getAttribute('data-theme') || 'light'
+  }
+
+  /**
+   * 固化当前生效的主题/排版/强调色 CSS 变量（getComputedStyle 实际计算值）：
+   * 导出文档默认呈现与页面一致的外观（背景色/文字色/强调色/字号/行高/宽度等），
+   * 而不是回退到样式表默认值。
+   */
+  private getCurrentThemeOverrides(): string {
+    try {
+      const style = getComputedStyle(document.documentElement)
+      const vars: string[] = []
+      for (let i = 0; i < style.length; i++) {
+        const name = style.item(i)
+        if (name && name.startsWith('--')) {
+          const value = style.getPropertyValue(name).trim()
+          if (value) vars.push(`${name}: ${value};`)
+        }
+      }
+      if (vars.length) {
+        return `<style>\n:root {\n${vars.join('\n')}\n}\n</style>`
+      }
+    } catch {
+      // 读取失败时忽略（使用样式表默认值）
+    }
+    return ''
   }
 
   /**
@@ -260,10 +372,15 @@ export class DocumentExporter {
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = processedContent
     
-    // 移除导航、工具栏、目录面板、标题锚点等不需要导出的元素
+    // 移除导航、工具栏、目录面板、标题锚点、扩展 UI 容器、隐藏原始内容等不需要导出的元素
     const elementsToRemove = tempDiv.querySelectorAll(
       '.no-print, .toolbar, .navigation, .settings-panel, .export-dialog, ' +
-      '.toc-panel, .toc-trigger-zone, .markdown-vue-toolbar, .vue-toolbar, .heading-anchor'
+      '.toc-panel, .toc-trigger-zone, .markdown-vue-toolbar, .vue-toolbar, .heading-anchor, ' +
+      // 扩展 UI 容器（目录/导出对话框/遮罩/通知）
+      '#vue-table-of-contents, .vue-toc-container, #vue-component-export, #vue-overlay-export, ' +
+      '.vue-component-container, .vue-component-overlay, .markdown-reader-notification, .donation-modal, ' +
+      // 隐藏的原始 Markdown 内容（页面快照 fallback 时可能带入）
+      '.md-original-content-wrapper, .md-original-content-hidden'
     )
     elementsToRemove.forEach(el => el.remove())
     
@@ -275,6 +392,16 @@ export class DocumentExporter {
         placeholder.textContent = '[图片已移除]'
         placeholder.style.cssText = 'padding: 20px; background: #f5f5f7; border-radius: 8px; text-align: center; color: #8e8e93;'
         img.parentNode?.replaceChild(placeholder, img)
+      })
+    } else {
+      // 图片尺寸规范化（内联样式优先级最高，彻底覆盖 content.css 的 height:300px 固定高度）：
+      // 小图按原始宽度显示、大图不超过容器宽度、等比不变形
+      const images = tempDiv.querySelectorAll('img')
+      images.forEach(img => {
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+        img.style.width = 'auto'
+        img.style.objectFit = 'contain'
       })
     }
     
@@ -305,25 +432,123 @@ export class DocumentExporter {
 
   /**
    * 获取文档样式
+   * 只导出正文排版所需样式：过滤扩展 UI 组件样式（按钮/开关/毛玻璃/弹窗/工具栏等），
+   * 剔除 chrome-extension:// 引用；KaTeX 等字体 **内嵌为 base64 data URL**
+   * （自包含，导出的 HTML 在任何环境公式都能正常显示，不依赖外部字体文件）。
    */
-  private getDocumentStyles(): string {
+  private async getDocumentStyles(includeFonts: boolean): Promise<string> {
     const styleSheets = Array.from(document.styleSheets)
-    let styles = '<style>\n'
-    
-    styleSheets.forEach(sheet => {
+    // 扩展 UI 组件样式选择器（导出文档不需要按钮/开关/卡片/弹窗/工具栏/目录等）
+    const UI_SELECTOR = /\.(btn|switch|slider|liquid-glass|tag-|card-|tooltip|progress-|loading-|animate-|export-|dialog|toolbar|vue-|toc-|notification|donation|modal|overlay|setting|close-btn|format-|option-item|section-title|filename-|footer-|header-icon|select-apple|input-apple|slider-|switch-)/i
+    // 引用扩展资源的 URL（chrome-extension://...）跨环境失效，剔除
+    const EXTENSION_URL = /chrome-extension:\/\/[^"')]+/i
+
+    // ArrayBuffer → base64（分块处理避免大数组栈溢出）
+    const toBase64 = (buffer: ArrayBuffer): string => {
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      const chunk = 0x8000
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+      }
+      return btoa(binary)
+    }
+
+    // 抓取字体文件并内嵌为 data URL（只取 woff2，浏览器首选；失败返回 null → 跳过该字体）
+    const embedFont = async (url: string): Promise<string | null> => {
       try {
-        if (sheet.cssRules) {
-          Array.from(sheet.cssRules).forEach(rule => {
-            styles += rule.cssText + '\n'
-          })
-        }
-      } catch (e) {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const buf = await res.arrayBuffer()
+        return `url(data:font/woff2;base64,${toBase64(buf)}) format("woff2")`
+      } catch {
+        return null
+      }
+    }
+
+    const rules: string[] = []
+    const fontPromises: Promise<string | null>[] = []
+
+    styleSheets.forEach((sheet) => {
+      try {
+        if (!sheet.cssRules) return
+        // 相对/绝对路径字体 URL 以样式表所在位置解析（如 /assets/KaTeX_*.woff2 → chrome-extension://.../assets/...）
+        const base = sheet.href || document.baseURI
+        Array.from(sheet.cssRules).forEach((rule) => {
+          try {
+            // content script 隔离世界（isolated world）中 DOM 对象的 instanceof 检查不可靠
+            // （样式表规则来自主 world，本 world 的 CSSStyleRule 等构造函数不同），
+            // 必须用 CSSRule.type 数字常量判断（跨 world 可靠）
+            // type: 1=STYLE_RULE 4=MEDIA_RULE 5=FONT_FACE_RULE 7=KEYFRAMES_RULE
+            const ruleType = (rule as CSSRule).type
+            if (ruleType === 1) {
+              // 跳过 UI 组件样式
+              const styleRule = rule as CSSStyleRule
+              if (!UI_SELECTOR.test(styleRule.selectorText)) {
+                rules.push(styleRule.cssText)
+              }
+            } else if (ruleType === 4) {
+              // 递归处理 @media 内的规则
+              const inner: string[] = []
+              const mediaRule = rule as CSSMediaRule
+              Array.from(mediaRule.cssRules).forEach((r) => {
+                if ((r as CSSRule).type === 1 && !UI_SELECTOR.test((r as CSSStyleRule).selectorText)) {
+                  inner.push((r as CSSStyleRule).cssText)
+                }
+              })
+              if (inner.length) {
+                rules.push(`@media ${mediaRule.conditionText} {\n${inner.join('\n')}\n}`)
+              }
+            } else if (ruleType === 5) {
+              // @font-face：内嵌 woff2 字体（自包含）
+              // 未开启「包含公式字体」时跳过所有 @font-face（避免导出外部字体 URL 404）
+              if (!includeFonts) return
+              const fontFace = rule as CSSFontFaceRule
+              const src = fontFace.style.getPropertyValue('src')
+              const urls = src.match(/url\((['"]?)([^)'"]+)\1\)/g) || []
+              const woff2 = urls
+                .map((u) => u.replace(/^url\((['"]?)([^)'"]+)\1\)$/, '$2'))
+                .find((u) => /\.woff2($|\?)/i.test(u))
+              if (woff2) {
+                try {
+                  // 解析字体绝对 URL：/assets/ 开头的扩展资源优先用 chrome.runtime.getURL（最可靠），
+                  // 其余按样式表所在位置解析
+                  const abs = woff2.startsWith('/assets/') && typeof chrome !== 'undefined' && chrome.runtime?.getURL
+                    ? chrome.runtime.getURL(woff2.slice(1))
+                    : new URL(woff2, base).href
+                  fontPromises.push(
+                    embedFont(abs).then((embedded) => {
+                      if (!embedded) return null
+                      const family = fontFace.style.getPropertyValue('font-family') || '"KaTeX"'
+                      const weight = fontFace.style.getPropertyValue('font-weight') || 'normal'
+                      const styleVal = fontFace.style.getPropertyValue('font-style') || 'normal'
+                      return `@font-face { font-family: ${family}; src: ${embedded}; font-weight: ${weight}; font-style: ${styleVal}; }`
+                    })
+                  )
+                } catch {
+                  // URL 解析失败 → 跳过该字体
+                }
+              }
+            } else if (ruleType === 7) {
+              // 正文不需要动画关键帧，跳过（减小体积）
+            } else {
+              // 其他规则（@supports/@layer 等）保留
+              rules.push(rule.cssText)
+            }
+          } catch {
+            // 单条规则无法访问时忽略
+          }
+        })
+      } catch {
         // 跨域样式表无法访问，忽略
       }
     })
-    
-    styles += '</style>'
-    return styles
+
+    // 等待所有字体内嵌完成，字体规则在前（保证被正文规则引用时已定义）
+    const fontRules = (await Promise.all(fontPromises)).filter((f): f is string => !!f)
+    // 过滤掉任何残留的扩展资源 URL
+    const cleaned = [...fontRules, ...rules].join('\n').replace(EXTENSION_URL, '')
+    return `<style>\n${cleaned}\n</style>`
   }
 
   /**
@@ -598,7 +823,10 @@ export async function exportDocument(content: string, options: ExportOptions): P
  * 获取当前页面内容用于导出
  */
 export function getCurrentPageContent(): string {
-  const markdownContainer = document.querySelector('.markdown-content, .markdown-body, .md-content, main, article')
+  // 渲染容器类名是 .markdown-reader-content（.markdown-content 在页面中不存在）
+  const markdownContainer = document.querySelector(
+    '.markdown-reader-content, .markdown-content, .markdown-body, .md-content, main, article'
+  )
   if (markdownContainer) {
     return markdownContainer.innerHTML
   }

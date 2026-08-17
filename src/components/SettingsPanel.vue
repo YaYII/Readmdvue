@@ -338,6 +338,7 @@ const accentColors = [
   { value: 'yellow', name: '黄色' },
   { value: 'green', name: '绿色' },
   { value: 'graphite', name: '石墨色' },
+  { value: 'white', name: '纯白' },
   { value: 'custom', name: '自定义' }
 ] as const
 
@@ -833,6 +834,7 @@ const applyStyleConfigDirect = (config: MarkdownConfig) => {
           yellow: '#FFCC00',
           green: '#30D158',
           graphite: '#8E8E93',
+          white: '#FFFFFF',
           custom: config.customAccentColor
         }
         const color = colorMap[config.accentColor] || config.customAccentColor
@@ -878,7 +880,7 @@ const updateAccentColor = (accentColor: AccentColor) => {
   // 移除之前的强调色类
   document.documentElement.classList.remove(
     'accent-blue', 'accent-purple', 'accent-pink', 'accent-red',
-    'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite', 'accent-custom'
+    'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite', 'accent-white', 'accent-custom'
   )
   
   // 添加新的强调色类
@@ -897,6 +899,7 @@ const updateAccentColor = (accentColor: AccentColor) => {
     yellow: '#FFCC00',
     green: '#30D158',
     graphite: '#8E8E93',
+    white: '#FFFFFF',
     custom: markdownStore.config.customAccentColor // 使用自定义颜色
   }
   
@@ -1370,6 +1373,21 @@ const printPage = () => {
   box-shadow: 0 0 0 2px #007AFF;
 }
 
+/* 选中态统一加对勾标记（任何颜色选项都清晰可辨） */
+.accent-color-option.active::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #FFFFFF;
+  /* 互斥色（撞色）：与圆点背景自动取反——深底显白、浅底显黑，不硬编码颜色 */
+  mix-blend-mode: difference;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .accent-color-option.blue { background: #007AFF; }
 .accent-color-option.purple { background: #AF52DE; }
 .accent-color-option.pink { background: #FF2D92; }
@@ -1378,6 +1396,11 @@ const printPage = () => {
 .accent-color-option.yellow { background: #FFCC00; }
 .accent-color-option.green { background: #30D158; }
 .accent-color-option.graphite { background: #8E8E93; }
+.accent-color-option.white {
+  background: #FFFFFF;
+  /* 浅色面板里白色圆点需边框才能看清；用 border 而非 box-shadow（避免顶掉选中蓝圈） */
+  border: 2px solid rgba(0, 0, 0, 0.25);
+}
 
 /* 自定义颜色选项样式 */
 .accent-color-option.custom {

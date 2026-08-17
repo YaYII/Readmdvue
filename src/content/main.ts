@@ -247,6 +247,7 @@ class ContentScriptApp {
       // manifest content_scripts CSS 中的相对 url 在 file:// 等协议页面可能被浏览器按页面 URL 解析而 404，
       // 动态注入同名 @font-face 覆盖，保证任意页面协议下字体都从扩展根加载
       this.injectInterFontFace()
+      this.injectKaTeXFontFace()
 
       // 强制约束所有 file:// 链接：无论当前页面协议（http/https/file），
       // 凡目标是 file:// 的链接点击一律拦截——file:// 被视为独立安全源，
@@ -346,6 +347,54 @@ class ContentScriptApp {
       this.debugLog('Inter 字体兜底注入完成', fontUrl)
     } catch (error) {
       this.debugLog('Inter 字体兜底注入失败', error)
+    }
+  }
+
+  /**
+   * 动态注入 KaTeX 字体的 @font-face（chrome.runtime.getURL 绝对路径）：
+   * manifest content_scripts CSS 中 KaTeX 字体 url(/assets/KaTeX_*.woff2) 在 file:// 页面
+   * 会被按页面 URL 解析为 file:///assets/... 而 404（Inter 字体已有同样兜底，KaTeX 此前遗漏）。
+   * 这里读取样式表中原始 @font-face 规则，把字体 URL 改写为扩展绝对路径后注入覆盖。
+   */
+  private injectKaTeXFontFace(): void {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) return
+      if (document.getElementById('katex-font-face')) return
+      const faces: string[] = []
+      Array.from(document.styleSheets).forEach((sheet) => {
+        try {
+          if (!sheet.cssRules) return
+          Array.from(sheet.cssRules).forEach((rule) => {
+            // content script 隔离世界用 rule.type 判断（instanceof 跨 world 不可靠）
+            if ((rule as CSSRule).type !== 5) return // FONT_FACE_RULE
+            const ff = rule as CSSFontFaceRule
+            const family = ff.style.getPropertyValue('font-family')
+            if (!family.includes('KaTeX')) return
+            const src = ff.style.getPropertyValue('src')
+            if (!src) return
+            // url(/assets/KaTeX_xxx.woff2) → url('chrome-extension://.../assets/KaTeX_xxx.woff2')
+            const newSrc = src.replace(
+              /url\(\/?['"]?assets\/([^)'"]+)['"]?\)/g,
+              (_m, file: string) => `url('${chrome.runtime.getURL('assets/' + file)}')`
+            )
+            faces.push(
+              `@font-face { font-family: ${family}; src: ${newSrc}; ` +
+              `font-weight: ${ff.style.getPropertyValue('font-weight') || 'normal'}; ` +
+              `font-style: ${ff.style.getPropertyValue('font-style') || 'normal'}; }`
+            )
+          })
+        } catch {
+          // 跨域样式表无法访问，忽略
+        }
+      })
+      if (faces.length === 0) return
+      const style = document.createElement('style')
+      style.id = 'katex-font-face'
+      style.textContent = faces.join('\n')
+      ;(document.head || document.documentElement).appendChild(style)
+      this.debugLog('KaTeX 字体兜底注入完成', faces.length)
+    } catch (error) {
+      this.debugLog('KaTeX 字体兜底注入失败', error)
     }
   }
 
@@ -1624,6 +1673,9 @@ class ContentScriptApp {
       const mathElements = container.querySelectorAll<HTMLElement>('.math-inline, .math-block')
       if (mathElements.length === 0) return
 
+      // 确保 KaTeX 字体兜底注入已就位（幂等；有公式时才真正需要字体）
+      this.injectKaTeXFontFace()
+
       // 懒加载 KaTeX（JS + CSS，vite 会将其拆分为独立 chunk，仅含公式页面才加载）
       mathElements.forEach((el) => {
         const displayMode = el.classList.contains('math-block')
@@ -2445,7 +2497,10 @@ class ContentScriptApp {
    * 切换导出对话框显示状态
    */
   private showExportDialog(): void {
-    const content = document.querySelector('.markdown-content')?.innerHTML || ''
+    // 导出内容 = 当前渲染结果（.markdown-reader-content 是渲染容器；
+    // 旧选择器 .markdown-content 在页面中不存在，导致导出取到空值后
+    // fallback 为整个 body（混入原始 markdown 与扩展 UI）——2026-08-17 修复）
+    const content = document.querySelector('.markdown-reader-content')?.innerHTML || ''
     vueComponentManager.toggleExportDialog(content, this.config, (format, options) => {
       this.handleExport(format, options)
     })
@@ -2760,7 +2815,8 @@ class ContentScriptApp {
       orange: '#FF9500',
       yellow: '#FFCC00',
       green: '#30D158',
-      graphite: '#8E8E93'
+      graphite: '#8E8E93',
+      white: '#FFFFFF'
     }
     return colors[accentColor] || '#007AFF'
   }

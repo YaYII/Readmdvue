@@ -4,7 +4,7 @@
  */
 
 export type ThemeMode = 'light' | 'dark' | 'auto' | 'eyecare'
-export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'custom'
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'white' | 'custom'
 
 export class CSSVariableManager {
   private static instance: CSSVariableManager
@@ -240,7 +240,8 @@ export class CSSVariableManager {
       orange: '#FF9500',
       yellow: '#FFCC00',
       green: '#30D158',
-      graphite: '#8E8E93'
+      graphite: '#8E8E93',
+      white: '#FFFFFF'
     }
     
     return accentColors[accentColor as keyof typeof accentColors] || null

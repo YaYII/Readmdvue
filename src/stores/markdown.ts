@@ -119,7 +119,7 @@ export const useMarkdownStore = defineStore('markdown', () => {
   
   const applyAccentColor = (accentColor: string) => {
     // 移除之前的强调色类
-    const allAccentClasses = ['accent-blue', 'accent-purple', 'accent-pink', 'accent-red', 'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite']
+    const allAccentClasses = ['accent-blue', 'accent-purple', 'accent-pink', 'accent-red', 'accent-orange', 'accent-yellow', 'accent-green', 'accent-graphite', 'accent-white']
     document.documentElement.classList.remove(...allAccentClasses)
     
     // 添加新的强调色类

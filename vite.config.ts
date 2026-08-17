@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { crx } from '@crxjs/vite-plugin'
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import manifest from './manifest.json'
@@ -22,7 +22,7 @@ export default defineConfig(({ command }) => ({
       // 扩展绝对 URL 在任何页面协议下都正确加载
       name: 'fix-content-dynamic-import',
       closeBundle() {
-        // 扫描整个 dist 下所有 .js（content 入口产物在 dist/content/main.js，
+        // 扫描整个 dist 下所有 .js/.css（content 入口产物在 dist/content/main.js，
         // 动态 chunk 在 dist/assets/——此前只扫 assets/main-*.js 导致空转）
         const distDir = join(__dirname, 'dist')
         const files: string[] = []
@@ -31,20 +31,41 @@ export default defineConfig(({ command }) => ({
             const p = join(dir, name)
             const st = statSync(p)
             if (st.isDirectory()) collect(p)
-            else if (name.endsWith('.js')) files.push(p)
+            else if (name.endsWith('.js') || name.endsWith('.css')) files.push(p)
           }
         }
         collect(distDir)
         files.forEach((path) => {
-          let code = readFileSync(path, 'utf8')
-          const before = code
-          // import("../assets/NAME.js") 或 import("./NAME.js")
-          // → import(chrome.runtime.getURL("assets/NAME.js"))（扩展绝对 URL，任何页面协议下可加载）
-          code = code.replace(/import\("\.\.\/assets\/([^"]+\.js)"\)/g, 'import(chrome.runtime.getURL("assets/$1"))')
-          code = code.replace(/import\("\.\/([^"]+\.js)"\)/g, 'import(chrome.runtime.getURL("assets/$1"))')
-          if (code !== before) {
-            writeFileSync(path, code)
-            console.log(`[fix-content-dynamic-import] 已重写: ${path}`)
+          if (path.endsWith('.js')) {
+            let code = readFileSync(path, 'utf8')
+            const before = code
+            // import("../assets/NAME.js") 或 import("./NAME.js")
+            // → import(chrome.runtime.getURL("assets/NAME.js"))（扩展绝对 URL，任何页面协议下可加载）
+            code = code.replace(/import\("\.\.\/assets\/([^"]+\.js)"\)/g, 'import(chrome.runtime.getURL("assets/$1"))')
+            code = code.replace(/import\("\.\/([^"]+\.js)"\)/g, 'import(chrome.runtime.getURL("assets/$1"))')
+            if (code !== before) {
+              writeFileSync(path, code)
+              console.log(`[fix-content-dynamic-import] 已重写: ${path}`)
+            }
+          } else if (path.endsWith('.css')) {
+            // content_scripts CSS 中 KaTeX 字体的 url(/assets/KaTeX_*.woff2) 在 file:// 页面
+            // 会被浏览器按页面 URL 解析为 file:///assets/... 而 404。
+            // 构建时直接内嵌为 base64 data URL（不依赖任何路径），页面加载即成功、无 404。
+            let css = readFileSync(path, 'utf8')
+            const before = css
+            css = css.replace(
+              /url\(\/assets\/(KaTeX_[^)'"]+\.woff2)\)/g,
+              (_m, file: string) => {
+                const fontPath = join(distDir, 'assets', file)
+                if (!existsSync(fontPath)) return _m
+                const b64 = readFileSync(fontPath).toString('base64')
+                return `url(data:font/woff2;base64,${b64})`
+              }
+            )
+            if (css !== before) {
+              writeFileSync(path, css)
+              console.log(`[fix-content-dynamic-import] KaTeX 字体已内嵌: ${path}`)
+            }
           }
         })
       }

@@ -2,7 +2,7 @@
 export type Theme = 'light' | 'dark' | 'auto' | 'eyecare'
 
 // 苹果强调色系统 - 添加自定义选项
-export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'custom'
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite' | 'white' | 'custom'
 
 export interface AccentColorInfo {
   name: string
@@ -49,7 +49,7 @@ export interface MarkdownConfig {
 export const defaultConfig: MarkdownConfig = {
   theme: 'dark',
   skin: 'gov',
-  accentColor: 'blue',
+  accentColor: 'white',
   customAccentColor: '#007AFF', // 默认为蓝色
   favoriteColors: [], // 默认为空，等待用户添加
   enableMermaid: true,
@@ -58,8 +58,8 @@ export const defaultConfig: MarkdownConfig = {
   enableHighlight: true,
   enableTables: true,
   enableTaskLists: true,
-  fontSize: 16,
-  lineHeight: 1.8,
+  fontSize: 14,
+  lineHeight: 1.4,
   maxWidth: 1200, // 默认 1200px（用户实测最佳阅读宽度）；0 = 自适应（min(1200px, 100%)）
   fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Noto Serif TC', 'Source Han Serif TC', 'Noto Serif CJK SC', 'Source Han Serif SC', '仿宋', 'FangSong', '宋体', 'SimSun', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
   codeTheme: 'github',
@@ -130,6 +130,13 @@ export const accentColors: Record<AccentColor, AccentColorInfo> = {
     displayName: '石墨色',
     primaryColor: '#8E8E93',
     description: '用于中性、专业、商务场景',
+    category: 'neutral'
+  },
+  white: {
+    name: 'white',
+    displayName: '纯白',
+    primaryColor: '#FFFFFF',
+    description: '纯白强调色（深色模式可见）',
     category: 'neutral'
   },
   custom: {
@@ -323,6 +330,8 @@ export interface ExportOptions {
   includeImages?: boolean
   includeCharts?: boolean
   includeMath?: boolean
+  /** 是否内嵌 KaTeX 字体（base64 自包含，公式在任何电脑显示精确字体；关闭则导出文件更小、源码干净） */
+  includeFonts?: boolean
   pageSize?: string
   orientation?: 'portrait' | 'landscape'
   quality?: number

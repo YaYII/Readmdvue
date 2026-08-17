@@ -1,11 +1,11 @@
 {
   "name": "markdown-reader-vue-extension",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Vue.js 3.0 + TypeScript 浏览器插件 - Markdown阅读器",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "node scripts/build-katex-fonts.mjs && vue-tsc && vite build",
     "build:styles": "node build-styles.js",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",

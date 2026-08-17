@@ -128,6 +128,21 @@
               </div>
             </div>
 
+            <!-- 包含公式字体 -->
+            <div class="option-item" v-if="selectedFormatConfig.supportsFonts">
+              <label class="option-label">
+                <span>包含公式字体</span>
+                <span class="option-desc">内嵌KaTeX字体（自包含；关闭则导出文件更小、源码干净）</span>
+              </label>
+              <div class="switch-apple">
+                <input 
+                  type="checkbox" 
+                  v-model="exportOptions.includeFonts"
+                >
+                <span class="switch-slider"></span>
+              </div>
+            </div>
+
             <!-- 页面设置 (仅PDF) -->
             <template v-if="selectedFormat === 'pdf'">
               <div class="option-item">
@@ -378,6 +393,7 @@ const exportOptions = ref<ExportOptions>({
   includeImages: true,
   includeCharts: true,
   includeMath: true,
+  includeFonts: false,
   pageSize: 'A4',
   orientation: 'portrait',
   quality: 0.9
@@ -392,7 +408,8 @@ const formatOptions = [
     description: '网页格式，保持完整样式',
     extension: 'html',
     supportsCharts: true,
-    supportsMath: true
+    supportsMath: true,
+    supportsFonts: true
   },
   { 
     value: 'pdf', 
@@ -401,7 +418,8 @@ const formatOptions = [
     description: '便携文档格式，适合打印',
     extension: 'pdf',
     supportsCharts: true,
-    supportsMath: true
+    supportsMath: true,
+    supportsFonts: true
   },
   { 
     value: 'markdown', 

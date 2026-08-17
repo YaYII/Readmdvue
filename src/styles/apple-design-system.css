@@ -612,6 +612,10 @@ input:checked + .switch-slider:before {
   --apple-accent-primary: var(--apple-graphite);
 }
 
+.accent-white {
+  --apple-accent-primary: #FFFFFF;
+}
+
 /* 自定义强调色 - 动态系统 */
 .accent-custom {
   --apple-accent-primary: var(--custom-accent-color, #007AFF);

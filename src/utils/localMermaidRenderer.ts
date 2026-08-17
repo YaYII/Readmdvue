@@ -103,7 +103,22 @@ export class LocalMermaidRenderer {
       console.log('开始本地 Mermaid 渲染:', content.substring(0, 50) + '...')
 
       // 清理内容
-      const cleanContent = content.trim()
+      let cleanContent = content.trim()
+
+      // 强制图表主题跟随页面主题：覆盖图表内 %%{init: {"theme": ...}}%% 的显式主题指令，
+      // 避免个别图表使用 light 主题（浅底节点）与页面深色主题混搭显得突兀
+      const forcedTheme = this.currentTheme
+      cleanContent = cleanContent.replace(
+        /%%\{init:\s*\{([\s\S]*?)\}\}%%/g,
+        (match, inner: string) => {
+          if (/theme\s*:/.test(inner)) {
+            // 已有 theme 字段 → 替换为当前主题
+            return match.replace(/theme\s*:\s*["']?[^"',}\s]+["']?/, `theme: "${forcedTheme}"`)
+          }
+          // 无 theme 字段 → 在 init 对象开头插入当前主题
+          return match.replace(/%%\{init:\s*\{/, `%%{init: {"theme": "${forcedTheme}", `)
+        }
+      )
       
       // 验证 Mermaid 语法
       if (!this.validateMermaidSyntax(cleanContent)) {
@@ -251,27 +266,138 @@ export class LocalMermaidRenderer {
     const svg = container.querySelector('svg')
     if (!svg) return
 
-    // 设置响应式
-    svg.style.width = '100%'
-    svg.style.maxWidth = '100%'
-    svg.style.height = 'auto'
+    // 1:1 原始尺寸显示（不压缩）：mermaid 节点文字在 foreignObject 内，
+    // 不随 SVG 等比缩放——压缩会导致文字溢出被节点/边界遮挡（放大后正常）。
+    // 按 viewBox 尺寸显示 + 容器横向滚动，保证文字始终完整可读。
+    const vb = svg.getAttribute('viewBox')
+    if (vb) {
+      const parts = vb.split(/[\s,]+/).map(Number)
+      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+        svg.style.width = `${parts[2]}px`
+        svg.style.height = `${parts[3]}px`
+      }
+    }
+    svg.style.maxWidth = 'none'
+    svg.style.flexShrink = '0'
     
     // 优化字体
     const textElements = svg.querySelectorAll('text')
     textElements.forEach(text => {
       text.style.fontFamily = 'PingFang SC, Microsoft YaHei UI, SF Pro Display, Segoe UI Variable, sans-serif'
+      // 重置行距：页面 CSS（用户设置大行距）会污染 SVG 多行 text，导致行距过大溢出
+      text.style.lineHeight = 'normal'
     })
 
-    // 优化颜色对比度
-    const rectElements = svg.querySelectorAll('rect')
-    rectElements.forEach(rect => {
-      const fill = rect.getAttribute('fill')
-      if (fill && fill.includes('#')) {
-        // 确保足够的对比度
-        rect.style.stroke = '#e1e5e9'
-        rect.style.strokeWidth = '1px'
+    // 提取 mermaid 图表自身的文字颜色（SVG 内 style 的 .label color 规则），
+    // 用于 foreignObject 内文字——避免继承页面正文色（深色主题=白色）显得突兀
+    let labelColor: string | null = null
+    const styleEl = svg.querySelector('style')
+    if (styleEl) {
+      const cssText = styleEl.textContent || ''
+      const m = cssText.match(/\.label[^{]*\{[^}]*color:\s*([^;]+)/i)
+      if (m) labelColor = m[1].trim()
+    }
+    if (!labelColor) {
+      // fallback：采样 SVG 内普通 text 元素的计算色（mermaid 主题文字色）
+      const sample = svg.querySelector('text')
+      if (sample) {
+        const c = getComputedStyle(sample).color
+        if (c && c !== 'rgba(0, 0, 0, 0)') labelColor = c
+      }
+    }
+
+    // 隔离 foreignObject 内 HTML 文字：防止被页面 CSS（行距/字距/字族/颜色）污染，
+    // 行距过大会使文字超出节点文本框被隐藏半截；颜色用 mermaid 主题色（不突兀）
+    svg.querySelectorAll('foreignObject').forEach((fo) => {
+      const htmlEls = fo.querySelectorAll('div, span, p')
+      htmlEls.forEach((el) => {
+        const s = (el as HTMLElement).style
+        s.lineHeight = 'normal'
+        s.letterSpacing = 'normal'
+        s.wordSpacing = 'normal'
+        s.fontFamily = 'PingFang SC, Microsoft YaHei UI, SF Pro Display, Segoe UI Variable, sans-serif'
+        if (labelColor) s.color = labelColor
+      })
+    })
+
+    // 深色页面：统一所有节点为深底白字（覆盖图表内显式指定的浅色节点样式，
+    // 避免浅蓝底 #e8f0fe 等与深色页面混搭突兀）；浅色页面：按节点背景对比色
+    const pageTheme = document.documentElement.getAttribute('data-theme')
+    const isDarkPage = pageTheme === 'dark' ||
+      (pageTheme === 'auto' && document.documentElement.getAttribute('data-system-theme') === 'dark')
+    svg.querySelectorAll('g.node').forEach((node) => {
+      const rect = node.querySelector('rect')
+      const fo = node.querySelector('foreignObject')
+      if (!rect || !fo) return
+      if (isDarkPage) {
+        // 深色页面：节点统一深底；文字用页面文字色（--md-text-primary）——
+        // 默认白色，用户自定义文字色时才引用用户色（不强制强调色）
+        rect.style.fill = '#1f2020'
+        const textColor = this.getPageTextColor() || '#ffffff'
+        fo.querySelectorAll('div, span, p').forEach((el) => {
+          ;(el as HTMLElement).style.color = textColor
+        })
+      } else {
+        // 浅色页面：按节点背景对比度决定文字颜色
+        let bg = rect.getAttribute('fill') || rect.style.fill || ''
+        if (!bg || bg === 'none') {
+          try {
+            bg = getComputedStyle(rect).fill
+          } catch {
+            bg = ''
+          }
+        }
+        if (bg && bg !== 'none') {
+          const textColor = this.isDarkColor(bg) ? '#ffffff' : '#1f2937'
+          fo.querySelectorAll('div, span, p').forEach((el) => {
+            ;(el as HTMLElement).style.color = textColor
+          })
+        }
       }
     })
+  }
+
+  /** 获取页面文字色（深色模式默认白色；用户自定义文字色时返回用户色） */
+  private getPageTextColor(): string | null {
+    try {
+      const cs = getComputedStyle(document.documentElement)
+      const text = cs.getPropertyValue('--md-text-primary').trim()
+      if (text && text !== 'var(--apple-label)') return text
+      const label = cs.getPropertyValue('--apple-label').trim()
+      if (label) return label
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  /** 判断颜色是否为深色（感知亮度 < 0.5），用于决定文字取白/深 */
+  private isDarkColor(color: string): boolean {
+    let r = 0
+    let g = 0
+    let b = 0
+    if (color.startsWith('#')) {
+      const hex = color.slice(1)
+      if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16)
+        g = parseInt(hex[1] + hex[1], 16)
+        b = parseInt(hex[2] + hex[2], 16)
+      } else if (hex.length === 6) {
+        r = parseInt(hex.slice(0, 2), 16)
+        g = parseInt(hex.slice(2, 4), 16)
+        b = parseInt(hex.slice(4, 6), 16)
+      }
+    } else if (color.startsWith('rgb')) {
+      const m = color.match(/rgba?\(([^)]+)\)/)
+      if (m) {
+        const parts = m[1].split(',').map((s) => parseFloat(s.trim()))
+        r = parts[0] || 0
+        g = parts[1] || 0
+        b = parts[2] || 0
+      }
+    }
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return luminance < 0.5
   }
 
   /**
