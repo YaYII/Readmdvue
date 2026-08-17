@@ -488,25 +488,25 @@
    深色模式 + 深色强调色（如黑色）时，强调色链接会不可见，此处保证对比度 */
 :root[data-theme="dark"] .markdown-reader-container a,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a {
-  /* 超链接高亮保留（可辨识链接，阅读体验）：苹果高饱和亮蓝（纯蓝不灰，深色下发脏）+ 加粗 */
-  color: #2E9FFF;
+  /* 超链接高亮保留（可辨识链接，阅读体验）：荧光绿（极亮高饱和，深色下醒目）+ 加粗 */
+  color: #0eff00;
   font-weight: 600;
 }
 
 :root[data-theme="dark"] .markdown-reader-container a:hover,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:hover {
-  color: #5AC8FA;
-  border-bottom-color: #5AC8FA;
+  color: #0eff00;
+  border-bottom-color: #0eff00;
 }
 
 :root[data-theme="dark"] .markdown-reader-container a:visited,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container a:visited {
-  color: #63B8FF;
+  color: #0eff00;
 }
 
 :root[data-theme="dark"] .markdown-reader-container .heading-anchor,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container .heading-anchor {
-  color: #5AC8FA;
+  color: #0eff00;
 }
 
 :root[data-theme="dark"] .markdown-reader-container strong,
@@ -538,8 +538,8 @@
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container h2,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container ul li::before,
 :root[data-theme="auto"][data-system-theme="dark"] .markdown-reader-container blockquote {
-  border-bottom-color: #5AC8FA;
-  border-left-color: #5AC8FA;
+  border-bottom-color: #0eff00;
+  border-left-color: #0eff00;
 }
 
 /* 强调文本样式 - 苹果风格 */
