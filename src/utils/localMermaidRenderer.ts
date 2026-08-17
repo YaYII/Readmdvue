@@ -2,7 +2,7 @@
 // content script 的 import() 在 file:// 页面会按页面 URL 解析（file:///assets/... CORS 拦截），
 // 全量包从根本上消除该问题（体积换取 file:// 场景 100% 可靠性）
 import mermaid from 'mermaid/dist/mermaid.min.js'
-import { showSuccess, showError } from './appleNotification'
+import { showSuccess } from './appleNotification'
 
 /**
  * 本地 Mermaid 渲染器
@@ -146,26 +146,21 @@ export class LocalMermaidRenderer {
         }
       )
 
-      console.log(`Mermaid 图表渲染成功 (本地渲染, ${renderTime}ms)`)
+      console.log(`✅ Mermaid 图表渲染成功（来源：本地离线渲染，${renderTime}ms）`)
 
       return { success: true }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误'
       
-      console.error('本地 Mermaid 渲染失败:', error)
+      // 本地失败只是「回退 Kroki」的中间状态，不是最终失败 —— 用 warn 而不是 error，避免误导
+      console.warn('本地 Mermaid 渲染失败（将回退 Kroki 在线渲染）:', error)
       
       // 显示错误信息
       const container = document.getElementById(containerId)
       if (container) {
         this.showMermaidError(container, errorMessage)
       }
-
-      showError(
-        'Mermaid 渲染失败', 
-        errorMessage,
-        { liquidGlass: true }
-      )
 
       return { 
         success: false, 

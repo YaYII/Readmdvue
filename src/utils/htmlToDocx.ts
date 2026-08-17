@@ -373,7 +373,15 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'img': {
           docxImgSeq++
           const src = el.getAttribute('src') || ''
-          const kind = src.startsWith('data:') ? 'data-url' : /^https?:/i.test(src) ? 'http' : src.startsWith('file:') ? 'file' : 'relative'
+          const kind = src.startsWith('data:')
+            ? 'data-url(粘贴图)'
+            : /^https?:/i.test(src)
+              ? 'http(远程图)'
+              : src.startsWith('blob:')
+                ? 'blob(Kroki/本地缓存图)'
+                : src.startsWith('file:')
+                  ? 'file(本地文件图)'
+                  : 'relative(相对路径图)'
           logImage(`开始处理 <img> alt="${el.getAttribute('alt') || ''}" 类型=${kind} src=${src.slice(0, 100)}`)
           const img = await imageToDocxImage(src)
           if (img) {
@@ -387,7 +395,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'svg': {
           docxImgSeq++
-          logImage(`开始处理 <svg> 图表（mermaid）viewBox=${el.getAttribute('viewBox') || '无'}`)
+          logImage(`开始处理 <svg> 图表（本地 Mermaid 渲染）viewBox=${el.getAttribute('viewBox') || '无'}`)
           const img = await svgToDocxImage(el as unknown as SVGSVGElement)
           if (img) {
             logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height}`)

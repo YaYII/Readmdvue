@@ -18,6 +18,8 @@ export interface ChartRenderOptions {
 export interface ChartRenderResult {
   success: boolean
   content?: string
+  /** 渲染来源：local=本地离线 mermaid；kroki=在线 Kroki 服务 */
+  source?: 'local' | 'kroki'
   error?: string
   renderTime?: number
   cached?: boolean
@@ -69,25 +71,27 @@ export class AsyncChartRenderer {
 
       // 对于 Mermaid 图表，优先使用本地渲染
       if (type.toLowerCase() === 'mermaid') {
-        console.log('使用本地 Mermaid 渲染器')
+        console.log('尝试本地 Mermaid 渲染器（离线可用）...')
 
         try {
           const result = await localMermaidRenderer.renderMermaid(content, containerId)
 
           if (result.success) {
             const renderTime = Date.now() - startTime
+            console.log('✅ 图表渲染成功（来源：本地离线 Mermaid）')
             return {
               success: true,
               content: 'local-mermaid-rendered',
+              source: 'local',
               renderTime,
               cached: false
             }
           } else {
             // 本地渲染失败，回退到 Kroki
-            console.warn('本地 Mermaid 渲染失败，回退到 Kroki 服务')
+            console.warn('本地 Mermaid 渲染失败（中间状态），回退到 Kroki 在线渲染')
           }
         } catch (error) {
-          console.warn('本地 Mermaid 渲染异常，回退到 Kroki 服务:', error)
+          console.warn('本地 Mermaid 渲染异常（中间状态），回退到 Kroki 在线渲染:', error)
         }
       }
 
@@ -120,6 +124,7 @@ export class AsyncChartRenderer {
           return {
             success: true,
             content: result.content,
+            source: 'kroki',
             renderTime,
             cached: result.cached
           }
@@ -235,7 +240,7 @@ export class AsyncChartRenderer {
 
       // 显示图表
       this.displayResult(container, imageUrl)
-      console.log(`${type}图表渲染成功 (Kroki POST API)`)
+      console.log(`✅ ${type}图表渲染成功（来源：Kroki 在线渲染）`)
 
       return { content: imageUrl, cached: false }
 
