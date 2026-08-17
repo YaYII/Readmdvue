@@ -307,18 +307,29 @@ export class DocumentExporter {
       </div>
     </div>
     <script>
-      /* 图片点击放大查看（导出文档保留 md 阅读器的图片查看交互） */
+      /* 点击放大查看：图片（IMG）与 mermaid 图表（SVG）均可点击放大
+         （导出文档保留 md 阅读器的查看交互） */
       (function () {
-        function showViewer(img) {
+        function showViewer(el) {
           var mask = document.createElement('div');
           mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;' +
             'align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;';
-          var big = document.createElement('img');
-          big.src = img.currentSrc || img.src;
-          big.alt = img.alt || '';
-          big.style.cssText = 'max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;' +
-            'box-shadow:0 8px 40px rgba(0,0,0,0.5);';
-          mask.appendChild(big);
+          if (el.tagName === 'IMG') {
+            var big = document.createElement('img');
+            big.src = el.currentSrc || el.src;
+            big.alt = el.alt || '';
+            big.style.cssText = 'max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;' +
+              'box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+            mask.appendChild(big);
+          } else {
+            // SVG（mermaid 图表）：克隆并按原始 viewBox 比例大图显示
+            var svg = el.cloneNode(true);
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
+            svg.style.cssText = 'max-width:92vw;max-height:92vh;width:auto;height:auto;' +
+              'box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+            mask.appendChild(svg);
+          }
           var close = function () { if (mask.parentNode) mask.parentNode.removeChild(mask); };
           mask.addEventListener('click', close);
           document.addEventListener('keydown', function esc(e) {
@@ -328,9 +339,18 @@ export class DocumentExporter {
         }
         document.addEventListener('click', function (e) {
           var t = e.target;
-          if (t && t.tagName === 'IMG' && !t.closest('a') && t.closest('.markdown-reader-container')) {
+          if (!t || !t.closest) return;
+          // 图片：链接内不拦截
+          if (t.tagName === 'IMG' && !t.closest('a') && t.closest('.markdown-reader-container')) {
             e.preventDefault();
             showViewer(t);
+            return;
+          }
+          // mermaid 图表：点击 SVG 任意位置放大
+          var svg = t.tagName === 'svg' ? t : t.closest('svg');
+          if (svg && svg.closest('.markdown-reader-container')) {
+            e.preventDefault();
+            showViewer(svg);
           }
         });
       })();
