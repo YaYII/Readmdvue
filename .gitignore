@@ -298,3 +298,10 @@ common/autoinstallers/*/.npmrc
 
 # Wireit
 .wireit/
+# ===== 工程整理（2026-08-17）=====
+# 旧版构建产物快照目录（非源码，误入仓库已清理；发布以 releases/*.zip 为准）
+Readmdvue-v*/
+# VSCode 本地历史（Local History），非项目文件
+.history/
+# 发布归档目录
+releases/

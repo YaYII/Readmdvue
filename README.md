@@ -225,8 +225,7 @@ flowchart TD
 
 ```
 Readmdvue/
-├── public/                          # 静态资源（图标等）
-├── src/
+├── src/                             # 正式源码（唯一维护入口，Vue3 + TS）
 │   ├── background/main.ts           # 后台脚本（保存文件、自动打开、消息路由）
 │   ├── content/
 │   │   ├── main.ts                  # 内容脚本（渲染管线、事件接线）
@@ -241,16 +240,28 @@ Readmdvue/
 │   │   ├── markdownNormalizer.ts    # Markdown 书写规范化器
 │   │   ├── versionedFilename.ts     # 版本号文件名规则
 │   │   ├── asyncChartRenderer.ts    # 图表渲染（Mermaid 本地 + Kroki）
+│   │   ├── exportUtils.ts           # 文档导出（HTML/PDF/MD/PNG/JPEG，chrome.downloads）
 │   │   └── ...
 │   ├── styles/                      # 全局样式（苹果设计系统等）
 │   ├── stores/                      # Pinia 状态
 │   └── types/                       # 类型定义
+├── public/                          # 静态资源（图标等）
+├── scripts/                         # 开发测试脚本（normalize/versioned 校验）
+├── docs/                            # 文档（停止扩展指南、开发日志等）
+├── tests/                           # 调试测试页（颜色选择器、自定义强调色等）
+├── releases/                        # 发布包归档（Readmdvue-v2.x.x.zip，git 忽略）
+├── dist/                            # 构建产物（npm run build 生成，git 忽略；
+│                                    #   浏览器「加载已解压的扩展程序」选择此目录）
 ├── manifest.json                    # 插件清单（MV3）
 ├── vite.config.ts                   # Vite 构建（动态 chunk 重写等）
+├── package.json                     # 依赖与脚本（dev/build/type-check/lint）
 └── README.md                        # 本文档
 ```
 
----
+> **工程约定（2026-08-17 整理）**：仓库只跟踪源码（`src/` + 工程配置 + 文档）；
+> `dist/`、`releases/*.zip` 为构建产物/发布包，一律 git 忽略，不提交。
+> 历史遗留的 `Readmdvue-v2.0.0/`（旧版构建产物快照）与 `.history/`（VSCode 本地历史）
+> 已移出仓库跟踪，可从 `releases/Readmdvue-v2.0.0.zip` 追溯。
 
 ## 🔧 开发
 

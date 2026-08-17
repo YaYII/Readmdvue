@@ -525,29 +525,61 @@ export class DocumentExporter {
   private async downloadFile(content: string, filename: string, mimeType: string): Promise<void> {
     const blob = new Blob([content], { type: mimeType })
     const url = URL.createObjectURL(blob)
-    
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.style.display = 'none'
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    // 清理URL对象
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    try {
+      // 扩展环境优先用 chrome.downloads.download：
+      // file:// 页面中 <a download> 的 download 属性会被 Chrome 忽略（blob 跨源），
+      // 表现为点击导出无任何反应；downloads API 是扩展内唯一可靠的下载通道
+      // （manifest 已有 downloads 权限，MarkdownEditor 保存文件走的同一条通道）。
+      if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.downloads?.download) {
+        await new Promise<void>((resolve) => {
+          chrome.downloads.download({ url, filename }, () => {
+            if (chrome.runtime.lastError) {
+              // downloads API 失败（如 data URL 超限）→ 降级 <a download>
+              console.warn('[export] chrome.downloads.download 失败，降级 <a download>:', chrome.runtime.lastError.message)
+            }
+            resolve()
+          })
+        })
+        return
+      }
+
+      // 降级：普通页面 / 非扩展环境 <a download>
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.style.display = 'none'
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } finally {
+      // 延迟清理 URL，确保下载已读取 blob
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    }
   }
 
   /**
    * 下载DataURL
    */
   private async downloadDataURL(dataURL: string, filename: string): Promise<void> {
+    // 扩展环境优先用 chrome.downloads.download（data URL 原生支持）
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.downloads?.download) {
+      await new Promise<void>((resolve) => {
+        chrome.downloads.download({ url: dataURL, filename }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn('[export] chrome.downloads.download(dataURL) 失败，降级 <a download>:', chrome.runtime.lastError.message)
+          }
+          resolve()
+        })
+      })
+      return
+    }
+
     const link = document.createElement('a')
     link.href = dataURL
     link.download = filename
     link.style.display = 'none'
-    
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -566,11 +598,11 @@ export async function exportDocument(content: string, options: ExportOptions): P
  * 获取当前页面内容用于导出
  */
 export function getCurrentPageContent(): string {
-  const markdownContainer = document.querySelector('.markdown-body, .md-content, main, article')
+  const markdownContainer = document.querySelector('.markdown-content, .markdown-body, .md-content, main, article')
   if (markdownContainer) {
     return markdownContainer.innerHTML
   }
-  
+
   // 降级方案：获取body内容
   return document.body.innerHTML
 }
