@@ -76,38 +76,64 @@ function dataUrlToBytes(dataUrl: string): Uint8Array | null {
   }
 }
 
-/** 图片 src → base64 + 宽高（远程图 fetch 失败则返回 null） */
+/** 从页面已加载的相同 src 图片元素绘制（canvas，不依赖 fetch——file:// 下 fetch 被禁） */
+async function drawLoadedImage(src: string): Promise<string | null> {
+  try {
+    const img = Array.from(document.querySelectorAll('img'))
+      .find((i) => i.getAttribute('src') === src && i.complete && i.naturalWidth > 0)
+    if (!img) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(img, 0, 0)
+    return canvas.toDataURL('image/png')
+  } catch {
+    return null // 跨域污染时 toDataURL 抛错 → 降级 fetch
+  }
+}
+
+/** 图片 src → base64 + 宽高（优先已加载 DOM 图；否则 fetch；失败返回 null） */
 async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width: number; height: number } | null> {
   try {
-    // 先加载图片获取宽高（data URL / blob / 可访问 URL）
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve()
-      img.onerror = () => reject(new Error('load error'))
-      img.src = src
-    })
-    let dataUrl: string
-    if (src.startsWith('data:')) {
-      dataUrl = src
-    } else {
-      const res = await fetch(src)
-      if (!res.ok) return null
-      const blob = await res.blob()
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = () => resolve('')
-        reader.readAsDataURL(blob)
+    let dataUrl: string | null = await drawLoadedImage(src)
+    if (!dataUrl) {
+      // 降级：加载图片获取宽高（data URL / blob / 可访问 URL）
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('load error'))
+        img.src = src
       })
-      if (!dataUrl) return null
+      if (src.startsWith('data:')) {
+        dataUrl = src
+      } else {
+        const res = await fetch(src)
+        if (!res.ok) return null
+        const blob = await res.blob()
+        dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+        if (!dataUrl) return null
+      }
     }
     const data = dataUrlToBytes(dataUrl)
     if (!data) return null
     // 限制图片尺寸（最大 600px 宽，按比例）
     const maxW = 600
-    let w = img.naturalWidth || 400
-    let h = img.naturalHeight || 300
+    let w = 400
+    let h = 300
+    // 从已加载图取自然尺寸
+    const domImg = Array.from(document.querySelectorAll('img')).find((i) => i.getAttribute('src') === src && i.complete)
+    if (domImg && domImg.naturalWidth > 0) {
+      w = domImg.naturalWidth
+      h = domImg.naturalHeight
+    }
     if (w > maxW) {
       h = Math.round((h * maxW) / w)
       w = maxW
@@ -239,11 +265,13 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'img': {
           const img = await imageToDocxImage(el.getAttribute('src') || '')
           if (img) result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: 'png' })] }))
+          else result.push(new Paragraph({ children: [new TextRun({ text: `[图片: ${el.getAttribute('alt') || '未加载'}]`, italics: true, color: '8E8E93' })] }))
           break
         }
         case 'svg': {
           const img = await svgToDocxImage(el as unknown as SVGSVGElement)
           if (img) result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: 'png' })] }))
+          else result.push(new Paragraph({ children: [new TextRun({ text: '[图表]', italics: true, color: '8E8E93' })] }))
           break
         }
         case 'div':
