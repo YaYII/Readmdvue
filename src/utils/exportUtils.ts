@@ -452,6 +452,10 @@ export class DocumentExporter {
       // 扩展 UI 容器（目录/导出对话框/遮罩/通知）
       '#vue-table-of-contents, .vue-toc-container, #vue-component-export, #vue-overlay-export, ' +
       '.vue-component-container, .vue-component-overlay, .markdown-reader-notification, .donation-modal, ' +
+      // 图表 UI：只保留 .chart-content 里的渲染结果（SVG/img），
+      // 移除加载/错误/源码/分析信息等 UI（否则代码块与界面文本会污染导出）；
+      // .chart-fallback 保留（渲染失败时有内容兜底），由 htmlToDocx 按 display:none 判断跳过
+      '.chart-loading, .chart-error, .chart-source, .chart-analysis-info, .chart-wrapper .view-source-btn, ' +
       // 隐藏的原始 Markdown 内容（页面快照 fallback 时可能带入）
       '.md-original-content-wrapper, .md-original-content-hidden'
     )

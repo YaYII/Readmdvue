@@ -310,6 +310,9 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
     if (node.nodeType !== Node.ELEMENT_NODE) continue
     const el = node as HTMLElement
     const tag = el.tagName.toLowerCase()
+    // 跳过隐藏元素（inline display:none）：
+    // 图表渲染成功时 .chart-fallback 源码块是隐藏的，不导出重复代码；渲染失败时可见则保留内容
+    if (el.style && el.style.display === 'none') continue
     try {
       switch (tag) {
         case 'h1':
@@ -355,13 +358,23 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           break
         }
         case 'pre':
-        case 'code':
+        case 'code': {
+          // 图表代码块（mermaid 渲染失败回退显示源码）→ 提示日志，说明该图表未以图导出
+          const codeText = (el.textContent || '').trim()
+          const langMatch = typeof el.className === 'string' ? el.className.match(/language-(\S+)/) : null
+          const codeLang = langMatch ? langMatch[1].toLowerCase() : ''
+          const isChartCode = /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline|gitgraph)\b|^(graph|flowchart)\s+/.test(codeText)
+          if (isChartCode) {
+            docxImgSeq++
+            warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
+          }
           result.push(new Paragraph({
             children: [new TextRun({ text: el.textContent || '', font: 'Consolas', size: 18 })],
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
             spacing: { before: 120, after: 120 },
           }))
           break
+        }
         case 'blockquote':
           result.push(new Paragraph({
             children: extractRuns(el),
