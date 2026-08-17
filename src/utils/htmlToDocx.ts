@@ -62,7 +62,14 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = child.textContent || ''
-        if (text) runs.push(new TextRun(apply({ text }) as never))
+        if (text) {
+          // docx TextRun 的 \n 不渲染换行：必须拆成多个 run + break:1（否则多行文本挤成一行）
+          const lines = text.split('\n')
+          lines.forEach((line, i) => {
+            if (i > 0) runs.push(new TextRun({ break: 1 }))
+            runs.push(new TextRun(apply({ text: line }) as never))
+          })
+        }
       } else if (child.nodeType === Node.ELEMENT_NODE) {
         const c = child as HTMLElement
         const tag = c.tagName.toLowerCase()
@@ -474,8 +481,15 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             docxImgSeq++
             warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
           }
+          // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
+          const codeLines = (el.textContent || '').split('\n')
+          const codeRuns: TextRun[] = []
+          codeLines.forEach((line, i) => {
+            if (i > 0) codeRuns.push(new TextRun({ break: 1 }))
+            codeRuns.push(new TextRun({ text: line, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 }))
+          })
           result.push(new Paragraph({
-            children: [new TextRun({ text: el.textContent || '', font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 })],
+            children: codeRuns,
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
             indent: { left: 120, right: 120 },
             spacing: { before: 120, after: 120, line: 280, lineRule: LineRuleType.AUTO },
