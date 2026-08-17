@@ -27,6 +27,27 @@ const HEADING_MAP: Record<string, string> = {
   h6: HeadingLevel.HEADING_6,
 }
 
+/** docx 支持的图片类型（与 ImageRun type 对齐） */
+type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
+
+/** data URL / mime 格式 → docx 图片类型 */
+function mimeToDocxType(mime: string | undefined): DocxImageType {
+  const m = (mime || '').toLowerCase()
+  if (m === 'jpeg' || m === 'jpg') return 'jpg'
+  if (m === 'gif') return 'gif'
+  if (m === 'bmp') return 'bmp'
+  return 'png' // png / webp（webp 会被 canvas 重编码为 png）/ 未知
+}
+
+/** 图片转换过程日志（控制台可观测：用户通过日志判断图片是否插入成功） */
+let docxImgSeq = 0
+function logImage(msg: string, ...rest: unknown[]): void {
+  console.log(`[docx-image][${docxImgSeq}] ${msg}`, ...rest)
+}
+function warnImage(msg: string, ...rest: unknown[]): void {
+  console.warn(`[docx-image][${docxImgSeq}] ${msg}`, ...rest)
+}
+
 /** 提取块内 inline 内容为 TextRun（strong/em/code/a/br/普通文本） */
 function extractRuns(el: HTMLElement): TextRun[] {
   const runs: TextRun[] = []
@@ -81,25 +102,65 @@ async function drawLoadedImage(src: string): Promise<string | null> {
   try {
     const img = Array.from(document.querySelectorAll('img'))
       .find((i) => i.getAttribute('src') === src && i.complete && i.naturalWidth > 0)
-    if (!img) return null
+    if (!img) {
+      logImage('drawLoadedImage: 页面 DOM 中未找到已加载的 img（src 不匹配 / 未加载 / 加载失败）')
+      return null
+    }
     const canvas = document.createElement('canvas')
     canvas.width = img.naturalWidth
     canvas.height = img.naturalHeight
     const ctx = canvas.getContext('2d')
-    if (!ctx) return null
+    if (!ctx) {
+      logImage('drawLoadedImage: 获取 2d context 失败')
+      return null
+    }
     ctx.drawImage(img, 0, 0)
-    return canvas.toDataURL('image/png')
-  } catch {
-    return null // 跨域污染时 toDataURL 抛错 → 降级 fetch
+    const dataUrl = canvas.toDataURL('image/png')
+    logImage(`drawLoadedImage: canvas 重编码成功 ${img.naturalWidth}x${img.naturalHeight}（png）`)
+    return dataUrl
+  } catch (e) {
+    // 跨域污染时 toDataURL 抛错 → 降级 fetch（file:// / 跨域图必然 SecurityError）
+    logImage(`drawLoadedImage: 失败 ${e instanceof Error ? e.message : e}`)
+    return null
   }
 }
 
-/** 图片 src → base64 + 宽高（优先已加载 DOM 图；否则 fetch；失败返回 null） */
-async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width: number; height: number } | null> {
+/** 图片 src → base64 + 宽高 + 类型（优先 data URL 直解；其次已加载 DOM 图；再 fetch；失败返回 null） */
+async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width: number; height: number; type: DocxImageType } | null> {
   try {
+    // data URL（粘贴/拖拽插入的 base64 图）：直接解析，无 canvas/fetch 限制
+    const dataMatch = src.match(/^data:image\/(png|jpeg|jpg|gif|bmp);base64,(.+)$/)
+    if (dataMatch) {
+      const binary = atob(dataMatch[2])
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const type = mimeToDocxType(dataMatch[1])
+      logImage(`data URL 直解成功：格式=${type} 字节=${bytes.length}`)
+      let w = 400
+      let h = 300
+      try {
+        const img = new Image()
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve()
+          img.onerror = () => reject(new Error('load error'))
+          img.src = src
+        })
+        w = img.naturalWidth || 400
+        h = img.naturalHeight || 300
+      } catch {
+        // 忽略，用默认尺寸
+      }
+      if (w > 600) {
+        h = Math.round((h * 600) / w)
+        w = 600
+      }
+      return { data: bytes, width: w, height: h, type }
+    }
+
+    // 非 data URL：优先已加载 DOM 图（canvas），再 fetch
     let dataUrl: string | null = await drawLoadedImage(src)
     if (!dataUrl) {
-      // 降级：加载图片获取宽高（data URL / blob / 可访问 URL）
+      logImage('降级：尝试 new Image + fetch 读取')
       const img = new Image()
       img.crossOrigin = 'anonymous'
       await new Promise<void>((resolve, reject) => {
@@ -109,7 +170,8 @@ async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width:
       })
       if (src.startsWith('data:')) {
         dataUrl = src
-      } else {
+      } else if (/^https?:/i.test(src)) {
+        logImage(`fetch 远程图：${src.slice(0, 120)}`)
         const res = await fetch(src)
         if (!res.ok) return null
         const blob = await res.blob()
@@ -120,10 +182,19 @@ async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width:
           reader.readAsDataURL(blob)
         })
         if (!dataUrl) return null
+      } else {
+        // file:// / 相对路径图：浏览器禁止 fetch，无法读取二进制 → 返回 null（占位）
+        warnImage(`无法读取非 http(s) 图片字节（${src.slice(0, 120)}）：file:// 下 fetch 被禁 / canvas 污染 → 占位`)
+        return null
       }
     }
-    const data = dataUrlToBytes(dataUrl)
-    if (!data) return null
+    // 到这里 dataUrl 逻辑上必非 null（块内所有路径已赋值或 return）；await 后 TS 收窄失效，用非空断言
+    const dUrl: string = dataUrl as string
+    const data = dataUrlToBytes(dUrl)
+    if (!data) {
+      warnImage('dataUrl 解析为字节失败 → 占位')
+      return null
+    }
     // 限制图片尺寸（最大 600px 宽，按比例）
     const maxW = 600
     let w = 400
@@ -138,14 +209,46 @@ async function imageToDocxImage(src: string): Promise<{ data: Uint8Array; width:
       h = Math.round((h * maxW) / w)
       w = maxW
     }
-    return { data, width: w, height: h }
-  } catch {
+    // 类型：按 data URL 头部分析；webp/未知用 canvas 重编码为 png
+    const mimeMatch = dUrl.match(/^data:image\/([a-z0-9.+-]+)/i)
+    const mime = mimeMatch ? mimeMatch[1].toLowerCase() : ''
+    let type = mimeToDocxType(mime || undefined)
+    if (mime && mime !== 'png' && type === 'png') {
+      // 数据是 webp/svg 等 docx 不支持格式 → canvas 重编码 png
+      try {
+        const reImg = new Image()
+        await new Promise<void>((resolve, reject) => {
+          reImg.onload = () => resolve()
+          reImg.onerror = () => reject(new Error('load error'))
+          reImg.src = dUrl
+        })
+        const canvas = document.createElement('canvas')
+        canvas.width = reImg.naturalWidth || w
+        canvas.height = reImg.naturalHeight || h
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(reImg, 0, 0)
+          const pngUrl = canvas.toDataURL('image/png')
+          const pngData = dataUrlToBytes(pngUrl)
+          if (pngData) {
+            logImage('webp/未知格式已 canvas 重编码为 png')
+            return { data: pngData, width: w, height: h, type: 'png' }
+          }
+        }
+      } catch (e) {
+        logImage(`webp 重编码失败 ${e instanceof Error ? e.message : e}`)
+      }
+    }
+    logImage(`图片字节获取成功：type=${type} ${w}x${h} 字节=${data.length}`)
+    return { data, width: w, height: h, type }
+  } catch (e) {
+    warnImage(`imageToDocxImage 异常 ${e instanceof Error ? e.message : e} → 占位`)
     return null
   }
 }
 
 /** mermaid SVG → PNG（canvas 绘制；foreignObject 文字可能缺失，结构/连线保留） */
-async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; width: number; height: number } | null> {
+async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; width: number; height: number; type: DocxImageType } | null> {
   try {
     let w = 800
     let h = 600
@@ -177,15 +280,20 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<{ data: Uint8Array; w
     URL.revokeObjectURL(url)
     const dataUrl = canvas.toDataURL('image/png')
     const data = dataUrlToBytes(dataUrl)
-    if (!data) return null
+    if (!data) {
+      logImage('svgToDocxImage: PNG 数据解析失败')
+      return null
+    }
     // 限制尺寸
     const maxW = 620
     if (w > maxW) {
       h = Math.round((h * maxW) / w)
       w = maxW
     }
-    return { data, width: w, height: h }
-  } catch {
+    logImage(`svgToDocxImage: SVG→PNG 成功 ${w}x${h} 字节=${data.length}`)
+    return { data, width: w, height: h, type: 'png' }
+  } catch (e) {
+    warnImage(`svgToDocxImage 失败 ${e instanceof Error ? e.message : e} → 占位`)
     return null
   }
 }
@@ -263,15 +371,31 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           }))
           break
         case 'img': {
-          const img = await imageToDocxImage(el.getAttribute('src') || '')
-          if (img) result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: 'png' })] }))
-          else result.push(new Paragraph({ children: [new TextRun({ text: `[图片: ${el.getAttribute('alt') || '未加载'}]`, italics: true, color: '8E8E93' })] }))
+          docxImgSeq++
+          const src = el.getAttribute('src') || ''
+          const kind = src.startsWith('data:') ? 'data-url' : /^https?:/i.test(src) ? 'http' : src.startsWith('file:') ? 'file' : 'relative'
+          logImage(`开始处理 <img> alt="${el.getAttribute('alt') || ''}" 类型=${kind} src=${src.slice(0, 100)}`)
+          const img = await imageToDocxImage(src)
+          if (img) {
+            logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height}`)
+            result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })] }))
+          } else {
+            warnImage(`❌ 转换失败 → 占位文本（图未插入）`)
+            result.push(new Paragraph({ children: [new TextRun({ text: `[图片: ${el.getAttribute('alt') || '未加载'}]`, italics: true, color: '8E8E93' })] }))
+          }
           break
         }
         case 'svg': {
+          docxImgSeq++
+          logImage(`开始处理 <svg> 图表（mermaid）viewBox=${el.getAttribute('viewBox') || '无'}`)
           const img = await svgToDocxImage(el as unknown as SVGSVGElement)
-          if (img) result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: 'png' })] }))
-          else result.push(new Paragraph({ children: [new TextRun({ text: '[图表]', italics: true, color: '8E8E93' })] }))
+          if (img) {
+            logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height}`)
+            result.push(new Paragraph({ children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })] }))
+          } else {
+            warnImage(`❌ 图表转换失败 → 占位文本（图未插入）`)
+            result.push(new Paragraph({ children: [new TextRun({ text: '[图表]', italics: true, color: '8E8E93' })] }))
+          }
           break
         }
         case 'div':
