@@ -68,7 +68,27 @@
 
 ## 四、图片高清原则（2026-08-18 定稿）
 
-- **普通图片（raster）**：canvas 重编码 PNG 无损，canvas = 原图 naturalWidth×naturalHeight → **源像素 = 原图**，Word 放大不模糊。
-- **mermaid 图表（SVG）**：矢量 → canvas 按 **2x 光栅化**（源像素 4 倍），显示尺寸仍按 viewBox 比例；Word 放大 2 倍依然清晰。
+- **普通图片（raster）**：canvas 重编码 PNG 无损；canvas 最大边 **2600px（2×显示宽）**——2x 高清足够放大 2 倍清晰，同时避免超大 PNG 撑爆 docx。
+- **mermaid 图表（SVG）**：矢量 → **先约束显示尺寸到版心，再按 2x 光栅化**（源像素 4 倍，最大边 ≤2600）；Word 放大 2 倍依然清晰。
 - **显示宽度上限**：A3 版心 1300px（1300px=34.4cm < 版心 36.6cm），只缩不放，不超宽。
+- **双保险**：ImageRun 构造点 clampDisplaySize 最终约束；任何路径漏约束都不会超版心。
 - **不学 html-to-docx 的图片处理**：它按版心固定缩放、不保源分辨率，导致大图超出/模糊；我们保留原图高清 + 显示约束。
+
+## 五、A3 横向纸张参数（2026-08-18 超宽根因修复）
+
+docx 库 `PageSize` 的 width/height 是**逻辑页面尺寸**，`orientation: LANDSCAPE` 时会**自动交换**。
+要得到物理 A3 横向（`<w:pgSz w=23811 h=16838 orient=landscape"/>`），必须传**逻辑 A3 纵向尺寸**：
+```ts
+size: { width: 16838, height: 23811, orientation: PageOrientation.LANDSCAPE }
+```
+此前传 `23811x16838 + LANDSCAPE` 被交换成 A3 纵向（页宽 297mm），图片 1300px(34.4cm) 超出页宽
+被 Word 裁掉一半（"只显示一半"）。实证：LibreOffice 转 PDF 量图片矩形，修复后 81.9% 页宽不超版心。
+
+## 六、图片丢失（后面的图不显示）两个根因与修复
+
+1. **无超时的 `new Image()` / `fetch` 挂起**：异常 src 可能既不 onload 也不 onerror，`await` 永远
+   pending → convertChildren 卡死，后面所有内容不生成。修复：`loadImageWithTimeout`（8s 超时）+ fetch
+   AbortController（8s），4 处加载全部替换。
+2. **超大 PNG 撑爆 docx**：drawLoadedImage 用原图尺寸（8000px+ 图 → 10MB+ PNG）、svgToDocxImage
+   未约束 viewBox 直接 2x（4000px 流程图 → 8000px canvas），docx 文件暴涨 → Word 渐进加载后半图片
+   不显示。修复：canvas 最大边 2600px（clampCanvasSize）；svg 先约束显示尺寸再 2x。

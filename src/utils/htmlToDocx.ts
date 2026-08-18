@@ -33,6 +33,10 @@ import mermaid from 'mermaid/dist/mermaid.min.js'
  */
 const MAX_IMAGE_WIDTH_PX = 1300
 
+/** 图片/图表数据源最大边长（px）：canvas 重编码时限制，避免超大 PNG 撑爆 docx 文件
+ * （Word 对超大 docx 会渐进加载，后面图片可能不显示）。2×显示宽度 = 放大 2 倍依然清晰。 */
+const MAX_IMAGE_SIDE_PX = MAX_IMAGE_WIDTH_PX * 2
+
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
 
@@ -192,6 +196,46 @@ function dataUrlToBytes(dataUrl: string): Uint8Array | null {
   }
 }
 
+/** 加载图片（带超时：无超时的 new Image() 在异常 src 下可能既不 onload 也不 onerror，
+ * 导致 await 永远挂起、后续所有图片/内容不生成——"后面的图片全部丢失"的根因之一） */
+function loadImageWithTimeout(src: string, timeoutMs = 8000, crossOrigin = false): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    if (crossOrigin) img.crossOrigin = 'anonymous'
+    const timer = window.setTimeout(() => {
+      img.src = ''
+      reject(new Error('image load timeout'))
+    }, timeoutMs)
+    img.onload = () => {
+      window.clearTimeout(timer)
+      resolve(img)
+    }
+    img.onerror = () => {
+      window.clearTimeout(timer)
+      reject(new Error('image load error'))
+    }
+    img.src = src
+  })
+}
+
+/** canvas 重编码时限制最大边长（等比）：原图过大会产生 10MB+ PNG，docx 文件暴涨 */
+function clampCanvasSize(w: number, h: number): { width: number; height: number } {
+  const maxSide = MAX_IMAGE_SIDE_PX
+  if (Math.max(w, h) <= maxSide) return { width: w, height: h }
+  const s = maxSide / Math.max(w, h)
+  return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)) }
+}
+
+/** 显示尺寸最终约束（双保险：任何转换路径漏约束，ImageRun 都不超过版心宽度） */
+function clampDisplaySize(w: number, h: number): { width: number; height: number } {
+  if (!(w > 0) || !(h > 0)) return { width: 400, height: 300 }
+  if (w <= MAX_IMAGE_WIDTH_PX) {
+    return { width: Math.round(w), height: Math.round(h) }
+  }
+  const s = MAX_IMAGE_WIDTH_PX / w
+  return { width: MAX_IMAGE_WIDTH_PX, height: Math.max(1, Math.round(h * s)) }
+}
+
 /** 从页面已加载的相同 src 图片元素绘制（canvas，不依赖 fetch——file:// 下 fetch 被禁） */
 async function drawLoadedImage(src: string): Promise<string | null> {
   try {
@@ -201,17 +245,19 @@ async function drawLoadedImage(src: string): Promise<string | null> {
       logImage('drawLoadedImage: 页面 DOM 中未找到已加载的 img（src 不匹配 / 未加载 / 加载失败）')
       return null
     }
+    // 限制 canvas 尺寸（最大边 2×显示宽）：原图过大会产生超大 PNG 撑爆 docx
+    const cSize = clampCanvasSize(img.naturalWidth, img.naturalHeight)
     const canvas = document.createElement('canvas')
-    canvas.width = img.naturalWidth
-    canvas.height = img.naturalHeight
+    canvas.width = cSize.width
+    canvas.height = cSize.height
     const ctx = canvas.getContext('2d')
     if (!ctx) {
       logImage('drawLoadedImage: 获取 2d context 失败')
       return null
     }
-    ctx.drawImage(img, 0, 0)
+    ctx.drawImage(img, 0, 0, cSize.width, cSize.height)
     const dataUrl = canvas.toDataURL('image/png')
-    logImage(`drawLoadedImage: canvas 重编码成功 ${img.naturalWidth}x${img.naturalHeight}（png）`)
+    logImage(`drawLoadedImage: canvas 重编码成功 ${img.naturalWidth}x${img.naturalHeight} → ${cSize.width}x${cSize.height}（png）`)
     return dataUrl
   } catch (e) {
     // 跨域污染时 toDataURL 抛错 → 降级 fetch（file:// / 跨域图必然 SecurityError）
@@ -234,12 +280,7 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       let w = 400
       let h = 300
       try {
-        const img = new Image()
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve()
-          img.onerror = () => reject(new Error('load error'))
-          img.src = src
-        })
+        const img = await loadImageWithTimeout(src)
         w = img.naturalWidth || 400
         h = img.naturalHeight || 300
       } catch {
@@ -256,18 +297,19 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
     let dataUrl: string | null = await drawLoadedImage(src)
     if (!dataUrl) {
       logImage('降级：尝试 new Image + fetch 读取')
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = () => reject(new Error('load error'))
-        img.src = src
-      })
+      await loadImageWithTimeout(src, 8000, true)
       if (src.startsWith('data:')) {
         dataUrl = src
       } else if (/^https?:/i.test(src)) {
         logImage(`fetch 远程图：${src.slice(0, 120)}`)
-        const res = await fetch(src)
+        const controller = new AbortController()
+        const timer = window.setTimeout(() => controller.abort(), 8000)
+        let res: Response
+        try {
+          res = await fetch(src, { signal: controller.signal })
+        } finally {
+          window.clearTimeout(timer)
+        }
         if (!res.ok) return null
         const blob = await res.blob()
         dataUrl = await new Promise<string>((resolve) => {
@@ -311,18 +353,14 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
     if (mime && mime !== 'png' && type === 'png') {
       // 数据是 webp/svg 等 docx 不支持格式 → canvas 重编码 png
       try {
-        const reImg = new Image()
-        await new Promise<void>((resolve, reject) => {
-          reImg.onload = () => resolve()
-          reImg.onerror = () => reject(new Error('load error'))
-          reImg.src = dUrl
-        })
+        const reImg = await loadImageWithTimeout(dUrl)
+        const cSize = clampCanvasSize(reImg.naturalWidth || w, reImg.naturalHeight || h)
         const canvas = document.createElement('canvas')
-        canvas.width = reImg.naturalWidth || w
-        canvas.height = reImg.naturalHeight || h
+        canvas.width = cSize.width
+        canvas.height = cSize.height
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.drawImage(reImg, 0, 0)
+          ctx.drawImage(reImg, 0, 0, cSize.width, cSize.height)
           const pngUrl = canvas.toDataURL('image/png')
           const pngData = dataUrlToBytes(pngUrl)
           if (pngData) {
@@ -399,16 +437,19 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
     const url = URL.createObjectURL(blob)
     let img: HTMLImageElement | null = null
     try {
-      img = new Image()
-      await new Promise<void>((resolve, reject) => {
-        img!.onload = () => resolve()
-        img!.onerror = () => reject(new Error('svg load error'))
-        img!.src = url
-      })
+      img = await loadImageWithTimeout(url)
     } catch {
       // blob 加载失败（仍可能存在 XML 问题）：降级直接用页面原 SVG 元素绘制（同文档绘制）
       logImage('svgToDocxImage: blob 加载失败，降级直接绘制页面 SVG 元素（foreignObject 文字可能缺失）')
       img = null
+    }
+    // 先约束显示尺寸（不超过版心宽度）：canvas 必须在约束后的尺寸上 2x，
+    // 否则超大 viewBox（如 4000px 宽流程图）会生成 8000px canvas → 超大 PNG 撑爆 docx
+    //（Word 对超大 docx 渐进加载，后面图片/内容可能不显示）
+    const maxW = MAX_IMAGE_WIDTH_PX
+    if (w > maxW) {
+      h = Math.round((h * maxW) / w)
+      w = maxW
     }
     // 2x 高清渲染：SVG 是矢量，canvas 按 2 倍光栅化 → PNG 源像素 4 倍，
     // Word 里放大 2 倍依然清晰（原图高清原则：源像素 ≥ 展示需求，放大不模糊）
@@ -436,12 +477,6 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
     if (!data) {
       logImage('svgToDocxImage: PNG 数据解析失败')
       return null
-    }
-    // 限制尺寸（图表按版心宽度）
-    const maxW = MAX_IMAGE_WIDTH_PX
-    if (w > maxW) {
-      h = Math.round((h * maxW) / w)
-      w = maxW
     }
     logImage(`svgToDocxImage: SVG→PNG 成功 ${w}x${h} 字节=${data.length}`)
     return { data, width: w, height: h, type: 'png' }
@@ -750,11 +785,12 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           logImage(`开始处理 <img> alt="${el.getAttribute('alt') || ''}" 类型=${kind} src=${src.slice(0, 100)}`)
           const img = await imageToDocxImage(src)
           if (img) {
-            logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height}`)
+            const disp = clampDisplaySize(img.width, img.height)
+            logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
-              children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })],
+              children: [new ImageRun({ data: img.data, transformation: { width: disp.width, height: disp.height }, type: img.type })],
             }))
           } else {
             warnImage(`❌ 转换失败 → 占位文本（图未插入）`)
@@ -769,11 +805,12 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           const lightImg = await renderChartLight(el as unknown as SVGSVGElement)
           const img = lightImg || (await svgToDocxImage(el as unknown as SVGSVGElement))
           if (img) {
-            logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height}`)
+            const disp = clampDisplaySize(img.width, img.height)
+            logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
-              children: [new ImageRun({ data: img.data, transformation: { width: img.width, height: img.height }, type: img.type })],
+              children: [new ImageRun({ data: img.data, transformation: { width: disp.width, height: disp.height }, type: img.type })],
             }))
           } else {
             warnImage(`❌ 图表转换失败 → 占位文本（图未插入）`)
@@ -874,7 +911,11 @@ export async function htmlToDocx(html: string): Promise<Blob> {
         page: {
           // A3 横向（420×297mm）：公文大纸容纳代码/表格长行
           // 版心边距保持公文规范：上 3.7cm / 下 3.5cm / 左 2.8cm / 右 2.6cm
-          size: { width: 23811, height: 16838, orientation: PageOrientation.LANDSCAPE },
+          // ⚠️ docx 库 PageSize 的 width/height 是"逻辑页面尺寸"，LANDSCAPE 时自动交换；
+          // 要得到物理 A3 横向（pgSz w=23811 h=16838 orient=landscape）必须传逻辑 A3 纵向
+          // 尺寸 16838x23811 + LANDSCAPE。此前传 23811x16838 被交换成 A3 纵向(297mm 宽)，
+          // 图片 1300px(34.4cm) 超出页宽被 Word 裁掉一半——超宽根因。
+          size: { width: 16838, height: 23811, orientation: PageOrientation.LANDSCAPE },
           margin: { top: 2098, right: 1474, bottom: 1984, left: 1587 },
         },
       },
