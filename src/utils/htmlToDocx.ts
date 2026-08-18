@@ -107,11 +107,10 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
     color?: string
     font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
   }): Record<string, unknown> => ({ ...opts, ...overrides })
-  // 连续换行合并：marked 软换行常输出 <br>\n（br 后紧跟换行符），
-  // 若 br 与 \n 各产生一个 break → Word 出现空行（间距特别大）。
-  // 策略：br 产生的 break 后，紧跟文本首行开头的 \n 不再重复产生 break；
-  // 文本内部真正的空行（连续 \n）仍保留为 break。
-  let pendingBrBreak = false
+  // 连续换行合并（目录/列表不能有空行）：任意连续换行（<br><br>、\n\n、<br>\n 组合）
+  // 只产生一个 break——否则 Word 出现空白行。lastWasBreak 贯穿整个 walk：
+  // 一旦输出过 break，下一个 break 合并；输出文本后重置。
+  let lastWasBreak = false
   const walk = (node: Node): void => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
@@ -120,12 +119,13 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
           // docx TextRun 的 \n 不渲染换行：必须拆成多个 run + break:1（否则多行文本挤成一行）
           const lines = text.split('\n')
           lines.forEach((line, i) => {
-            if (i > 0 && !(pendingBrBreak && i === 1)) {
-              runs.push(new TextRun({ break: 1 }))
+            if (i > 0) {
+              if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
+              lastWasBreak = true
             }
             if (line) {
               runs.push(new TextRun(apply({ text: line }) as never))
-              pendingBrBreak = false
+              lastWasBreak = false
             }
           })
         }
@@ -133,44 +133,44 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
         const c = child as HTMLElement
         const tag = c.tagName.toLowerCase()
         if (tag === 'br') {
-          runs.push(new TextRun({ break: 1 }))
-          pendingBrBreak = true
+          if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
+          lastWasBreak = true
         } else if (tag === 'strong' || tag === 'b') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, bold: true }) as never))
-            pendingBrBreak = false
+            lastWasBreak = false
           }
         } else if (tag === 'em' || tag === 'i') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, italics: true }) as never))
-            pendingBrBreak = false
+            lastWasBreak = false
           }
         } else if (tag === 'del' || tag === 's' || tag === 'strike') {
           // 删除线（渲染契约：marked gfm 的 ~~text~~ → <del>）：strike run
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, strike: true }) as never))
-            pendingBrBreak = false
+            lastWasBreak = false
           }
         } else if (tag === 'input') {
           // 任务列表（渲染契约：marked gfm 的 - [x] → <li><input checked disabled type="checkbox">）
           // checkbox 元素本身无文本 → 输出 ☑/☐ 符号保持任务语义
           const isChecked = c.hasAttribute('checked')
           runs.push(new TextRun(apply({ text: isChecked ? '☑ ' : '☐ ' }) as never))
-          pendingBrBreak = false
+          lastWasBreak = false
         } else if (tag === 'code') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
-            pendingBrBreak = false
+            lastWasBreak = false
           }
         } else if (tag === 'a') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
-            pendingBrBreak = false
+            lastWasBreak = false
           }
         } else {
           // 块级子元素（嵌套列表/段落等）：递归前加换行，
@@ -181,7 +181,13 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
           if (BLOCK_TAGS.includes(tag) && runs.length > before) {
             // li 场景：第一个块级元素不插 break（符号与文本同行）；后续块才插 break 分隔
             if (!(options.suppressFirstBlockBreak && !blockSeen)) {
-              runs.splice(before, 0, new TextRun({ break: 1 }))
+              // 连续换行合并：before 位置前一个 run 已是 break 则不再插（避免空白行）
+              const prevRun = before > 0 ? runs[before - 1] : null
+              const prevIsBreak = !!prevRun && (prevRun as unknown as { break?: number }).break === 1
+              if (!prevIsBreak) {
+                runs.splice(before, 0, new TextRun({ break: 1 }))
+                lastWasBreak = true
+              }
             }
             blockSeen = true
           }
@@ -588,6 +594,8 @@ function convertCodeBlock(el: HTMLElement): Paragraph {
   // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
   const codeLines = (el.textContent || '').split('\n')
   const codeRuns: TextRun[] = []
+  // 连续换行合并（目录树/代码块不能有空行）：连续空行只保留一个换行分隔
+  let lastWasBreak = false
   codeLines.forEach((line, i) => {
     // 压缩超长连续空格（目录树/代码里用于对齐的长空格 → 2 个）+ 去掉行尾空格：
     // 避免 Word 里显示几十个连续空格导致内容又长又难看
@@ -595,8 +603,14 @@ function convertCodeBlock(el: HTMLElement): Paragraph {
     // 长行在空格处主动换行（单行不超过 70 字符，保持紧凑）
     const wrapped = wrapLongLine(cleaned, 70)
     wrapped.forEach((seg, j) => {
-      if (i > 0 || j > 0) codeRuns.push(new TextRun({ break: 1 }))
-      codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
+      if (i > 0 || j > 0) {
+        if (!lastWasBreak) codeRuns.push(new TextRun({ break: 1 }))
+        lastWasBreak = true
+      }
+      if (seg) {
+        codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
+        lastWasBreak = false
+      }
     })
   })
   return new Paragraph({
@@ -618,9 +632,17 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         // docx TextRun 不渲染 \n：多行文本必须拆成多个 run + break:1
         //（否则 div/section 直接文本子节点的换行会全部丢失、内容挤成一行）
         const runs: TextRun[] = []
+        // 连续换行合并（目录/列表不能有空行）：\n\n 只产生一个 break
+        let lastWasBreak = false
         text.split('\n').forEach((line, i) => {
-          if (i > 0) runs.push(new TextRun({ break: 1 }))
-          if (line.trim()) runs.push(new TextRun({ text: line }))
+          if (i > 0) {
+            if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
+            lastWasBreak = true
+          }
+          if (line.trim()) {
+            runs.push(new TextRun({ text: line }))
+            lastWasBreak = false
+          }
         })
         result.push(new Paragraph({
           wordWrap: true,
