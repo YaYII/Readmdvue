@@ -334,15 +334,23 @@ async function renderPreview(): Promise<void> {
 
   lastTocItems = result.success ? renderer.getTocItems() : null
 
-  // 复用正式渲染的 DOM 结构与皮肤属性，全局 CSS（content.css 等）自动生效
+  // 复用正式渲染的 DOM 结构与皮肤属性，全局 CSS（content.css 等）自动生效。
+  // ⚠️ 必须包 .markdown-reader-container 外层：content-variables.css 的标题/链接/列表/段落
+  // 等全部基础排版样式都以 .markdown-reader-container 为前缀，缺这层预览就是浏览器默认排版
+  //（字号/行距/标题颜色全不对，与正式阅读不一致）。
   host.innerHTML = `
-    <div class="markdown-reader-content" data-skin="${previewConfig.skin || 'gov'}">
-      ${result.content}
+    <div class="markdown-reader-container" data-skin="${previewConfig.skin || 'gov'}">
+      <div class="markdown-reader-content">
+        ${result.content}
+      </div>
     </div>
   `
 
   await renderChartsInPreview(host)
   renderMathInPreview(host)
+  // 表格字号自适应（与 content/main.ts autoFitTableFont 同逻辑）：
+  // 内容放不下时自动缩小字号（最小 9px），减少大量换行——同一套渲染规则
+  autoFitPreviewTableFont(host)
 
   // 恢复位置：优先保持用户阅读锚点；无锚点（从未在预览滚动）时跟随编辑位置
   if (before) {
@@ -473,6 +481,34 @@ function renderMathInPreview(container: HTMLElement): void {
       el.textContent = tex
     }
   })
+}
+
+/** 预览内表格字号自适应（与 content/main.ts autoFitTableFont 同逻辑，同一套渲染规则） */
+function autoFitPreviewTableFont(container: HTMLElement): void {
+  try {
+    const MIN_FONT = 9
+    const MAX_ROUNDS = 4
+    const tables = container.querySelectorAll<HTMLTableElement>('table')
+    if (tables.length === 0) return
+    tables.forEach((table) => {
+      const cells = Array.from(table.querySelectorAll<HTMLElement>('th, td'))
+      if (cells.length === 0) return
+      let current = parseFloat(window.getComputedStyle(table).fontSize) || 16
+      let guard = 0
+      while (guard < MAX_ROUNDS) {
+        const originals = cells.map((cell) => cell.style.whiteSpace)
+        cells.forEach((cell) => { cell.style.whiteSpace = 'nowrap' })
+        const overflow = table.scrollWidth > table.clientWidth + 1
+        cells.forEach((cell, index) => { cell.style.whiteSpace = originals[index] })
+        if (!overflow || current <= MIN_FONT) break
+        current = Math.max(MIN_FONT, current - 1)
+        table.style.fontSize = `${current}px`
+        guard++
+      }
+    })
+  } catch {
+    // 忽略表格自适应失败（预览不阻塞）
+  }
 }
 
 /**
@@ -668,6 +704,15 @@ async function save(): Promise<void> {
   padding: 20px 24px;
   max-width: 100%;
   margin: 0 auto;
+}
+
+/* 预览内 .markdown-reader-container：结构与正式阅读一致（排版样式生效），
+   但覆盖容器级外观——不撑满视口、不叠加大 padding（min-height 100vh / padding 由
+   content-variables.css 定义，预览里由 .editor-preview 自身滚动承担） */
+.editor-preview :deep(.markdown-reader-container) {
+  min-height: auto;
+  padding: 0;
+  max-width: 100%;
 }
 
 .editor-preview .chart-source-code {
