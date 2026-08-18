@@ -502,6 +502,26 @@ export class DocumentExporter {
         placeholder.style.cssText = 'background: #f5f5f7; padding: 2px 6px; border-radius: 4px; color: #8e8e93;'
         math.parentNode?.replaceChild(placeholder, math)
       })
+    } else {
+      // includeMath=true：KaTeX 渲染后的公式替换为可读 LaTeX 源码文本
+      // （渲染契约：math-inline/math-block → KaTeX → .katex 布局 DOM，textContent 是拍平乱码；
+      //  Word 不渲染 LaTeX，源码是公式的 Word 对应组件，行内 $..$ / 块级 $$..$$）
+      const mathElements = tempDiv.querySelectorAll<HTMLElement>('.math-inline, .math-block')
+      mathElements.forEach(math => {
+        const displayMode = math.classList.contains('math-block')
+        // 优先取渲染前注入的 dataset.latex（100% 准确的用户源码）
+        let tex = math.dataset.latex || ''
+        if (!tex) {
+          // 兜底：htmlAndMathml 模式下 .katex-mathml 的 annotation 含 TeX 源码
+          const ann = math.querySelector('annotation[encoding="application/x-tex"]')
+          tex = ann ? (ann.textContent || '').trim() : ''
+        }
+        if (!tex) {
+          // 无源码（旧缓存/其他渲染器）→ 占位，避免拍平乱码
+          tex = '数学公式'
+        }
+        math.textContent = displayMode ? `$$${tex}$$` : `$${tex}$`
+      })
     }
     
     return tempDiv.innerHTML

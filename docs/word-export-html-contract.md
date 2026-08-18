@@ -24,7 +24,31 @@
 | 分隔线 | `<hr>` | hr case：下边框分隔线段落 | ✅ 2026-08-18 新增（此前丢失） |
 | 行内 code | `<code>..</code>` | extractRuns：Consolas/等线 | ✅ |
 | 行内加粗/斜体/链接 | `<strong>/<em>/<a>` | extractRuns：bold/italics/链接蓝色 | ✅（链接不可点，候选） |
+| 删除线 | `<del>/<s>/<strike>`（gfm `~~text~~`） | extractRuns：strike run | ✅ 2026-08-18 补 |
+| 任务列表 | `<li><input checked disabled type="checkbox">`（gfm `- [x]`） | extractRuns：input → `☑ `/`☐ ` 前缀 | ✅ 2026-08-18 补 |
+| 数学公式（行内/块级） | `.math-inline`/`.math-block` → KaTeX `.katex` 布局 DOM | 导出前替换为 LaTeX 源码文本（`$..$`/`$$..$$`），Word 以源码呈现 | ✅ 2026-08-18 补 |
 | 容器 div/section | `<div class="md-sub-indent">…</div>` 等 | div case：递归子节点 | ✅ |
+
+### 组件映射全景（HTML 渲染组件 ↔ Word 组件）
+
+| 页面渲染组件 | Word 对应组件 | 备注 |
+|---|---|---|
+| 标题 h1-h6 | 15/13/12pt 加粗黑体（h1 居中） | 公文规范 |
+| 正文段落（含子缩进） | 12pt 仿宋 + 首行缩进 480twips + 行距 1.5 | |
+| 加粗/斜体/删除线/行内 code | 对应 run 属性（bold/italics/strike/Consolas） | |
+| 超链接 | 蓝色 run（可点候选） | file:// 可点性有限 |
+| 任务列表 | `☑`/`☐` 前缀 + 文本 | checkbox 元素本身无文本 |
+| 无序/有序列表（可嵌套） | `• `/`1. ` 前缀 + 层级缩进（递归） | 每 li 独立段落 |
+| 代码块（hljs 高亮） | 灰底等宽代码段（每行 break + 长行 70 字符换行） | 高亮颜色不导出（公文规范） |
+| 引用/alert 警告框 | 左蓝边+浅底引用段（内部每块独立段落） | alert-title 加粗 |
+| 表格 | 11pt 表格 + 表头加粗浅底 + 边框 + 表格后空段落 | |
+| 图片 | 原图高清 PNG（canvas 原分辨率，只缩不放） | 显示上限 A3 版心 1300px |
+| mermaid/Kroki 图表 | 浅色主题 2x 高清 PNG | Word 白底适配 |
+| 分隔线 hr | 下边框分隔线段落 | |
+| 数学公式 | LaTeX 源码文本（`$..$`/`$$..$$`） | Word 不渲染 LaTeX |
+| 分页符 | Word 分页符（PageBreak） | |
+| div/section 容器 | 递归子节点 | |
+| iframe/video/audio | 跳过（Word 不支持） | 合理缺省 |
 
 ## 二、换行审计清单（每类内容"一行"的界定）
 

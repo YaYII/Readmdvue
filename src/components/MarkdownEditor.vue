@@ -459,6 +459,8 @@ function renderMathInPreview(container: HTMLElement): void {
   container.querySelectorAll<HTMLElement>('.math-inline, .math-block').forEach((el) => {
     const displayMode = el.classList.contains('math-block')
     const tex = (el.textContent || '').trim()
+    // 保留 LaTeX 源码供 Word 导出（katex.render 替换内容后无 annotation，textContent 为拍平乱码）
+    el.dataset.latex = tex
     try {
       katex.render(tex, el, {
         displayMode,

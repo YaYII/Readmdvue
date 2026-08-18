@@ -1680,6 +1680,10 @@ class ContentScriptApp {
       mathElements.forEach((el) => {
         const displayMode = el.classList.contains('math-block')
         const tex = (el.textContent || '').trim()
+        // 保留 LaTeX 源码供 Word 导出（katex.render 会把内容替换成 .katex 布局 DOM，
+        // 无 annotation（output:'html'），导出时 textContent 是拍平乱码；
+        // dataset.latex 是 100% 准确的用户源码）
+        el.dataset.latex = tex
         try {
           katex.render(tex, el, {
             displayMode,

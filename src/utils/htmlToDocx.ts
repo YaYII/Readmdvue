@@ -91,6 +91,7 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
     text?: string
     bold?: boolean
     italics?: boolean
+    strike?: boolean
     size?: number
     color?: string
     font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
@@ -135,6 +136,19 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
             runs.push(new TextRun(apply({ text: t, italics: true }) as never))
             pendingBrBreak = false
           }
+        } else if (tag === 'del' || tag === 's' || tag === 'strike') {
+          // 删除线（渲染契约：marked gfm 的 ~~text~~ → <del>）：strike run
+          const t = c.textContent || ''
+          if (t) {
+            runs.push(new TextRun(apply({ text: t, strike: true }) as never))
+            pendingBrBreak = false
+          }
+        } else if (tag === 'input') {
+          // 任务列表（渲染契约：marked gfm 的 - [x] → <li><input checked disabled type="checkbox">）
+          // checkbox 元素本身无文本 → 输出 ☑/☐ 符号保持任务语义
+          const isChecked = c.hasAttribute('checked')
+          runs.push(new TextRun(apply({ text: isChecked ? '☑ ' : '☐ ' }) as never))
+          pendingBrBreak = false
         } else if (tag === 'code') {
           const t = c.textContent || ''
           if (t) {
