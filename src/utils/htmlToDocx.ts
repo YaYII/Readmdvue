@@ -85,6 +85,11 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
     color?: string
     font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
   }): Record<string, unknown> => ({ ...opts, ...overrides })
+  // 连续换行合并：marked 软换行常输出 <br>\n（br 后紧跟换行符），
+  // 若 br 与 \n 各产生一个 break → Word 出现空行（间距特别大）。
+  // 策略：br 产生的 break 后，紧跟文本首行开头的 \n 不再重复产生 break；
+  // 文本内部真正的空行（连续 \n）仍保留为 break。
+  let pendingBrBreak = false
   const walk = (node: Node): void => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
@@ -93,8 +98,13 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
           // docx TextRun 的 \n 不渲染换行：必须拆成多个 run + break:1（否则多行文本挤成一行）
           const lines = text.split('\n')
           lines.forEach((line, i) => {
-            if (i > 0) runs.push(new TextRun({ break: 1 }))
-            runs.push(new TextRun(apply({ text: line }) as never))
+            if (i > 0 && !(pendingBrBreak && i === 1)) {
+              runs.push(new TextRun({ break: 1 }))
+            }
+            if (line) {
+              runs.push(new TextRun(apply({ text: line }) as never))
+              pendingBrBreak = false
+            }
           })
         }
       } else if (child.nodeType === Node.ELEMENT_NODE) {
@@ -102,18 +112,31 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
         const tag = c.tagName.toLowerCase()
         if (tag === 'br') {
           runs.push(new TextRun({ break: 1 }))
+          pendingBrBreak = true
         } else if (tag === 'strong' || tag === 'b') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun(apply({ text: t, bold: true }) as never))
+          if (t) {
+            runs.push(new TextRun(apply({ text: t, bold: true }) as never))
+            pendingBrBreak = false
+          }
         } else if (tag === 'em' || tag === 'i') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun(apply({ text: t, italics: true }) as never))
+          if (t) {
+            runs.push(new TextRun(apply({ text: t, italics: true }) as never))
+            pendingBrBreak = false
+          }
         } else if (tag === 'code') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
+          if (t) {
+            runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
+            pendingBrBreak = false
+          }
         } else if (tag === 'a') {
           const t = c.textContent || ''
-          if (t) runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
+          if (t) {
+            runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
+            pendingBrBreak = false
+          }
         } else {
           // 块级子元素（嵌套列表/段落等）：递归前加换行，
           // 避免嵌套 ul/ol/div 的文本被拼接成一行（目录/多级列表连着的问题）
@@ -472,8 +495,21 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
   const result: Array<Paragraph | Table> = []
   for (const node of Array.from(parent.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent?.trim()
-      if (text) result.push(new Paragraph({ children: [new TextRun(text)] }))
+      const text = node.textContent || ''
+      if (text.trim()) {
+        // docx TextRun 不渲染 \n：多行文本必须拆成多个 run + break:1
+        //（否则 div/section 直接文本子节点的换行会全部丢失、内容挤成一行）
+        const runs: TextRun[] = []
+        text.split('\n').forEach((line, i) => {
+          if (i > 0) runs.push(new TextRun({ break: 1 }))
+          if (line.trim()) runs.push(new TextRun({ text: line }))
+        })
+        result.push(new Paragraph({
+          wordWrap: true,
+          children: runs,
+          spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+        }))
+      }
       continue
     }
     if (node.nodeType !== Node.ELEMENT_NODE) continue
