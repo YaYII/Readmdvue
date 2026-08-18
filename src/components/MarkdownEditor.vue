@@ -31,8 +31,9 @@
         <button class="editor-format-btn" @click="formatMarkdown" :disabled="isFormatting" title="规范 Markdown 书写（标题/列表/引用符号间隔、表格对齐、多余空行）">
           {{ isFormatting ? '格式化中…' : '格式化' }}
         </button>
+        <!-- 保存按钮只显示「保存」：目标文件名已显示在顶部副标题，按钮塞长文件名会撑爆布局 -->
         <button class="editor-save-btn" @click="save" :disabled="isSaving">
-          {{ isSaving ? '保存中…' : `保存为 ${targetFilename}` }}
+          {{ isSaving ? '保存中…' : '保存' }}
         </button>
       </div>
     </div>
@@ -786,13 +787,16 @@ async function save(): Promise<void> {
   padding: 8px 18px;
   border-radius: 10px;
   border: none;
-  background: var(--md-accent-primary, #007aff);
-  color: #ffffff;
+  /* ⚠️ 背景固定品牌蓝 #007AFF + 白字：不能用 var(--md-accent-primary)（默认强调色是
+     white=#FFFFFF → 白底白字，文字不可见——用户实测"一片白色区域"） */
+  background: #007aff;
+  color: #fff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .editor-save-btn:hover:not(:disabled) {
