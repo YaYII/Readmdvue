@@ -1,6 +1,6 @@
 {
   "name": "markdown-reader-vue-extension",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "description": "Vue.js 3.0 + TypeScript 浏览器插件 - Markdown阅读器",
   "type": "module",
   "scripts": {

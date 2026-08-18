@@ -89,8 +89,15 @@ interface RunOverrides {
   color?: string
   font?: string | { ascii: string; eastAsia: string; hAnsi?: string }
 }
-function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
+interface ExtractRunsOptions {
+  /** li 列表项内：第一个块级元素（如 <p>）不插 break，避免「• 符号」与首段文本被拆到两行
+   * （渲染契约：带空行的嵌套列表 marked 输出 <li><p>第一章</p><ul>…，li 直接内容被包成 <p>）；
+   * 后续块级元素仍插 break 分隔。 */
+  suppressFirstBlockBreak?: boolean
+}
+function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: ExtractRunsOptions = {}): TextRun[] {
   const runs: TextRun[] = []
+  let blockSeen = false
   const apply = (opts: {
     text?: string
     bold?: boolean
@@ -172,7 +179,11 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
           const before = runs.length
           walk(c)
           if (BLOCK_TAGS.includes(tag) && runs.length > before) {
-            runs.splice(before, 0, new TextRun({ break: 1 }))
+            // li 场景：第一个块级元素不插 break（符号与文本同行）；后续块才插 break 分隔
+            if (!(options.suppressFirstBlockBreak && !blockSeen)) {
+              runs.splice(before, 0, new TextRun({ break: 1 }))
+            }
+            blockSeen = true
           }
         }
       }
@@ -545,7 +556,7 @@ function convertList(el: HTMLElement, ordered: boolean, depth: number, quoteStyl
     liContent.querySelectorAll('ul, ol').forEach((n) => n.remove())
     result.push(new Paragraph({
       wordWrap: true,
-      children: [new TextRun(prefix), ...extractRuns(liContent)],
+      children: [new TextRun(prefix), ...extractRuns(liContent, {}, { suppressFirstBlockBreak: true })],
       indent: { left: 360 + depth * 360 },
       spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
       ...quoteStyle,
@@ -867,7 +878,7 @@ function convertInlineBlock(el: HTMLElement, overrides: RunOverrides = {}): Para
       for (const li of Array.from(b.children)) {
         if (li.tagName.toLowerCase() !== 'li') continue
         i++
-        result.push(new Paragraph({ wordWrap: true, children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement, overrides)], spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
+        result.push(new Paragraph({ wordWrap: true, children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement, overrides, { suppressFirstBlockBreak: true })], spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
       }
     } else {
       result.push(new Paragraph({ wordWrap: true, children: extractRuns(b as HTMLElement, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } }))

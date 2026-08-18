@@ -14,7 +14,7 @@
 | 标题 | `<h1 id=..>..</h1>` … `<h6>` | heading case：15/13/12pt 加粗黑体（h1 居中） | ✅ |
 | 无序列表 | `<ul><li>..</li></ul>` 可嵌套 | convertList 递归：每 li 独立段落 + `• ` 前缀 + 层级缩进 | ✅ |
 | 有序列表 | `<ol><li>..</li></ol>` | convertList 递归：`1. ` 前缀 | ✅ |
-| li 内多段/换行 | `<li>文本<br>文本2<ul>..</ul></li>` | convertList 剥离嵌套列表独立递归；li 内文本经 extractRuns（含 \n 拆 break） | ✅ |
+| li 内多段/换行 | `<li>文本<br>文本2<ul>..</ul></li>` 或带空行嵌套 `<li><p>第一章</p><ul>…` | convertList 剥离嵌套列表独立递归；li 内文本经 extractRuns + **suppressFirstBlockBreak**（li 内第一个块级 `<p>` 不插多余 break，符号与首段同行） | ✅ 2026-08-18 修 |
 | 代码块 | `<pre><code class="language-xx">多行代码</code></pre>` | convertCodeBlock：每行拆 run+break、长行 70 字符空格处换行、灰底等宽 | ✅ |
 | 引用块 | `<blockquote class="enhanced-blockquote"><p>..</p><ul>..</ul><pre>..</pre></blockquote>`（**内部是多个块级元素**） | blockquote case：**每块独立段落 + 引用样式（左蓝边/浅底/缩进）** | ✅ 2026-08-18 修复 |
 | alert 引用 | `<blockquote class="alert note"><p class="alert-title">Note</p><p>..</p></blockquote>` | blockquote case：alert-title 加粗独立段落 | ✅ 2026-08-18 修复 |
@@ -58,6 +58,7 @@
 4. **引用块**：blockquote 内每个块级子元素 = 一个 Word 段落（全部套引用样式）。**不再合并成单段**（2026-08-18 修复）。
 5. **表格单元格**：convertInlineBlock 处理单元格内多段落/列表（每段独立 + 11pt）。
 6. **直接文本节点**（div 直接子文本含 \n）：convertChildren 的 TEXT_NODE 分支拆 break（2026-08-18 已修）。
+7. **嵌套列表 li 内 `<p>`**（带空行写法 `- 第一章\n\n  - 1.1`，marked 输出 `<li><p>第一章</p><ul>`）：extractRuns 对 li 内**第一个块级元素不插 break**（`• ` 与首段文本同行），后续块级元素才插 break 分隔——否则"• "孤立一行、文本错位（用户实测"多一个换行"，2026-08-18 修）。
 
 ## 三、审计方法（防回归）
 
