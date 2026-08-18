@@ -19,9 +19,19 @@ import {
   LineRuleType,
   Footer,
   PageNumber,
+  PageBreak,
   PageOrientation,
 } from 'docx'
 import mermaid from 'mermaid/dist/mermaid.min.js'
+
+/**
+ * 图片/图表最大宽度（px）：按 A3 横向版心宽度计算，学习 html-to-docx 业务逻辑
+ * （computeImageDimensions 以 availableDocumentSpace=版心宽度约束图片，而非固定小宽度）。
+ * 版心宽 = A3 横向页宽 23811twips − 左边距 1587 − 右边距 1474 = 20750twips
+ *       = 1037.5pt ≈ 1383px（96dpi）；留 5% 余量 → 1300px。
+ * 此前固定 600px 在 A3 大纸下明显偏小，大图/图表被压缩得看不清。
+ */
+const MAX_IMAGE_WIDTH_PX = 1300
 
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
@@ -221,9 +231,9 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       } catch {
         // 忽略，用默认尺寸
       }
-      if (w > 600) {
-        h = Math.round((h * 600) / w)
-        w = 600
+      if (w > MAX_IMAGE_WIDTH_PX) {
+        h = Math.round((h * MAX_IMAGE_WIDTH_PX) / w)
+        w = MAX_IMAGE_WIDTH_PX
       }
       return { data: bytes, width: w, height: h, type }
     }
@@ -266,8 +276,8 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       warnImage('dataUrl 解析为字节失败 → 占位')
       return null
     }
-    // 限制图片尺寸（最大 600px 宽，按比例）
-    const maxW = 600
+    // 限制图片尺寸（最大按版心宽度，按比例）
+    const maxW = MAX_IMAGE_WIDTH_PX
     let w = 400
     let h = 300
     // 从已加载图取自然尺寸
@@ -410,8 +420,8 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
       logImage('svgToDocxImage: PNG 数据解析失败')
       return null
     }
-    // 限制尺寸
-    const maxW = 620
+    // 限制尺寸（图表按版心宽度）
+    const maxW = MAX_IMAGE_WIDTH_PX
     if (w > maxW) {
       h = Math.round((h * maxW) / w)
       w = maxW
@@ -599,6 +609,12 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
               insideVertical: { style: BorderStyle.SINGLE, size: 4, color: 'D1D1D6' },
             },
           }))
+          // 表格后补一个单倍行距空段落（学习 html-to-docx 业务逻辑：buildTable 后
+          // 追加 buildParagraph(null)）——避免表格与紧随其后的段落文字粘连贴边框
+          result.push(new Paragraph({
+            children: [],
+            spacing: { line: 240, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+          }))
           break
         }
         case 'pre':
@@ -696,9 +712,24 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'div':
         case 'section':
         case 'article':
-        case 'main':
+        case 'main': {
+          // 分页符支持（学习 html-to-docx findXMLEquivalent 业务逻辑）：
+          // div.page-break / style="page-break-after:always" → Word 分页符
+          const styleText = el.getAttribute('style') || ''
+          const isPageBreak =
+            (el.classList && el.classList.contains('page-break')) ||
+            /page-break-after\s*:\s*(always|page)/i.test(styleText) ||
+            /page-break-before\s*:\s*(always|page)/i.test(styleText)
+          if (isPageBreak) {
+            result.push(new Paragraph({
+              children: [new PageBreak()],
+              spacing: { line: 240, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+            }))
+            break
+          }
           result.push(...(await convertChildren(el)))
           break
+        }
         default:
           // 其他元素：有文本则作为段落输出
           if (el.textContent?.trim()) result.push(new Paragraph({
