@@ -23,21 +23,8 @@ import {
   PageOrientation,
 } from 'docx'
 import mermaid from 'mermaid/dist/mermaid.min.js'
-import { mimeToDocxType, dataUrlToBytes, clampCanvasSize, clampDisplaySize, textToRuns, type BreakMergeState, type DocxImageType } from './docxPure'
-import { collectListItems, listPrefix, listIndent, processDirectoryLines, type ListItemSpec } from './docxDirectory'
-
-/**
- * 图片/图表最大宽度（px）：按 A3 横向版心宽度计算，学习 html-to-docx 业务逻辑
- * （computeImageDimensions 以 availableDocumentSpace=版心宽度约束图片，而非固定小宽度）。
- * 版心宽 = A3 横向页宽 23811twips − 左边距 1587 − 右边距 1474 = 20750twips
- *       = 1037.5pt ≈ 1383px（96dpi）；留 5% 余量 → 1300px。
- * 此前固定 600px 在 A3 大纸下明显偏小，大图/图表被压缩得看不清。
- */
-const MAX_IMAGE_WIDTH_PX = 1300
-
-/** 图片/图表数据源最大边长（px）：canvas 重编码时限制，避免超大 PNG 撑爆 docx 文件
- * （Word 对超大 docx 会渐进加载，后面图片可能不显示）。2×显示宽度 = 放大 2 倍依然清晰。 */
-const MAX_IMAGE_SIDE_PX = MAX_IMAGE_WIDTH_PX * 2
+import { mimeToDocxType, dataUrlToBytes, clampCanvasSize, clampDisplaySize, DOCX_CODE_FONT, DOCX_LATIN_FONT, resolveDocxPageLayout, textToRuns, type BreakMergeState, type DocxImageType, type DocxPageLayout, type DocxPageOrientation } from './docxPure'
+import { collectListItems, listPrefix, listIndent, preserveCodeLines, type ListItemSpec } from './docxDirectory'
 
 /** docx 图片结果（数据 + 尺寸 + 类型） */
 interface DocxImageResult {
@@ -92,7 +79,7 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = child.textContent || ''
-        if (text) {
+        if (text.trim()) {
           // docx TextRun 的 \n 不渲染换行：必须拆成多个 run + break:1（否则多行文本挤成一行）
           runs.push(...textToRuns(
             text,
@@ -135,7 +122,7 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
         } else if (tag === 'code') {
           const t = c.textContent || ''
           if (t) {
-            runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
+            runs.push(new TextRun(apply({ text: t, font: { ascii: DOCX_CODE_FONT, hAnsi: DOCX_CODE_FONT, eastAsia: '等线' } }) as never))
             breakState.lastWasBreak = false
           }
         } else if (tag === 'a') {
@@ -194,7 +181,7 @@ function loadImageWithTimeout(src: string, timeoutMs = 8000, crossOrigin = false
 }
 
 /** 从页面已加载的相同 src 图片元素绘制（canvas，不依赖 fetch——file:// 下 fetch 被禁） */
-async function drawLoadedImage(src: string): Promise<string | null> {
+async function drawLoadedImage(src: string, layout: DocxPageLayout): Promise<string | null> {
   try {
     const img = Array.from(document.querySelectorAll('img'))
       .find((i) => i.getAttribute('src') === src && i.complete && i.naturalWidth > 0)
@@ -203,7 +190,7 @@ async function drawLoadedImage(src: string): Promise<string | null> {
       return null
     }
     // 限制 canvas 尺寸（最大边 2×显示宽）：原图过大会产生超大 PNG 撑爆 docx
-    const cSize = clampCanvasSize(img.naturalWidth, img.naturalHeight, MAX_IMAGE_SIDE_PX)
+    const cSize = clampCanvasSize(img.naturalWidth, img.naturalHeight, layout.maxImageSidePx)
     const canvas = document.createElement('canvas')
     canvas.width = cSize.width
     canvas.height = cSize.height
@@ -224,7 +211,7 @@ async function drawLoadedImage(src: string): Promise<string | null> {
 }
 
 /** 图片 src → base64 + 宽高 + 类型（优先 data URL 直解；其次已加载 DOM 图；再 fetch；失败返回 null） */
-async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
+async function imageToDocxImage(src: string, layout: DocxPageLayout): Promise<DocxImageResult | null> {
   try {
     // data URL（粘贴/拖拽插入的 base64 图）：直接解析，无 canvas/fetch 限制
     const dataMatch = src.match(/^data:image\/(png|jpeg|jpg|gif|bmp);base64,(.+)$/)
@@ -243,15 +230,15 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       } catch {
         // 忽略，用默认尺寸
       }
-      if (w > MAX_IMAGE_WIDTH_PX) {
-        h = Math.round((h * MAX_IMAGE_WIDTH_PX) / w)
-        w = MAX_IMAGE_WIDTH_PX
+      if (w > layout.maxImageWidthPx) {
+        h = Math.round((h * layout.maxImageWidthPx) / w)
+        w = layout.maxImageWidthPx
       }
       return { data: bytes, width: w, height: h, type }
     }
 
     // 非 data URL：优先已加载 DOM 图（canvas），再 fetch
-    let dataUrl: string | null = await drawLoadedImage(src)
+    let dataUrl: string | null = await drawLoadedImage(src, layout)
     if (!dataUrl) {
       logImage('降级：尝试 new Image + fetch 读取')
       await loadImageWithTimeout(src, 8000, true)
@@ -290,7 +277,7 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       return null
     }
     // 限制图片尺寸（最大按版心宽度，按比例）
-    const maxW = MAX_IMAGE_WIDTH_PX
+    const maxW = layout.maxImageWidthPx
     let w = 400
     let h = 300
     // 从已加载图取自然尺寸
@@ -311,7 +298,7 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       // 数据是 webp/svg 等 docx 不支持格式 → canvas 重编码 png
       try {
         const reImg = await loadImageWithTimeout(dUrl)
-        const cSize = clampCanvasSize(reImg.naturalWidth || w, reImg.naturalHeight || h, MAX_IMAGE_SIDE_PX)
+        const cSize = clampCanvasSize(reImg.naturalWidth || w, reImg.naturalHeight || h, layout.maxImageSidePx)
         const canvas = document.createElement('canvas')
         canvas.width = cSize.width
         canvas.height = cSize.height
@@ -338,7 +325,7 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
 }
 
 /** mermaid SVG → PNG（canvas 绘制；foreignObject 文字可能缺失，结构/连线保留） */
-async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | null> {
+async function svgToDocxImage(svg: SVGSVGElement, layout: DocxPageLayout): Promise<DocxImageResult | null> {
   try {
     let w = 800
     let h = 600
@@ -400,14 +387,13 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
       logImage('svgToDocxImage: blob 加载失败，降级直接绘制页面 SVG 元素（foreignObject 文字可能缺失）')
       img = null
     }
-    // 先约束显示尺寸（不超过版心宽度）：canvas 必须在约束后的尺寸上 2x，
-    // 否则超大 viewBox（如 4000px 宽流程图）会生成 8000px canvas → 超大 PNG 撑爆 docx
-    //（Word 对超大 docx 渐进加载，后面图片/内容可能不显示）
-    const maxW = MAX_IMAGE_WIDTH_PX
-    if (w > maxW) {
-      h = Math.round((h * maxW) / w)
-      w = maxW
-    }
+    // 先约束显示尺寸（宽≤版心 1300、高≤版心 830，等比）：canvas 必须在约束后的尺寸上 2x，
+    // 否则超大 viewBox（如 4000px 宽流程图）会生成超大 canvas → 超大 PNG 撑爆 docx
+    //（Word 对超大 docx 渐进加载，后面图片/内容可能不显示）；竖图/高图高度超版心
+    // 则 Word 裁半张（与 imageToDocxImage 相同约束）
+    const disp = clampDisplaySize(w, h, layout.maxImageWidthPx, layout.maxImageHeightPx)
+    w = disp.width
+    h = disp.height
     // 2x 高清渲染：SVG 是矢量，canvas 按 2 倍光栅化 → PNG 源像素 4 倍，
     // Word 里放大 2 倍依然清晰（原图高清原则：源像素 ≥ 展示需求，放大不模糊）
     const HI_RES_SCALE = 2
@@ -449,7 +435,7 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
  * 用 mermaid 浅色主题（theme=default）重新渲染 → svgToDocxImage 白底 PNG。
  * 失败回退原 SVG 直接转换（保留结构/连线）。
  */
-async function renderChartLight(svg: SVGSVGElement): Promise<DocxImageResult | null> {
+async function renderChartLight(svg: SVGSVGElement, layout: DocxPageLayout): Promise<DocxImageResult | null> {
   try {
     const container = svg.closest('.chart-container')
     const srcEl =
@@ -477,7 +463,7 @@ async function renderChartLight(svg: SVGSVGElement): Promise<DocxImageResult | n
     const svgEl = parsed.documentElement as unknown as SVGSVGElement
     if (!svgEl) return null
     logImage('✅ 图表已用浅色主题重渲染（theme=default），白底深色文字适配 Word')
-    return await svgToDocxImage(svgEl)
+    return await svgToDocxImage(svgEl, layout)
   } catch (e) {
     warnImage(`renderChartLight 失败，回退当前 SVG: ${e instanceof Error ? e.message : e}`)
     return null
@@ -512,7 +498,7 @@ function convertList(el: HTMLElement, ordered: boolean, depth: number, quoteStyl
   }))
 }
 
-/** 代码块/目录树 → docx 段落（等宽字体灰底代码区；多行拆 run+break，长行在空格处换行） */
+/** 代码块/目录树 → docx 段落（等宽字体灰底代码区；保留原始空格和换行） */
 function convertCodeBlock(el: HTMLElement): Paragraph {
   // 图表代码块（mermaid 渲染失败回退显示源码）→ 提示日志，说明该图表未以图导出
   const codeText = (el.textContent || '').trim()
@@ -523,16 +509,16 @@ function convertCodeBlock(el: HTMLElement): Paragraph {
     docxImgSeq++
     warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
   }
-  // 目录树/代码块 → 展示行（docxDirectory.processDirectoryLines，独立可测）：
-  // 压缩空格 + 长行 70 字符换行 + 连续空行合并（目录树不出现空白行）
-  const lines = processDirectoryLines(el.textContent || '', 70)
+  const lines = preserveCodeLines(el.textContent || '')
   const codeRuns: TextRun[] = []
   lines.forEach((ln) => {
     if (ln.breakBefore) codeRuns.push(new TextRun({ break: 1 }))
-    codeRuns.push(new TextRun({ text: ln.text, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
+    codeRuns.push(new TextRun({ text: ln.text, font: { ascii: DOCX_CODE_FONT, hAnsi: DOCX_CODE_FONT, eastAsia: '等线' }, size: 24 }))
   })
   return new Paragraph({
-    wordWrap: true,
+    // 代码行使用手动 break；必须显式左对齐，避免继承中文文档的两端/分散对齐，
+    // 否则 Word/WPS 会把每一行的字符均匀拉开（尤其是架构树和路径）。
+    alignment: AlignmentType.LEFT,
     children: codeRuns,
     shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
     // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
@@ -541,7 +527,7 @@ function convertCodeBlock(el: HTMLElement): Paragraph {
 }
 
 /** 递归转换块级子节点 → docx 段落/表格 */
-async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | Table>> {
+async function convertChildren(parent: HTMLElement, layout: DocxPageLayout): Promise<Array<Paragraph | Table>> {
   const result: Array<Paragraph | Table> = []
   for (const node of Array.from(parent.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -599,7 +585,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             children: extractRuns(el, {
               size: hs.size,
               bold: true,
-              font: { ascii: 'Times New Roman', eastAsia: hs.font },
+              font: { ascii: DOCX_LATIN_FONT, hAnsi: DOCX_LATIN_FONT, eastAsia: hs.font },
             }),
           }))
           break
@@ -729,10 +715,10 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
                   ? 'file(本地文件图)'
                   : 'relative(相对路径图)'
           logImage(`开始处理 <img> alt="${el.getAttribute('alt') || ''}" 类型=${kind} src=${src.slice(0, 100)}`)
-          const img = await imageToDocxImage(src)
+          const img = await imageToDocxImage(src, layout)
           if (img) {
             docxImgStats.ok++
-            const disp = clampDisplaySize(img.width, img.height, MAX_IMAGE_WIDTH_PX)
+            const disp = clampDisplaySize(img.width, img.height, layout.maxImageWidthPx, layout.maxImageHeightPx)
             logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -751,11 +737,11 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           docxImgStats.total++
           logImage(`开始处理 <svg> 图表（本地 Mermaid 渲染）viewBox=${el.getAttribute('viewBox') || '无'}`)
           // 优先浅色主题重渲染（Word 白底文档，深色主题 SVG 需转白底），失败回退当前 SVG
-          const lightImg = await renderChartLight(el as unknown as SVGSVGElement)
-          const img = lightImg || (await svgToDocxImage(el as unknown as SVGSVGElement))
+          const lightImg = await renderChartLight(el as unknown as SVGSVGElement, layout)
+          const img = lightImg || (await svgToDocxImage(el as unknown as SVGSVGElement, layout))
           if (img) {
             docxImgStats.ok++
-            const disp = clampDisplaySize(img.width, img.height, MAX_IMAGE_WIDTH_PX)
+            const disp = clampDisplaySize(img.width, img.height, layout.maxImageWidthPx, layout.maxImageHeightPx)
             logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -787,7 +773,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             }))
             break
           }
-          result.push(...(await convertChildren(el)))
+          result.push(...(await convertChildren(el, layout)))
           break
         }
         default:
@@ -827,11 +813,17 @@ function convertInlineBlock(el: HTMLElement, overrides: RunOverrides = {}): Para
   return result
 }
 
+export interface HtmlToDocxOptions {
+  pageSize?: string
+  orientation?: DocxPageOrientation
+}
+
 /** HTML 字符串 → DOCX Blob */
-export async function htmlToDocx(html: string): Promise<Blob> {
+export async function htmlToDocx(html: string, options: HtmlToDocxOptions = {}): Promise<Blob> {
   const tempDiv = document.createElement('div')
   tempDiv.innerHTML = html
-  const children = await convertChildren(tempDiv)
+  const layout = resolveDocxPageLayout(options.pageSize, options.orientation)
+  const children = await convertChildren(tempDiv, layout)
   // 图片/图表汇总日志（定位"图少"：total=文档中图片+图表数，ok=插入成功，fail=占位/失败）
   console.log(
     `[docx-image] 汇总：共 ${docxImgStats.total} 张图片/图表，成功插入 ${docxImgStats.ok}，失败/占位 ${docxImgStats.fail}`,
@@ -842,8 +834,8 @@ export async function htmlToDocx(html: string): Promise<Blob> {
       default: {
         document: {
           run: {
-            // 政府公文/标书规范：正文 12pt（小四）仿宋，数字/字母 Times New Roman
-            font: { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '仿宋' },
+            // 政府公文/标书规范：正文 12pt（小四）仿宋，英文/数字 Calibri
+            font: { ascii: DOCX_LATIN_FONT, hAnsi: DOCX_LATIN_FONT, eastAsia: '仿宋' },
             size: 24, // 12pt = 小四
           },
         },
@@ -856,23 +848,23 @@ export async function htmlToDocx(html: string): Promise<Blob> {
             alignment: AlignmentType.CENTER,
             // 页码：公文规范 4 号半角宋体，格式「— 1 —」
             children: [
-              new TextRun({ text: '— ', font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
-              new TextRun({ children: [PageNumber.CURRENT], font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
-              new TextRun({ text: ' —', font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
+              new TextRun({ text: '— ', font: { ascii: DOCX_LATIN_FONT, hAnsi: DOCX_LATIN_FONT, eastAsia: '宋体' }, size: 28 }),
+              new TextRun({ children: [PageNumber.CURRENT], font: { ascii: DOCX_LATIN_FONT, hAnsi: DOCX_LATIN_FONT, eastAsia: '宋体' }, size: 28 }),
+              new TextRun({ text: ' —', font: { ascii: DOCX_LATIN_FONT, hAnsi: DOCX_LATIN_FONT, eastAsia: '宋体' }, size: 28 }),
             ],
           })],
         }),
       },
       properties: {
         page: {
-          // A3 横向（420×297mm）：公文大纸容纳代码/表格长行
-          // 版心边距保持公文规范：上 3.7cm / 下 3.5cm / 左 2.8cm / 右 2.6cm
-          // ⚠️ docx 库 PageSize 的 width/height 是"逻辑页面尺寸"，LANDSCAPE 时自动交换；
-          // 要得到物理 A3 横向（pgSz w=23811 h=16838 orient=landscape）必须传逻辑 A3 纵向
-          // 尺寸 16838x23811 + LANDSCAPE。此前传 23811x16838 被交换成 A3 纵向(297mm 宽)，
-          // 图片 1300px(34.4cm) 超出页宽被 Word 裁掉一半——超宽根因。
-          size: { width: 16838, height: 23811, orientation: PageOrientation.LANDSCAPE },
-          margin: { top: 2098, right: 1474, bottom: 1984, left: 1587 },
+          // 默认 A3 纵向；当前 Word 导出入口固定传入 A3 portrait。
+          // 图片/图表也使用同一 layout 的实际版心约束，避免纵向页面沿用横向宽度。
+          size: {
+            width: layout.pageWidth,
+            height: layout.pageHeight,
+            orientation: layout.orientation === 'landscape' ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT,
+          },
+          margin: layout.margin,
         },
       },
       children,

@@ -6,6 +6,70 @@
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 export type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
 
+export const DOCX_LATIN_FONT = 'Calibri'
+export const DOCX_CODE_FONT = 'Consolas'
+
+export type DocxPageOrientation = 'portrait' | 'landscape'
+
+export interface DocxPageLayout {
+  pageWidth: number
+  pageHeight: number
+  orientation: DocxPageOrientation
+  margin: {
+    top: number
+    right: number
+    bottom: number
+    left: number
+  }
+  maxImageWidthPx: number
+  maxImageHeightPx: number
+  maxImageSidePx: number
+}
+
+const DOCX_PAGE_MARGINS = {
+  top: 2098,
+  right: 1474,
+  bottom: 1984,
+  left: 1587,
+} as const
+
+const DOCX_PAGE_SIZES: Record<string, { width: number; height: number }> = {
+  A4: { width: 11906, height: 16838 },
+  A3: { width: 16838, height: 23811 },
+  Letter: { width: 12240, height: 15840 },
+  Legal: { width: 12240, height: 20160 },
+}
+
+/**
+ * 根据导出选项解析 Word 页面布局。
+ * width/height 保持纸张的逻辑纵向尺寸，docx 库在 landscape 时负责交换 XML 宽高。
+ * 图片显示尺寸按实际物理版心计算，不能复用固定的横向宽度。
+ */
+export function resolveDocxPageLayout(
+  pageSize = 'A3',
+  orientation: DocxPageOrientation = 'portrait',
+): DocxPageLayout {
+  const paper = DOCX_PAGE_SIZES[pageSize] || DOCX_PAGE_SIZES.A3
+  const pageOrientation: DocxPageOrientation = orientation === 'landscape' ? 'landscape' : 'portrait'
+  const physicalWidth = pageOrientation === 'landscape' ? paper.height : paper.width
+  const physicalHeight = pageOrientation === 'landscape' ? paper.width : paper.height
+  const contentWidthTwips = Math.max(1, physicalWidth - DOCX_PAGE_MARGINS.left - DOCX_PAGE_MARGINS.right)
+  const contentHeightTwips = Math.max(1, physicalHeight - DOCX_PAGE_MARGINS.top - DOCX_PAGE_MARGINS.bottom)
+  const twipsPerPixel = 15 // 96dpi: 1440 twips / 96px
+  const maxImageWidthPx = Math.max(1, Math.floor((contentWidthTwips / twipsPerPixel) * 0.94))
+  const maxImageHeightPx = Math.max(1, Math.round((contentHeightTwips / twipsPerPixel) * 0.976))
+
+  return {
+    pageWidth: paper.width,
+    pageHeight: paper.height,
+    orientation: pageOrientation,
+    margin: { ...DOCX_PAGE_MARGINS },
+    maxImageWidthPx,
+    maxImageHeightPx,
+    maxImageSidePx: Math.max(maxImageWidthPx, maxImageHeightPx) * 2,
+  }
+}
+
 /** data URL / mime 格式 → docx 图片类型 */
 export function mimeToDocxType(mime: string | undefined): DocxImageType {
   const m = (mime || '').toLowerCase()
@@ -51,14 +115,29 @@ export function clampCanvasSize(w: number, h: number, maxSide: number): { width:
   return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)) }
 }
 
-/** 显示尺寸最终约束（双保险：任何转换路径漏约束，ImageRun 都不超过版心宽度） */
-export function clampDisplaySize(w: number, h: number, maxWidth: number): { width: number; height: number } {
+/** 显示尺寸最终约束（双保险：任何转换路径漏约束，ImageRun 都不超过版心）——
+ * 只限宽会在竖图/竖向图表时高度超版心：Word 裁掉下半张图（"图片生成一半"），
+ * 因此宽、高都要约束（调用方按实际纸张版心传 maxHeight）。 */
+export function clampDisplaySize(
+  w: number,
+  h: number,
+  maxWidth: number,
+  maxHeight = 0,
+): { width: number; height: number } {
   if (!(w > 0) || !(h > 0)) return { width: 400, height: 300 }
-  if (w <= maxWidth) {
-    return { width: Math.round(w), height: Math.round(h) }
+  let width = w
+  let height = h
+  if (width > maxWidth) {
+    const s = maxWidth / width
+    width = maxWidth
+    height = Math.max(1, Math.round(height * s))
   }
-  const s = maxWidth / w
-  return { width: maxWidth, height: Math.max(1, Math.round(h * s)) }
+  if (maxHeight > 0 && height > maxHeight) {
+    const s = maxHeight / height
+    height = maxHeight
+    width = Math.max(1, Math.round(width * s))
+  }
+  return { width: Math.round(width), height: Math.round(height) }
 }
 
 /** 连续换行合并状态（贯穿整个 walk，跨多个子节点共享） */

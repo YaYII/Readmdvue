@@ -72,19 +72,21 @@
 
 - **普通图片（raster）**：canvas 重编码 PNG 无损；canvas 最大边 **2600px（2×显示宽）**——2x 高清足够放大 2 倍清晰，同时避免超大 PNG 撑爆 docx。
 - **mermaid 图表（SVG）**：矢量 → **先约束显示尺寸到版心，再按 2x 光栅化**（源像素 4 倍，最大边 ≤2600）；Word 放大 2 倍依然清晰。
-- **显示宽度上限**：A3 版心 1300px（1300px=34.4cm < 版心 36.6cm），只缩不放，不超宽。
+- **显示宽度上限**：按导出时的纸张和方向动态计算版心；默认 A3 纵向约 863px，不能沿用 A3 横向的 1300px。
 - **双保险**：ImageRun 构造点 clampDisplaySize 最终约束；任何路径漏约束都不会超版心。
 - **不学 html-to-docx 的图片处理**：它按版心固定缩放、不保源分辨率，导致大图超出/模糊；我们保留原图高清 + 显示约束。
 
-## 五、A3 横向纸张参数（2026-08-18 超宽根因修复）
+## 五、Word 页面方向与图片版心（2026-08-18）
 
-docx 库 `PageSize` 的 width/height 是**逻辑页面尺寸**，`orientation: LANDSCAPE` 时会**自动交换**。
-要得到物理 A3 横向（`<w:pgSz w=23811 h=16838 orient=landscape"/>`），必须传**逻辑 A3 纵向尺寸**：
+政府 Word 文书固定使用 **A3 纵向**；PDF 的 `pageSize` 和 `orientation` 选项不参与 Word 页面生成。
+Word 页面与图片/图表显示尺寸统一由同一套 A3 纵向版心计算。
+默认 DOCX XML 应为 `<w:pgSz w:w="16838" w:h="23811" w:orient="portrait"/>`。
+
+docx 库 `PageSize` 的 width/height 是**逻辑页面尺寸**，`orientation: LANDSCAPE` 时会**自动交换**。因此如果用户明确选择横向，仍要传纸张的逻辑纵向尺寸：
 ```ts
 size: { width: 16838, height: 23811, orientation: PageOrientation.LANDSCAPE }
 ```
-此前传 `23811x16838 + LANDSCAPE` 被交换成 A3 纵向（页宽 297mm），图片 1300px(34.4cm) 超出页宽
-被 Word 裁掉一半（"只显示一半"）。实证：LibreOffice 转 PDF 量图片矩形，修复后 81.9% 页宽不超版心。
+页面布局由 `resolveDocxPageLayout()` 统一解析。图片和图表先按实际版心宽高约束，再生成 `ImageRun`，避免纵向页面使用横向宽度导致图片超出右侧或被裁切。
 
 ## 六、图片丢失（后面的图不显示）两个根因与修复
 

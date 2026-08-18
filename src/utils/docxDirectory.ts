@@ -9,6 +9,9 @@ import { wrapLongLine } from './docxPure.ts'
 /** 列表缩进步长（twips）：一级 360，每深一层 +360 */
 export const LIST_INDENT_STEP = 360
 
+/** TEXT_NODE 类型常量（不用全局 Node：node:test 环境 Node 未定义，且 htmlToDocx.ts 浏览器环境只是另有引用） */
+const TEXT_NODE_TYPE = 3
+
 /** 列表项前缀（公文风格）：有序 `1. `，无序 `• ` */
 export function listPrefix(ordered: boolean, index: number): string {
   return ordered ? `${index}. ` : '• '
@@ -41,6 +44,12 @@ export function collectListItems(el: HTMLElement, ordered: boolean, depth: numbe
     // 剥离 li 内嵌套列表（只取直接内容），嵌套列表单独递归
     const content = li.cloneNode(true) as HTMLElement
     content.querySelectorAll('ul, ol').forEach((n) => n.remove())
+    // 清理残留的纯空白文本节点（marked 输出 <li><p>第一章</p>\n<ul>…：</p> 与 <ul> 之间的
+    // 换行是独立文本节点，剥除嵌套列表后残留）。若不清理，extractRuns 会把 "\n" 转成
+    // break → 父项段落后多一个空白行（"父子交界处多出空白行"根因）。
+    Array.from(content.childNodes).forEach((n) => {
+      if (n.nodeType === TEXT_NODE_TYPE && !(n.textContent || '').trim()) n.remove()
+    })
     out.push({ ordered, index: i, depth, content })
     for (const nested of Array.from(li.children)) {
       const t = nested.tagName.toLowerCase()
@@ -85,4 +94,11 @@ export function processDirectoryLines(code: string, maxLen: number): DisplayLine
     needsBreak = true // 本行输出后，下一行需要换行
   })
   return out
+}
+
+export function preserveCodeLines(code: string): DisplayLine[] {
+  return code.replace(/\r\n?/g, '\n').split('\n').map((text, index) => ({
+    text,
+    breakBefore: index > 0,
+  }))
 }

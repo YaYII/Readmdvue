@@ -45,10 +45,9 @@
 
 ## 四、本次落地（commit 8d58676，v2.1.5）
 
-1. **图片/图表最大宽度 600/620px → 1300px（A3 版心）**
-   - 版心宽 = 23811 − 1587 − 1474 = 20750twips ≈ 1037.5pt ≈ 1383px（96dpi），留 5% 余量取 1300。
-   - A3 大纸下此前 600px 的图明显偏小，大图/图表被压缩看不清；1300px 仍在版心内（1300px=34.4cm < 版心 36.6cm）。
-   - 改 3 处：data URL 分支、imageToDocxImage、svgToDocxImage，统一用常量 `MAX_IMAGE_WIDTH_PX`。
+1. **图片/图表宽高约束改为跟随纸张和方向**
+   - 默认 A3 纵向版心宽约 863px、高约 1284px；A3 横向等特殊选项会根据实际物理版心重新计算。
+   - data URL、普通图片、SVG 图表和最终 `ImageRun` 统一使用 `resolveDocxPageLayout()` 的动态尺寸。
 2. **表格后补单倍行距空段落**：避免表格与紧随段落文字粘连贴边框（学 html-to-docx buildTable 后 buildParagraph(null)）。
 3. **分页符支持**：`div.page-break` / `style="page-break-after:always|page"` → Word 分页符（`PageBreak`），放 div/section/article/main 容器分支最前。
 

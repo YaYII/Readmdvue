@@ -10,9 +10,56 @@ import {
   dataUrlToBytes,
   clampCanvasSize,
   clampDisplaySize,
+  DOCX_CODE_FONT,
+  DOCX_LATIN_FONT,
+  resolveDocxPageLayout,
   textToRuns,
   type BreakMergeState,
 } from '../src/utils/docxPure.ts'
+
+test('DOCX 使用标准英数字体，代码使用等宽字体', () => {
+  assert.equal(DOCX_LATIN_FONT, 'Calibri')
+  assert.equal(DOCX_CODE_FONT, 'Consolas')
+})
+
+// 0. Word 页面布局：默认政府文书为 A3 纵向，图片宽度跟随实际版心
+test('resolveDocxPageLayout 默认返回 A3 纵向', () => {
+  const layout = resolveDocxPageLayout()
+  assert.deepEqual({
+    pageWidth: layout.pageWidth,
+    pageHeight: layout.pageHeight,
+    orientation: layout.orientation,
+  }, { pageWidth: 16838, pageHeight: 23811, orientation: 'portrait' })
+  assert.equal(layout.maxImageWidthPx, 863)
+  assert.equal(layout.maxImageHeightPx, 1284)
+})
+
+test('resolveDocxPageLayout 横向时交换实际版心并扩大图片宽度', () => {
+  const portrait = resolveDocxPageLayout('A3', 'portrait')
+  const landscape = resolveDocxPageLayout('A3', 'landscape')
+  assert.equal(landscape.orientation, 'landscape')
+  assert.equal(landscape.pageWidth, 16838)
+  assert.equal(landscape.pageHeight, 23811)
+  assert.ok(landscape.maxImageWidthPx > portrait.maxImageWidthPx)
+  assert.ok(landscape.maxImageHeightPx < portrait.maxImageHeightPx)
+})
+
+test('resolveDocxPageLayout 非法纸张回退 A3', () => {
+  const layout = resolveDocxPageLayout('unknown', 'portrait')
+  assert.equal(layout.pageWidth, 16838)
+  assert.equal(layout.pageHeight, 23811)
+  assert.equal(layout.orientation, 'portrait')
+})
+
+test('resolveDocxPageLayout 支持导出对话框的全部纸张', () => {
+  assert.deepEqual(
+    ['A3', 'Letter', 'Legal'].map((pageSize) => {
+      const layout = resolveDocxPageLayout(pageSize, 'portrait')
+      return [layout.pageWidth, layout.pageHeight]
+    }),
+    [[16838, 23811], [12240, 15840], [12240, 20160]],
+  )
+})
 
 // 1. wrapLongLine：长行在空格处换行
 test('wrapLongLine 短行不拆', () => {
@@ -85,6 +132,19 @@ test('clampDisplaySize 常规不缩', () => {
 })
 test('clampDisplaySize 0 兜底 400x300', () => {
   assert.deepEqual(clampDisplaySize(0, 0, 1300), { width: 400, height: 300 })
+})
+test('clampDisplaySize 超高超版心裁剪（竖图生成一半根因）', () => {
+  // 800x1200 竖图：宽 ≤1300 不缩，但高 1200 > 830 版心 → 必须等比缩高
+  const r = clampDisplaySize(800, 1200, 1300, 830)
+  assert.equal(r.height, 830)
+  assert.equal(r.width, 553)
+})
+test('clampDisplaySize 宽高双超按两步等比约束', () => {
+  const r = clampDisplaySize(1500, 1200, 1300, 830)
+  assert.deepEqual(r, { width: 1038, height: 830 }) // 先宽 1500→1300(高 1040)，再高 1040→830(宽 1038)
+})
+test('clampDisplaySize 不传 maxHeight 兼容旧行为（只限宽）', () => {
+  assert.deepEqual(clampDisplaySize(800, 1200, 1300), { width: 800, height: 1200 })
 })
 
 // 6. textToRuns：连续换行合并（目录/列表不能有空行）

@@ -10,6 +10,7 @@ import {
   listIndent,
   collectListItems,
   processDirectoryLines,
+  preserveCodeLines,
   type ListItemSpec,
 } from '../src/utils/docxDirectory.ts'
 
@@ -24,6 +25,12 @@ class MiniElement {
     this.text = text
     this.children = children
     for (const c of children) c.parent = this
+  }
+  get nodeType(): number {
+    return this.tagName === '#text' ? 3 : 1
+  }
+  get childNodes(): MiniElement[] {
+    return this.children
   }
   cloneNode(deep: boolean): MiniElement {
     if (!deep) return new MiniElement(this.tagName)
@@ -53,6 +60,7 @@ class MiniElement {
 }
 const li = (text: string, children: MiniElement[] = []): MiniElement =>
   new MiniElement('li', [new MiniElement('#text', [], text), ...children])
+const textNode = (t: string): MiniElement => new MiniElement('#text', [], t)
 const ul = (items: MiniElement[]): MiniElement => new MiniElement('ul', items)
 const ol = (items: MiniElement[]): MiniElement => new MiniElement('ol', items)
 const p = (text: string): MiniElement => new MiniElement('p', [new MiniElement('#text', [], text)])
@@ -109,6 +117,30 @@ test('collectListItems 任务列表 checkbox 文本保留', () => {
   collectListItems(el, false, 0, specs)
   assert.equal(specs[0].content.textContent, '已完成')
 })
+test('collectListItems 剥除嵌套列表后清理残留换行（父子交界空白行根因）', () => {
+  // marked loose 输出：<li><p>第一章</p>\n<ul>…</ul></li> —— </p> 与 <ul> 之间的 \n 是独立文本节点，
+  // 剥除嵌套列表后若无清理，extractRuns 会把 "\n" 转成 break → 父项段落后多一个空白行
+  const el = ul([li('', [p('第一章'), textNode('\n'), ul([li('1.1 背景')])]), li('第二章')])
+  const specs: ListItemSpec[] = []
+  collectListItems(el, false, 0, specs)
+  // 父项 content 不残留任何纯空白文本节点
+  assert.deepEqual(specs[0].content.childNodes, [specs[0].content.children[0]])
+  assert.equal(specs[0].content.childNodes.length, 1)
+  assert.equal(specs[0].content.textContent, '第一章')
+  assert.deepEqual(specs.map((s) => ({ depth: s.depth, text: s.content.textContent })), [
+    { depth: 0, text: '第一章' },
+    { depth: 1, text: '1.1 背景' },
+    { depth: 0, text: '第二章' },
+  ])
+})
+test('collectListItems 紧凑嵌套列表无空白节点不受影响', () => {
+  // marked 紧凑输出 <li>第一章<ul>…：无独立空文本节点，剥离后原样保留
+  const el = ul([li('第一章', [ul([li('1.1 背景')])])])
+  const specs: ListItemSpec[] = []
+  collectListItems(el, false, 0, specs)
+  assert.equal(specs[0].content.textContent, '第一章')
+  assert.equal(specs[0].content.childNodes.length, 1)
+})
 
 // ===== 3. processDirectoryLines：目录树/代码块行处理 =====
 test('processDirectoryLines 多行', () => {
@@ -143,4 +175,20 @@ test('processDirectoryLines 长行在空格处换行', () => {
   assert.ok(lines.slice(1).every((l) => l.breakBefore))
   // wrapLongLine 丢弃分隔空格：拼接（去所有空格）还原原文
   assert.equal(lines.map((l) => l.text).join(''), long.replace(/ /g, ''))
+})
+
+test('preserveCodeLines 保留代码缩进、连续空格和空行', () => {
+  assert.deepEqual(preserveCodeLines('  const value = 1\n\n├── child    node'), [
+    { text: '  const value = 1', breakBefore: false },
+    { text: '', breakBefore: true },
+    { text: '├── child    node', breakBefore: true },
+  ])
+})
+
+test('preserveCodeLines 统一 CRLF 并保留末尾换行', () => {
+  assert.deepEqual(preserveCodeLines('A\r\nB\r\n'), [
+    { text: 'A', breakBefore: false },
+    { text: 'B', breakBefore: true },
+    { text: '', breakBefore: true },
+  ])
 })

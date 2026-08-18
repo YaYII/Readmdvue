@@ -143,7 +143,7 @@
               </div>
             </div>
 
-            <!-- 页面设置 (仅PDF) -->
+            <!-- 页面设置（仅 PDF；Word 固定 A3 纵向） -->
             <template v-if="selectedFormat === 'pdf'">
               <div class="option-item">
                 <label class="option-label">
@@ -394,7 +394,7 @@ const exportOptions = ref<ExportOptions>({
   includeCharts: true,
   includeMath: true,
   includeFonts: false,
-  pageSize: 'A4',
+  pageSize: 'A3',
   orientation: 'portrait',
   quality: 0.9
 })

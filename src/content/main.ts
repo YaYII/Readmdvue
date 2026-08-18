@@ -4,6 +4,7 @@ import { MarkdownRenderer } from '../utils/markdownRenderer'
 import { logger, performanceMonitor, errorHandler, themeUtils, domUtils } from '../utils'
 import { cssVariableManager } from '../utils/cssVariableManager'
 import { smartToolbarManager } from '../utils/smartToolbarManager'
+import { mountEnhancedCodeBlocks, unmountEnhancedCodeBlocks } from '../utils/enhancedCodeBlockMount'
 import type { MarkdownConfig, ExtensionMessage, ExtensionResponse, Theme, AccentColor } from '../types'
 import { defaultConfig } from '../types'
 
@@ -2041,6 +2042,8 @@ class ContentScriptApp {
    */
   private removeAllPluginElements(): void {
     try {
+      unmountEnhancedCodeBlocks(document)
+
       // 移除插件容器
       const containers = document.querySelectorAll('.markdown-reader-container, .vue-component-container, .smart-toolbar')
       containers.forEach(container => container.remove())
@@ -2297,6 +2300,7 @@ class ContentScriptApp {
 
       // 智能替换页面内容
       this.replaceContentIntelligently(container)
+      mountEnhancedCodeBlocks(container)
 
       // 动态渲染图表 - 这是关键的修复
       await this.renderChartsInContainer(container)
@@ -2546,7 +2550,7 @@ class ContentScriptApp {
         includeImages: true,
         includeCharts: true,
         includeMath: true,
-        pageSize: 'A4',
+        pageSize: 'A3',
         orientation: 'portrait' as const,
         quality: 0.9,
         ...options
@@ -3031,7 +3035,10 @@ class ContentScriptApp {
     // 先移除旧的渲染容器（重渲染时避免新旧容器叠加 → 内容重复渲染、位置错乱到页面底部）
     // 注意：扩展自身 UI（设置面板/目录/遮罩）挂载在 body 下，不受影响
     document.querySelectorAll('.markdown-reader-container').forEach((el) => {
-      if (el !== container) el.remove()
+      if (el !== container) {
+        unmountEnhancedCodeBlocks(el)
+        el.remove()
+      }
     })
 
     // 保存原始内容的引用

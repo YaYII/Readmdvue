@@ -134,7 +134,11 @@ export class DocumentExporter {
    */
   private async exportAsWord(content: string, options: ExportOptions): Promise<void> {
     const processedContent = this.processContent(content, options)
-    const blob = await htmlToDocx(processedContent)
+    // 政府 Word 文书固定使用 A3 纵向；PDF 的页面选项不应改变 Word 页面。
+    const blob = await htmlToDocx(processedContent, {
+      pageSize: 'A3',
+      orientation: 'portrait',
+    })
     await this.downloadBlob(blob, options.filename)
   }
 

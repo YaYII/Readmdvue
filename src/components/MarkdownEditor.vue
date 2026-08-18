@@ -48,6 +48,7 @@ import { oneDark } from '@codemirror/theme-one-dark'
 import { showSuccess, showError } from '../utils/appleNotification'
 import { generateVersionedFilename } from '../utils/versionedFilename'
 import { MarkdownRenderer, type TocItem } from '../utils/markdownRenderer'
+import { mountEnhancedCodeBlocks, unmountEnhancedCodeBlocks } from '../utils/enhancedCodeBlockMount'
 import { normalizeMarkdown } from '../utils/markdownNormalizer'
 import { asyncChartRenderer } from '../utils/asyncChartRenderer'
 import katex from 'katex'
@@ -146,6 +147,7 @@ onBeforeUnmount(() => {
     cancelAnimationFrame(tocFollowRaf)
     tocFollowRaf = null
   }
+  if (previewHostRef.value) unmountEnhancedCodeBlocks(previewHostRef.value)
   view?.destroy()
   view = null
 })
@@ -339,6 +341,7 @@ async function renderPreview(): Promise<void> {
   // ⚠️ 必须包 .markdown-reader-container 外层：content-variables.css 的标题/链接/列表/段落
   // 等全部基础排版样式都以 .markdown-reader-container 为前缀，缺这层预览就是浏览器默认排版
   //（字号/行距/标题颜色全不对，与正式阅读不一致）。
+  unmountEnhancedCodeBlocks(host)
   host.innerHTML = `
     <div class="markdown-reader-container" data-skin="${previewConfig.skin || 'gov'}">
       <div class="markdown-reader-content">
@@ -346,6 +349,7 @@ async function renderPreview(): Promise<void> {
       </div>
     </div>
   `
+  mountEnhancedCodeBlocks(host)
 
   await renderChartsInPreview(host)
   renderMathInPreview(host)

@@ -39,6 +39,7 @@ hljs.registerLanguage('matlab', matlab)
 import { asyncChartRenderer } from './asyncChartRenderer'
 import { showSuccess, showError } from './appleNotification'
 import { CodeBlockAnalyzer } from './codeBlockAnalyzer'
+import { buildEnhancedCodeBlockPlaceholder } from './enhancedCodeBlockMarkup'
 import type { MarkdownConfig, RenderResult } from '../types'
 
 // 声明全局window方法
@@ -335,19 +336,11 @@ function renderAsCode(code: string, lang: string, codeId: string): string {
     highlighted = hljs.highlightAuto(code).value
   }
 
-  return `
-    <div class="enhanced-code-block" data-language="${lang}">
-      <div class="code-content" id="${codeId}">
-        <button class="code-hover-copy" data-action="copy-code" data-code-id="${codeId}" title="复制代码">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <rect x="6" y="6" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          </svg>
-        </button>
-        <pre><code class="hljs language-${lang}">${highlighted}</code></pre>
-      </div>
-    </div>
-  `
+  return buildEnhancedCodeBlockPlaceholder({
+    codeId,
+    language: lang,
+    highlightedCode: highlighted
+  })
 }
 
 // 自定义渲染器
