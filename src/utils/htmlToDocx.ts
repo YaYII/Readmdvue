@@ -23,7 +23,8 @@ import {
   PageOrientation,
 } from 'docx'
 import mermaid from 'mermaid/dist/mermaid.min.js'
-import { wrapLongLine, mimeToDocxType, dataUrlToBytes, clampCanvasSize, clampDisplaySize, textToRuns, type BreakMergeState, type DocxImageType } from './docxPure'
+import { mimeToDocxType, dataUrlToBytes, clampCanvasSize, clampDisplaySize, textToRuns, type BreakMergeState, type DocxImageType } from './docxPure'
+import { collectListItems, listPrefix, listIndent, processDirectoryLines, type ListItemSpec } from './docxDirectory'
 
 /**
  * 图片/图表最大宽度（px）：按 A3 横向版心宽度计算，学习 html-to-docx 业务逻辑
@@ -496,32 +497,19 @@ interface QuoteParagraphStyle {
   spacing?: { before: number; after: number; line: number; lineRule: typeof LineRuleType.AUTO }
 }
 function convertList(el: HTMLElement, ordered: boolean, depth: number, quoteStyle?: QuoteParagraphStyle): Paragraph[] {
-  const result: Paragraph[] = []
-  let i = 0
-  for (const child of Array.from(el.children)) {
-    if (child.tagName.toLowerCase() !== 'li') continue
-    i++
-    const li = child as HTMLElement
-    const prefix = ordered ? `${i}. ` : '• '
-    // 剥离 li 内嵌套列表（只取直接文本），嵌套列表单独递归为独立段落
-    const liContent = li.cloneNode(true) as HTMLElement
-    liContent.querySelectorAll('ul, ol').forEach((n) => n.remove())
-    result.push(new Paragraph({
-      wordWrap: true,
-      children: [new TextRun(prefix), ...extractRuns(liContent, {}, { suppressFirstBlockBreak: true })],
-      indent: { left: 360 + depth * 360 },
-      spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
-      ...quoteStyle,
-    }))
-    // 递归嵌套列表（缩进加深一级）
-    for (const nested of Array.from(li.children)) {
-      const t = nested.tagName.toLowerCase()
-      if (t === 'ul' || t === 'ol') {
-        result.push(...convertList(nested as HTMLElement, t === 'ol', depth + 1, quoteStyle))
-      }
-    }
-  }
-  return result
+  // 目录结构提取（docxDirectory.collectListItems，独立可测）→ 逐项生成 Word 段落
+  const specs: ListItemSpec[] = []
+  collectListItems(el, ordered, depth, specs)
+  return specs.map((spec) => new Paragraph({
+    wordWrap: true,
+    children: [
+      new TextRun(listPrefix(spec.ordered, spec.index)),
+      ...extractRuns(spec.content, {}, { suppressFirstBlockBreak: true }),
+    ],
+    indent: { left: listIndent(spec.depth) },
+    spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+    ...quoteStyle,
+  }))
 }
 
 /** 代码块/目录树 → docx 段落（等宽字体灰底代码区；多行拆 run+break，长行在空格处换行） */
@@ -535,29 +523,13 @@ function convertCodeBlock(el: HTMLElement): Paragraph {
     docxImgSeq++
     warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
   }
-  // 目录树（README 项目结构等）→ 按代码区块文本输出（B 方案）：
-  // 等宽字体灰底代码区，完整层级可读可搜索；不再转 mermaid 精简图（前 2 层会丢深层细节）
-  // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
-  const codeLines = (el.textContent || '').split('\n')
+  // 目录树/代码块 → 展示行（docxDirectory.processDirectoryLines，独立可测）：
+  // 压缩空格 + 长行 70 字符换行 + 连续空行合并（目录树不出现空白行）
+  const lines = processDirectoryLines(el.textContent || '', 70)
   const codeRuns: TextRun[] = []
-  // 连续换行合并（目录树/代码块不能有空行）：连续空行只保留一个换行分隔
-  let lastWasBreak = false
-  codeLines.forEach((line, i) => {
-    // 压缩超长连续空格（目录树/代码里用于对齐的长空格 → 2 个）+ 去掉行尾空格：
-    // 避免 Word 里显示几十个连续空格导致内容又长又难看
-    const cleaned = line.replace(/ {3,}/g, '  ').replace(/ +$/g, '')
-    // 长行在空格处主动换行（单行不超过 70 字符，保持紧凑）
-    const wrapped = wrapLongLine(cleaned, 70)
-    wrapped.forEach((seg, j) => {
-      if (i > 0 || j > 0) {
-        if (!lastWasBreak) codeRuns.push(new TextRun({ break: 1 }))
-        lastWasBreak = true
-      }
-      if (seg) {
-        codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
-        lastWasBreak = false
-      }
-    })
+  lines.forEach((ln) => {
+    if (ln.breakBefore) codeRuns.push(new TextRun({ break: 1 }))
+    codeRuns.push(new TextRun({ text: ln.text, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
   })
   return new Paragraph({
     wordWrap: true,
