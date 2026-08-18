@@ -396,18 +396,21 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
       logImage('svgToDocxImage: blob 加载失败，降级直接绘制页面 SVG 元素（foreignObject 文字可能缺失）')
       img = null
     }
+    // 2x 高清渲染：SVG 是矢量，canvas 按 2 倍光栅化 → PNG 源像素 4 倍，
+    // Word 里放大 2 倍依然清晰（原图高清原则：源像素 ≥ 展示需求，放大不模糊）
+    const HI_RES_SCALE = 2
     const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
+    canvas.width = w * HI_RES_SCALE
+    canvas.height = h * HI_RES_SCALE
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, w, h)
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
     if (img) {
-      ctx.drawImage(img, 0, 0, w, h)
+      ctx.drawImage(img, 0, 0, w * HI_RES_SCALE, h * HI_RES_SCALE)
     } else {
       try {
-        ctx.drawImage(svg as unknown as CanvasImageSource, 0, 0, w, h)
+        ctx.drawImage(svg as unknown as CanvasImageSource, 0, 0, w * HI_RES_SCALE, h * HI_RES_SCALE)
       } catch (e) {
         warnImage(`svgToDocxImage: 直接绘制页面 SVG 也失败 ${e instanceof Error ? e.message : e} → 占位`)
         return null
@@ -471,8 +474,16 @@ async function renderChartLight(svg: SVGSVGElement): Promise<DocxImageResult | n
 /**
  * 递归转换 ul/ol 列表 → docx 段落（多级列表/目录：嵌套层独立段落 + 层级缩进，
  * 避免嵌套 li 文本被拼接成一行；wordWrap 防止长路径/URL 撑宽段落）
+ * quoteStyle：引用块内列表时附加的引用样式（左边框/浅底/缩进），每项独立段落套用
  */
-function convertList(el: HTMLElement, ordered: boolean, depth: number): Paragraph[] {
+interface QuoteParagraphStyle {
+  wordWrap?: boolean
+  indent?: { left: number }
+  border?: { left: { style: typeof BorderStyle.SINGLE; size: number; color: string } }
+  shading?: { type: typeof ShadingType.CLEAR; fill: string }
+  spacing?: { before: number; after: number; line: number; lineRule: typeof LineRuleType.AUTO }
+}
+function convertList(el: HTMLElement, ordered: boolean, depth: number, quoteStyle?: QuoteParagraphStyle): Paragraph[] {
   const result: Paragraph[] = []
   let i = 0
   for (const child of Array.from(el.children)) {
@@ -488,16 +499,53 @@ function convertList(el: HTMLElement, ordered: boolean, depth: number): Paragrap
       children: [new TextRun(prefix), ...extractRuns(liContent)],
       indent: { left: 360 + depth * 360 },
       spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+      ...quoteStyle,
     }))
     // 递归嵌套列表（缩进加深一级）
     for (const nested of Array.from(li.children)) {
       const t = nested.tagName.toLowerCase()
       if (t === 'ul' || t === 'ol') {
-        result.push(...convertList(nested as HTMLElement, t === 'ol', depth + 1))
+        result.push(...convertList(nested as HTMLElement, t === 'ol', depth + 1, quoteStyle))
       }
     }
   }
   return result
+}
+
+/** 代码块/目录树 → docx 段落（等宽字体灰底代码区；多行拆 run+break，长行在空格处换行） */
+function convertCodeBlock(el: HTMLElement): Paragraph {
+  // 图表代码块（mermaid 渲染失败回退显示源码）→ 提示日志，说明该图表未以图导出
+  const codeText = (el.textContent || '').trim()
+  const langMatch = typeof el.className === 'string' ? el.className.match(/language-(\S+)/) : null
+  const codeLang = langMatch ? langMatch[1].toLowerCase() : ''
+  const isChartCode = /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline|gitgraph)\b|^(graph|flowchart)\s+/.test(codeText)
+  if (isChartCode) {
+    docxImgSeq++
+    warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
+  }
+  // 目录树（README 项目结构等）→ 按代码区块文本输出（B 方案）：
+  // 等宽字体灰底代码区，完整层级可读可搜索；不再转 mermaid 精简图（前 2 层会丢深层细节）
+  // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
+  const codeLines = (el.textContent || '').split('\n')
+  const codeRuns: TextRun[] = []
+  codeLines.forEach((line, i) => {
+    // 压缩超长连续空格（目录树/代码里用于对齐的长空格 → 2 个）+ 去掉行尾空格：
+    // 避免 Word 里显示几十个连续空格导致内容又长又难看
+    const cleaned = line.replace(/ {3,}/g, '  ').replace(/ +$/g, '')
+    // 长行在空格处主动换行（单行不超过 70 字符，保持紧凑）
+    const wrapped = wrapLongLine(cleaned, 70)
+    wrapped.forEach((seg, j) => {
+      if (i > 0 || j > 0) codeRuns.push(new TextRun({ break: 1 }))
+      codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
+    })
+  })
+  return new Paragraph({
+    wordWrap: true,
+    children: codeRuns,
+    shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
+    // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
+    spacing: { before: 60, after: 60, line: 240, lineRule: LineRuleType.AUTO },
+  })
 }
 
 /** 递归转换块级子节点 → docx 段落/表格 */
@@ -619,50 +667,60 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'pre':
         case 'code': {
-          // 图表代码块（mermaid 渲染失败回退显示源码）→ 提示日志，说明该图表未以图导出
-          const codeText = (el.textContent || '').trim()
-          const langMatch = typeof el.className === 'string' ? el.className.match(/language-(\S+)/) : null
-          const codeLang = langMatch ? langMatch[1].toLowerCase() : ''
-          const isChartCode = /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline|gitgraph)\b|^(graph|flowchart)\s+/.test(codeText)
-          if (isChartCode) {
-            docxImgSeq++
-            warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
-          }
-          // 目录树（README 项目结构等）→ 按代码区块文本输出（2026-08-18 B 方案）：
-          // 等宽字体灰底代码区，完整层级可读可搜索；不再转 mermaid 精简图（前 2 层会丢深层细节）
-          // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
-          const codeLines = (el.textContent || '').split('\n')
-          const codeRuns: TextRun[] = []
-          codeLines.forEach((line, i) => {
-            // 压缩超长连续空格（目录树/代码里用于对齐的长空格 → 2 个）+ 去掉行尾空格：
-            // 避免 Word 里显示几十个连续空格导致内容又长又难看
-            const cleaned = line.replace(/ {3,}/g, '  ').replace(/ +$/g, '')
-            // 长行在空格处主动换行（单行不超过 70 字符，保持紧凑）
-            const wrapped = wrapLongLine(cleaned, 70)
-            wrapped.forEach((seg, j) => {
-              if (i > 0 || j > 0) codeRuns.push(new TextRun({ break: 1 }))
-              codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
-            })
-          })
-          result.push(new Paragraph({
-            wordWrap: true,
-            children: codeRuns,
-            shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
-            // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
-            spacing: { before: 60, after: 60, line: 240, lineRule: LineRuleType.AUTO },
-          }))
+          result.push(convertCodeBlock(el))
           break
         }
-        case 'blockquote':
-          result.push(new Paragraph({
-            wordWrap: true,
-            children: extractRuns(el),
+        case 'blockquote': {
+          // 渲染契约：renderer.blockquote 输出 <blockquote class="enhanced-blockquote"><p>..</p>..</blockquote>
+          // 或 alert 变体（.alert + .alert-title）。blockquote 内部是**多个块级元素**
+          // （软换行已被 renderer.paragraph 拆成独立 <p>，还有 ul/ol/pre/code）。
+          // 每块必须是独立 Word 段落并统一套引用样式（左蓝边/浅底/缩进）——
+          // 之前 extractRuns(el) 把整块合成一个段落，段落语义/段间距全丢、内容挤在一起。
+          const quoteStyle: QuoteParagraphStyle = {
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
             shading: { type: ShadingType.CLEAR, fill: 'F0F7FF' },
             spacing: { before: 120, after: 120, line: 360, lineRule: LineRuleType.AUTO },
+          }
+          const blocks = Array.from(el.children)
+          if (blocks.length === 0) {
+            // 无子块（纯文本引用）：单段 + 引用样式
+            result.push(new Paragraph({ ...quoteStyle, wordWrap: true, children: extractRuns(el) }))
+          } else {
+            for (const b of blocks) {
+              const t = b.tagName.toLowerCase()
+              if (t === 'ul' || t === 'ol') {
+                result.push(...convertList(b as HTMLElement, t === 'ol', 0, quoteStyle))
+              } else if (t === 'pre' || t === 'code') {
+                result.push(convertCodeBlock(b as HTMLElement))
+              } else if (t === 'p' || t === 'div' || t === 'section') {
+                // alert 块的 .alert-title（Note/Tip/...）加粗标识
+                const isTitle = (b as HTMLElement).classList.contains('alert-title')
+                result.push(new Paragraph({
+                  ...quoteStyle,
+                  wordWrap: true,
+                  children: extractRuns(b as HTMLElement, isTitle ? { bold: true } : {}),
+                }))
+              } else {
+                // 其他块（h1-h6 等罕见）：文本非空则作为引用段落
+                const text = b.textContent?.trim()
+                if (text) {
+                  result.push(new Paragraph({ ...quoteStyle, wordWrap: true, children: extractRuns(b as HTMLElement) }))
+                }
+              }
+            }
+          }
+          break
+        }
+        case 'hr': {
+          // 分隔线：下边框段落（渲染契约：marked 输出 <hr>；此前无 case 直接丢失）
+          result.push(new Paragraph({
+            children: [],
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'C7C7CC' } },
+            spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
           }))
           break
+        }
         case 'img': {
           docxImgSeq++
           const src = el.getAttribute('src') || ''
