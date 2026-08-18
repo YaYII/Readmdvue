@@ -416,26 +416,25 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'h5':
         case 'h6': {
           // 自定义标题样式：黑体加粗、深色、逐级字号（不用 Word 默认蓝色 Heading）
-          // 严格公文化（GB/T 9704 精神，2026-08-18）：
-          // h1=文档大标题 2 号黑体居中；h2=一级标题「一、」3 号黑体；
-          // h3=二级标题「（一）」3 号楷体；h4+=三级及以下 3 号仿宋加粗；
-          // 标题顶格不缩进、行距固定 28 磅（与正文一致）
+          // 政府公文/标书字号规范（用户定稿 2026-08-18）：
+          // h1=标题 15pt 加粗居中；h2=小标题 13pt 加粗；h3+=次级标题 12pt 加粗；
+          // 标题顶格不缩进、行距 1.5 倍（与 12pt 正文协调）
           const HEADING_STYLES: Record<string, { size: number; before: number; after: number; font: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] }> = {
-            h1: { size: 44, before: 0, after: 280, font: '黑体', align: AlignmentType.CENTER },
-            h2: { size: 32, before: 280, after: 140, font: '黑体' },
-            h3: { size: 32, before: 140, after: 70, font: '楷体' },
-            h4: { size: 32, before: 140, after: 70, font: '仿宋' },
-            h5: { size: 32, before: 140, after: 70, font: '仿宋' },
-            h6: { size: 32, before: 140, after: 70, font: '仿宋' },
+            h1: { size: 30, before: 0, after: 200, font: '黑体', align: AlignmentType.CENTER },
+            h2: { size: 26, before: 200, after: 100, font: '黑体' },
+            h3: { size: 24, before: 120, after: 60, font: '楷体' },
+            h4: { size: 24, before: 120, after: 60, font: '仿宋' },
+            h5: { size: 24, before: 120, after: 60, font: '仿宋' },
+            h6: { size: 24, before: 120, after: 60, font: '仿宋' },
           }
           const hs = HEADING_STYLES[tag]
           result.push(new Paragraph({
             alignment: hs.align,
-            spacing: { before: hs.before, after: hs.after, line: 560, lineRule: LineRuleType.EXACT },
+            spacing: { before: hs.before, after: hs.after, line: 360, lineRule: LineRuleType.AUTO },
             keepNext: true,
             children: extractRuns(el, {
               size: hs.size,
-              bold: tag === 'h4' || tag === 'h5' || tag === 'h6',
+              bold: true,
               font: { ascii: 'Times New Roman', eastAsia: hs.font },
             }),
           }))
@@ -445,8 +444,8 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           result.push(new Paragraph({
             children: extractRuns(el),
             alignment: AlignmentType.JUSTIFIED,
-            indent: { firstLine: 640 }, // 首行缩进 2 字符（3 号=16pt，2 字符=32pt=640twips）
-            spacing: { line: 560, lineRule: LineRuleType.EXACT, before: 0, after: 0 }, // 行距固定 28 磅、段前段后 0（公文）
+            indent: { firstLine: 480 }, // 首行缩进 2 字符（正文=12pt，2 字符=24pt=480twips）
+            spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 }, // 行距 1.5 倍、段前段后 0（公文）
           }))
           break
         case 'ul':
@@ -460,7 +459,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             result.push(new Paragraph({
               children: [new TextRun(prefix), ...extractRuns(li as HTMLElement)],
               indent: { left: 360 },
-              spacing: { line: 560, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
+              spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
             }))
           }
           break
@@ -475,10 +474,10 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
                     const isHead = td.tagName.toLowerCase() === 'th'
                     return new TableCell({
                       // 表头加粗 + 浅灰底；正文单元格正常
-                      // 表格字号 12pt（小四）：公文正文 16pt 下表格过大会拥挤
+                      // 表格字号 11pt：表头 11pt 加粗、内容 11pt（用户规范）
                       children: isHead
-                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true, size: 24 }), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
-                        : convertInlineBlock(td as HTMLElement, { size: 24 }),
+                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true, size: 22 }), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
+                        : convertInlineBlock(td as HTMLElement, { size: 22 }),
                       shading: { type: ShadingType.CLEAR, fill: isHead ? 'EDEDF2' : 'FFFFFF' },
                       margins: { top: 80, bottom: 80, left: 120, right: 120 },
                       verticalAlign: 'center',
@@ -541,7 +540,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
             shading: { type: ShadingType.CLEAR, fill: 'F0F7FF' },
-            spacing: { before: 120, after: 120, line: 560, lineRule: LineRuleType.EXACT },
+            spacing: { before: 120, after: 120, line: 360, lineRule: LineRuleType.AUTO },
           }))
           break
         case 'img': {
@@ -640,9 +639,9 @@ export async function htmlToDocx(html: string): Promise<Blob> {
       default: {
         document: {
           run: {
-            // 严格公文化：正文 3 号仿宋（16pt），数字/字母 Times New Roman
+            // 政府公文/标书规范：正文 12pt（小四）仿宋，数字/字母 Times New Roman
             font: { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '仿宋' },
-            size: 32, // 16pt = 3 号
+            size: 24, // 12pt = 小四
           },
         },
       },
