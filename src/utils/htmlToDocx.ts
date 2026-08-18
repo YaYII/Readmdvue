@@ -19,7 +19,9 @@ import {
   LineRuleType,
   Footer,
   PageNumber,
+  PageOrientation,
 } from 'docx'
+import mermaid from 'mermaid/dist/mermaid.min.js'
 
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
@@ -113,7 +115,14 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}): TextRun[] {
           const t = c.textContent || ''
           if (t) runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
         } else {
+          // 块级子元素（嵌套列表/段落等）：递归前加换行，
+          // 避免嵌套 ul/ol/div 的文本被拼接成一行（目录/多级列表连着的问题）
+          const BLOCK_TAGS = ['p', 'div', 'ul', 'ol', 'li', 'blockquote', 'table', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+          const before = runs.length
           walk(c)
+          if (BLOCK_TAGS.includes(tag) && runs.length > before) {
+            runs.splice(before, 0, new TextRun({ break: 1 }))
+          }
         }
       }
     }
@@ -392,6 +401,72 @@ async function svgToDocxImage(svg: SVGSVGElement): Promise<DocxImageResult | nul
   }
 }
 
+/**
+ * 图表按白色背景重渲染（Word 是白底文档，页面深色主题的 SVG 需转浅色主题）：
+ * 从 SVG 所在 .chart-container 的 .chart-fallback 源码块取 mermaid 源码，
+ * 用 mermaid 浅色主题（theme=default）重新渲染 → svgToDocxImage 白底 PNG。
+ * 失败回退原 SVG 直接转换（保留结构/连线）。
+ */
+async function renderChartLight(svg: SVGSVGElement): Promise<DocxImageResult | null> {
+  try {
+    const container = svg.closest('.chart-container')
+    const srcEl =
+      container?.querySelector('.chart-fallback pre code') ||
+      container?.querySelector('.chart-fallback pre')
+    const code = srcEl ? (srcEl.textContent || '').trim() : ''
+    if (!code) {
+      warnImage('renderChartLight: 未找到 .chart-fallback 中的 mermaid 源码 → 直接用当前 SVG')
+      return null
+    }
+    try {
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'default', flowchart: { htmlLabels: false } })
+    } catch {
+      // 忽略初始化失败，用现有配置
+    }
+    const { svg: lightSvg } = await mermaid.render(`light-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, code)
+    const parsed = new DOMParser().parseFromString(lightSvg, 'image/svg+xml')
+    const svgEl = parsed.documentElement as unknown as SVGSVGElement
+    if (!svgEl) return null
+    logImage('✅ 图表已用浅色主题重渲染（theme=default），白底深色文字适配 Word')
+    return await svgToDocxImage(svgEl)
+  } catch (e) {
+    warnImage(`renderChartLight 失败，回退当前 SVG: ${e instanceof Error ? e.message : e}`)
+    return null
+  }
+}
+
+/**
+ * 递归转换 ul/ol 列表 → docx 段落（多级列表/目录：嵌套层独立段落 + 层级缩进，
+ * 避免嵌套 li 文本被拼接成一行；wordWrap 防止长路径/URL 撑宽段落）
+ */
+function convertList(el: HTMLElement, ordered: boolean, depth: number): Paragraph[] {
+  const result: Paragraph[] = []
+  let i = 0
+  for (const child of Array.from(el.children)) {
+    if (child.tagName.toLowerCase() !== 'li') continue
+    i++
+    const li = child as HTMLElement
+    const prefix = ordered ? `${i}. ` : '• '
+    // 剥离 li 内嵌套列表（只取直接文本），嵌套列表单独递归为独立段落
+    const liContent = li.cloneNode(true) as HTMLElement
+    liContent.querySelectorAll('ul, ol').forEach((n) => n.remove())
+    result.push(new Paragraph({
+      wordWrap: true,
+      children: [new TextRun(prefix), ...extractRuns(liContent)],
+      indent: { left: 360 + depth * 360 },
+      spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
+    }))
+    // 递归嵌套列表（缩进加深一级）
+    for (const nested of Array.from(li.children)) {
+      const t = nested.tagName.toLowerCase()
+      if (t === 'ul' || t === 'ol') {
+        result.push(...convertList(nested as HTMLElement, t === 'ol', depth + 1))
+      }
+    }
+  }
+  return result
+}
+
 /** 递归转换块级子节点 → docx 段落/表格 */
 async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | Table>> {
   const result: Array<Paragraph | Table> = []
@@ -429,6 +504,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           }
           const hs = HEADING_STYLES[tag]
           result.push(new Paragraph({
+            wordWrap: true,
             alignment: hs.align,
             spacing: { before: hs.before, after: hs.after, line: 360, lineRule: LineRuleType.AUTO },
             keepNext: true,
@@ -442,6 +518,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'p':
           result.push(new Paragraph({
+            wordWrap: true,
             children: extractRuns(el),
             alignment: AlignmentType.JUSTIFIED,
             indent: { firstLine: 480 }, // 首行缩进 2 字符（正文=12pt，2 字符=24pt=480twips）
@@ -450,18 +527,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           break
         case 'ul':
         case 'ol': {
-          const ordered = tag === 'ol'
-          let i = 0
-          for (const li of Array.from(el.children)) {
-            if (li.tagName.toLowerCase() !== 'li') continue
-            i++
-            const prefix = ordered ? `${i}. ` : '• '
-            result.push(new Paragraph({
-              children: [new TextRun(prefix), ...extractRuns(li as HTMLElement)],
-              indent: { left: 360 },
-              spacing: { line: 360, lineRule: LineRuleType.AUTO, before: 0, after: 0 },
-            }))
-          }
+          result.push(...convertList(el as HTMLElement, tag === 'ol', 0))
           break
         }
         case 'table': {
@@ -476,7 +542,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
                       // 表头加粗 + 浅灰底；正文单元格正常
                       // 表格字号 11pt：表头 11pt 加粗、内容 11pt（用户规范）
                       children: isHead
-                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true, size: 22 }), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
+                        ? [new Paragraph({ wordWrap: true, children: extractRuns(td as HTMLElement, { bold: true, size: 22 }), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
                         : convertInlineBlock(td as HTMLElement, { size: 22 }),
                       shading: { type: ShadingType.CLEAR, fill: isHead ? 'EDEDF2' : 'FFFFFF' },
                       margins: { top: 80, bottom: 80, left: 120, right: 120 },
@@ -527,6 +593,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             })
           })
           result.push(new Paragraph({
+            wordWrap: true,
             children: codeRuns,
             shading: { type: ShadingType.CLEAR, fill: 'F5F5F7' },
             // 紧凑：无左右缩进、单倍行距、小段间距（代码块/目录树不占多余空间）
@@ -536,6 +603,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'blockquote':
           result.push(new Paragraph({
+            wordWrap: true,
             children: extractRuns(el),
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
@@ -573,7 +641,9 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'svg': {
           docxImgSeq++
           logImage(`开始处理 <svg> 图表（本地 Mermaid 渲染）viewBox=${el.getAttribute('viewBox') || '无'}`)
-          const img = await svgToDocxImage(el as unknown as SVGSVGElement)
+          // 优先浅色主题重渲染（Word 白底文档，深色主题 SVG 需转白底），失败回退当前 SVG
+          const lightImg = await renderChartLight(el as unknown as SVGSVGElement)
+          const img = lightImg || (await svgToDocxImage(el as unknown as SVGSVGElement))
           if (img) {
             logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height}`)
             result.push(new Paragraph({
@@ -596,6 +666,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         default:
           // 其他元素：有文本则作为段落输出
           if (el.textContent?.trim()) result.push(new Paragraph({
+            wordWrap: true,
             children: extractRuns(el),
             spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
           }))
@@ -611,7 +682,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
 /** 表格单元格内容（可能含多个段落） */
 function convertInlineBlock(el: HTMLElement, overrides: RunOverrides = {}): Paragraph[] {
   const blocks = Array.from(el.querySelectorAll(':scope > p, :scope > div, :scope > ul, :scope > ol'))
-  if (blocks.length === 0) return [new Paragraph({ children: extractRuns(el, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
+  if (blocks.length === 0) return [new Paragraph({ wordWrap: true, children: extractRuns(el, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
   const result: Paragraph[] = []
   for (const b of blocks) {
     const t = b.tagName.toLowerCase()
@@ -620,10 +691,10 @@ function convertInlineBlock(el: HTMLElement, overrides: RunOverrides = {}): Para
       for (const li of Array.from(b.children)) {
         if (li.tagName.toLowerCase() !== 'li') continue
         i++
-        result.push(new Paragraph({ children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement, overrides)], spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
+        result.push(new Paragraph({ wordWrap: true, children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement, overrides)], spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
       }
     } else {
-      result.push(new Paragraph({ children: extractRuns(b as HTMLElement, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
+      result.push(new Paragraph({ wordWrap: true, children: extractRuns(b as HTMLElement, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
     }
   }
   return result
@@ -662,7 +733,9 @@ export async function htmlToDocx(html: string): Promise<Blob> {
       },
       properties: {
         page: {
-          // 公文版面边距（GB/T 9704）：上 3.7cm / 下 3.5cm / 左 2.8cm / 右 2.6cm
+          // A3 横向（420×297mm）：公文大纸容纳代码/表格长行
+          // 版心边距保持公文规范：上 3.7cm / 下 3.5cm / 左 2.8cm / 右 2.6cm
+          size: { width: 23811, height: 16838, orientation: PageOrientation.LANDSCAPE },
           margin: { top: 2098, right: 1474, bottom: 1984, left: 1587 },
         },
       },
