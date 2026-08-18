@@ -1,6 +1,6 @@
 {
   "name": "markdown-reader-vue-extension",
-  "version": "2.1.12",
+  "version": "2.1.13",
   "description": "Vue.js 3.0 + TypeScript 浏览器插件 - Markdown阅读器",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "pack:zip": "node scripts/build-zip.mjs --skip-build",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts && node --experimental-strip-types scripts/test-versioned.ts && node scripts/test-normalize.mjs",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/"
   },

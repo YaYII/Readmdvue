@@ -23,6 +23,7 @@ import {
   PageOrientation,
 } from 'docx'
 import mermaid from 'mermaid/dist/mermaid.min.js'
+import { wrapLongLine, mimeToDocxType, dataUrlToBytes, clampCanvasSize, clampDisplaySize, textToRuns, type BreakMergeState, type DocxImageType } from './docxPure'
 
 /**
  * 图片/图表最大宽度（px）：按 A3 横向版心宽度计算，学习 html-to-docx 业务逻辑
@@ -37,9 +38,6 @@ const MAX_IMAGE_WIDTH_PX = 1300
  * （Word 对超大 docx 会渐进加载，后面图片可能不显示）。2×显示宽度 = 放大 2 倍依然清晰。 */
 const MAX_IMAGE_SIDE_PX = MAX_IMAGE_WIDTH_PX * 2
 
-/** docx 支持的图片类型（与 ImageRun type 对齐） */
-type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
-
 /** docx 图片结果（数据 + 尺寸 + 类型） */
 interface DocxImageResult {
   data: Uint8Array
@@ -48,32 +46,10 @@ interface DocxImageResult {
   type: DocxImageType
 }
 
-/** data URL / mime 格式 → docx 图片类型 */
-function mimeToDocxType(mime: string | undefined): DocxImageType {
-  const m = (mime || '').toLowerCase()
-  if (m === 'jpeg' || m === 'jpg') return 'jpg'
-  if (m === 'gif') return 'gif'
-  if (m === 'bmp') return 'bmp'
-  return 'png' // png / webp（webp 会被 canvas 重编码为 png）/ 未知
-}
-
-/** 长行在空格处换行（主动拆分，避免代码块/目录树单行过长；不硬断单词） */
-function wrapLongLine(line: string, max: number): string[] {
-  if (line.length <= max) return [line]
-  const parts: string[] = []
-  let rest = line
-  while (rest.length > max) {
-    let cut = rest.lastIndexOf(' ', max)
-    if (cut <= 0) cut = Math.min(max, rest.length) // 无空格长串：不得已才在 max 处截断
-    parts.push(rest.slice(0, cut))
-    rest = rest.slice(cut).replace(/^ +/, '')
-  }
-  if (rest) parts.push(rest)
-  return parts
-}
-
 /** 图片转换过程日志（控制台可观测：用户通过日志判断图片是否插入成功） */
 let docxImgSeq = 0
+/** 图片/图表转换统计（导出完成后打印汇总，定位"图少"） */
+const docxImgStats = { total: 0, ok: 0, fail: 0 }
 function logImage(msg: string, ...rest: unknown[]): void {
   console.log(`[docx-image][${docxImgSeq}] ${msg}`, ...rest)
 }
@@ -110,67 +86,62 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
   // 连续换行合并（目录/列表不能有空行）：任意连续换行（<br><br>、\n\n、<br>\n 组合）
   // 只产生一个 break——否则 Word 出现空白行。lastWasBreak 贯穿整个 walk：
   // 一旦输出过 break，下一个 break 合并；输出文本后重置。
-  let lastWasBreak = false
+  const breakState: BreakMergeState = { lastWasBreak: false }
   const walk = (node: Node): void => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = child.textContent || ''
         if (text) {
           // docx TextRun 的 \n 不渲染换行：必须拆成多个 run + break:1（否则多行文本挤成一行）
-          const lines = text.split('\n')
-          lines.forEach((line, i) => {
-            if (i > 0) {
-              if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
-              lastWasBreak = true
-            }
-            if (line) {
-              runs.push(new TextRun(apply({ text: line }) as never))
-              lastWasBreak = false
-            }
-          })
+          runs.push(...textToRuns(
+            text,
+            (line) => new TextRun(apply({ text: line }) as never),
+            () => new TextRun({ break: 1 }),
+            breakState,
+          ))
         }
       } else if (child.nodeType === Node.ELEMENT_NODE) {
         const c = child as HTMLElement
         const tag = c.tagName.toLowerCase()
         if (tag === 'br') {
-          if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
-          lastWasBreak = true
+          if (!breakState.lastWasBreak) runs.push(new TextRun({ break: 1 }))
+          breakState.lastWasBreak = true
         } else if (tag === 'strong' || tag === 'b') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, bold: true }) as never))
-            lastWasBreak = false
+            breakState.lastWasBreak = false
           }
         } else if (tag === 'em' || tag === 'i') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, italics: true }) as never))
-            lastWasBreak = false
+            breakState.lastWasBreak = false
           }
         } else if (tag === 'del' || tag === 's' || tag === 'strike') {
           // 删除线（渲染契约：marked gfm 的 ~~text~~ → <del>）：strike run
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, strike: true }) as never))
-            lastWasBreak = false
+            breakState.lastWasBreak = false
           }
         } else if (tag === 'input') {
           // 任务列表（渲染契约：marked gfm 的 - [x] → <li><input checked disabled type="checkbox">）
           // checkbox 元素本身无文本 → 输出 ☑/☐ 符号保持任务语义
           const isChecked = c.hasAttribute('checked')
           runs.push(new TextRun(apply({ text: isChecked ? '☑ ' : '☐ ' }) as never))
-          lastWasBreak = false
+          breakState.lastWasBreak = false
         } else if (tag === 'code') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, font: { ascii: 'Consolas', eastAsia: '等线' } }) as never))
-            lastWasBreak = false
+            breakState.lastWasBreak = false
           }
         } else if (tag === 'a') {
           const t = c.textContent || ''
           if (t) {
             runs.push(new TextRun(apply({ text: t, color: '2E9FFF' }) as never))
-            lastWasBreak = false
+            breakState.lastWasBreak = false
           }
         } else {
           // 块级子元素（嵌套列表/段落等）：递归前加换行，
@@ -186,7 +157,7 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
               const prevIsBreak = !!prevRun && (prevRun as unknown as { break?: number }).break === 1
               if (!prevIsBreak) {
                 runs.splice(before, 0, new TextRun({ break: 1 }))
-                lastWasBreak = true
+                breakState.lastWasBreak = true
               }
             }
             blockSeen = true
@@ -197,20 +168,6 @@ function extractRuns(el: HTMLElement, overrides: RunOverrides = {}, options: Ext
   }
   walk(el)
   return runs
-}
-
-/** 图片/画布 base64 → docx ImageRun 数据 */
-function dataUrlToBytes(dataUrl: string): Uint8Array | null {
-  try {
-    const m = dataUrl.match(/^data:image\/[^;]+;base64,(.+)$/)
-    if (!m) return null
-    const binary = atob(m[1])
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    return bytes
-  } catch {
-    return null
-  }
 }
 
 /** 加载图片（带超时：无超时的 new Image() 在异常 src 下可能既不 onload 也不 onerror，
@@ -235,24 +192,6 @@ function loadImageWithTimeout(src: string, timeoutMs = 8000, crossOrigin = false
   })
 }
 
-/** canvas 重编码时限制最大边长（等比）：原图过大会产生 10MB+ PNG，docx 文件暴涨 */
-function clampCanvasSize(w: number, h: number): { width: number; height: number } {
-  const maxSide = MAX_IMAGE_SIDE_PX
-  if (Math.max(w, h) <= maxSide) return { width: w, height: h }
-  const s = maxSide / Math.max(w, h)
-  return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)) }
-}
-
-/** 显示尺寸最终约束（双保险：任何转换路径漏约束，ImageRun 都不超过版心宽度） */
-function clampDisplaySize(w: number, h: number): { width: number; height: number } {
-  if (!(w > 0) || !(h > 0)) return { width: 400, height: 300 }
-  if (w <= MAX_IMAGE_WIDTH_PX) {
-    return { width: Math.round(w), height: Math.round(h) }
-  }
-  const s = MAX_IMAGE_WIDTH_PX / w
-  return { width: MAX_IMAGE_WIDTH_PX, height: Math.max(1, Math.round(h * s)) }
-}
-
 /** 从页面已加载的相同 src 图片元素绘制（canvas，不依赖 fetch——file:// 下 fetch 被禁） */
 async function drawLoadedImage(src: string): Promise<string | null> {
   try {
@@ -263,7 +202,7 @@ async function drawLoadedImage(src: string): Promise<string | null> {
       return null
     }
     // 限制 canvas 尺寸（最大边 2×显示宽）：原图过大会产生超大 PNG 撑爆 docx
-    const cSize = clampCanvasSize(img.naturalWidth, img.naturalHeight)
+    const cSize = clampCanvasSize(img.naturalWidth, img.naturalHeight, MAX_IMAGE_SIDE_PX)
     const canvas = document.createElement('canvas')
     canvas.width = cSize.width
     canvas.height = cSize.height
@@ -371,7 +310,7 @@ async function imageToDocxImage(src: string): Promise<DocxImageResult | null> {
       // 数据是 webp/svg 等 docx 不支持格式 → canvas 重编码 png
       try {
         const reImg = await loadImageWithTimeout(dUrl)
-        const cSize = clampCanvasSize(reImg.naturalWidth || w, reImg.naturalHeight || h)
+        const cSize = clampCanvasSize(reImg.naturalWidth || w, reImg.naturalHeight || h, MAX_IMAGE_SIDE_PX)
         const canvas = document.createElement('canvas')
         canvas.width = cSize.width
         canvas.height = cSize.height
@@ -525,7 +464,14 @@ async function renderChartLight(svg: SVGSVGElement): Promise<DocxImageResult | n
     } catch {
       // 忽略初始化失败，用现有配置
     }
-    const { svg: lightSvg } = await mermaid.render(`light-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, code)
+    // mermaid.render 可能卡住（大图/异常图）：无超时会阻塞整个串行转换，
+    // 后面所有图表/图片全部丢失（"图少了很多"的根因之一）。Promise.race 10s 兜底。
+    const { svg: lightSvg } = await Promise.race([
+      mermaid.render(`light-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, code),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error('mermaid render timeout (10s)')), 10000)
+      }),
+    ])
     const parsed = new DOMParser().parseFromString(lightSvg, 'image/svg+xml')
     const svgEl = parsed.documentElement as unknown as SVGSVGElement
     if (!svgEl) return null
@@ -631,19 +577,13 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
       if (text.trim()) {
         // docx TextRun 不渲染 \n：多行文本必须拆成多个 run + break:1
         //（否则 div/section 直接文本子节点的换行会全部丢失、内容挤成一行）
-        const runs: TextRun[] = []
-        // 连续换行合并（目录/列表不能有空行）：\n\n 只产生一个 break
-        let lastWasBreak = false
-        text.split('\n').forEach((line, i) => {
-          if (i > 0) {
-            if (!lastWasBreak) runs.push(new TextRun({ break: 1 }))
-            lastWasBreak = true
-          }
-          if (line.trim()) {
-            runs.push(new TextRun({ text: line }))
-            lastWasBreak = false
-          }
-        })
+        // 连续换行合并（目录/列表不能有空行）：\n\n 只产生一个 break（textToRuns 统一逻辑）
+        const runs: TextRun[] = textToRuns(
+          text,
+          (line) => new TextRun({ text: line }),
+          () => new TextRun({ break: 1 }),
+          { lastWasBreak: false },
+        )
         result.push(new Paragraph({
           wordWrap: true,
           children: runs,
@@ -805,6 +745,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'img': {
           docxImgSeq++
+          docxImgStats.total++
           const src = el.getAttribute('src') || ''
           const kind = src.startsWith('data:')
             ? 'data-url(粘贴图)'
@@ -818,7 +759,8 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           logImage(`开始处理 <img> alt="${el.getAttribute('alt') || ''}" 类型=${kind} src=${src.slice(0, 100)}`)
           const img = await imageToDocxImage(src)
           if (img) {
-            const disp = clampDisplaySize(img.width, img.height)
+            docxImgStats.ok++
+            const disp = clampDisplaySize(img.width, img.height, MAX_IMAGE_WIDTH_PX)
             logImage(`✅ 插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -826,6 +768,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
               children: [new ImageRun({ data: img.data, transformation: { width: disp.width, height: disp.height }, type: img.type })],
             }))
           } else {
+            docxImgStats.fail++
             warnImage(`❌ 转换失败 → 占位文本（图未插入）`)
             result.push(new Paragraph({ children: [new TextRun({ text: `[图片: ${el.getAttribute('alt') || '未加载'}]`, italics: true, color: '8E8E93' })] }))
           }
@@ -833,12 +776,14 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         }
         case 'svg': {
           docxImgSeq++
+          docxImgStats.total++
           logImage(`开始处理 <svg> 图表（本地 Mermaid 渲染）viewBox=${el.getAttribute('viewBox') || '无'}`)
           // 优先浅色主题重渲染（Word 白底文档，深色主题 SVG 需转白底），失败回退当前 SVG
           const lightImg = await renderChartLight(el as unknown as SVGSVGElement)
           const img = lightImg || (await svgToDocxImage(el as unknown as SVGSVGElement))
           if (img) {
-            const disp = clampDisplaySize(img.width, img.height)
+            docxImgStats.ok++
+            const disp = clampDisplaySize(img.width, img.height, MAX_IMAGE_WIDTH_PX)
             logImage(`✅ 图表插入 docx：type=${img.type} ${img.width}x${img.height} → 显示 ${disp.width}x${disp.height}`)
             result.push(new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -846,6 +791,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
               children: [new ImageRun({ data: img.data, transformation: { width: disp.width, height: disp.height }, type: img.type })],
             }))
           } else {
+            docxImgStats.fail++
             warnImage(`❌ 图表转换失败 → 占位文本（图未插入）`)
             result.push(new Paragraph({ children: [new TextRun({ text: '[图表]', italics: true, color: '8E8E93' })] }))
           }
@@ -914,6 +860,11 @@ export async function htmlToDocx(html: string): Promise<Blob> {
   const tempDiv = document.createElement('div')
   tempDiv.innerHTML = html
   const children = await convertChildren(tempDiv)
+  // 图片/图表汇总日志（定位"图少"：total=文档中图片+图表数，ok=插入成功，fail=占位/失败）
+  console.log(
+    `[docx-image] 汇总：共 ${docxImgStats.total} 张图片/图表，成功插入 ${docxImgStats.ok}，失败/占位 ${docxImgStats.fail}`,
+    docxImgStats,
+  )
   const doc = new Document({
     styles: {
       default: {
