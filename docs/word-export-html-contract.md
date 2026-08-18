@@ -59,6 +59,7 @@
 5. **表格单元格**：convertInlineBlock 处理单元格内多段落/列表（每段独立 + 11pt）。
 6. **直接文本节点**（div 直接子文本含 \n）：convertChildren 的 TEXT_NODE 分支拆 break（2026-08-18 已修）。
 7. **嵌套列表 li 内 `<p>`**（带空行写法 `- 第一章\n\n  - 1.1`，marked 输出 `<li><p>第一章</p><ul>`）：extractRuns 对 li 内**第一个块级元素不插 break**（`• ` 与首段文本同行），后续块级元素才插 break 分隔——否则"• "孤立一行、文本错位（用户实测"多一个换行"，2026-08-18 修）。
+8. **连续换行合并（空白行规则）**：任意连续换行（`<br><br>`、`\n\n`、`<br>\n` 组合）**只产生一个 break**——目录/列表/代码块不出现空白行。贯穿三处：extractRuns（lastWasBreak 状态）、convertChildren TEXT_NODE、convertCodeBlock；BLOCK_TAGS 插 break 前检查前一个 run 是否已是 break（2026-08-18 修）。
 
 ## 三、审计方法（防回归）
 
