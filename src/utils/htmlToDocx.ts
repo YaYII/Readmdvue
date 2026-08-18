@@ -17,8 +17,9 @@ import {
   ShadingType,
   AlignmentType,
   LineRuleType,
+  Footer,
+  PageNumber,
 } from 'docx'
-import mermaid from 'mermaid/dist/mermaid.min.js'
 
 /** docx 支持的图片类型（与 ImageRun type 对齐） */
 type DocxImageType = 'png' | 'jpg' | 'gif' | 'bmp'
@@ -53,70 +54,6 @@ function wrapLongLine(line: string, max: number): string[] {
   }
   if (rest) parts.push(rest)
   return parts
-}
-
-/** mermaid label 转义（引号/括号/方括号等特殊字符） */
-function sanitizeMermaidLabel(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\[/g, '【').replace(/\]/g, '】')
-}
-
-/** 目录树代码 → mermaid graph TD（只取前 maxDepth 层，结构精简图） */
-function dirTreeToMermaid(code: string, maxDepth: number): string | null {
-  const lines = code.split('\n').map((l) => l.replace(/\r$/, ''))
-  if (lines.length < 2) return null
-  const root = lines[0].trim().replace(/\/+$/, '') || 'root'
-  const nodeIds = new Map<string, string>()
-  const nodeLines: string[] = []
-  const edgeLines: string[] = []
-  const getId = (label: string): string => {
-    if (!nodeIds.has(label)) {
-      const id = `N${nodeIds.size}`
-      nodeIds.set(label, id)
-      nodeLines.push(`${id}["${sanitizeMermaidLabel(label)}"]`)
-    }
-    return nodeIds.get(label)!
-  }
-  const rootId = getId(root)
-  const stack: string[] = [rootId] // stack[depth] = 该层当前节点 id
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i]
-    const m = line.match(/^([│ ]*)(?:├|└)──\s*(.+)$/)
-    if (!m) continue
-    const prefix = m[1]
-    const name = m[2].trim().replace(/\s{2,}.*$/, '').replace(/\/$/, '').trim()
-    if (!name) continue
-    const depth = (prefix.match(/│/g) || []).length
-    if (depth >= maxDepth) continue
-    const id = getId(name)
-    const parentId = depth === 0 ? rootId : stack[depth - 1] || rootId
-    edgeLines.push(`${parentId} --> ${id}`)
-    stack[depth] = id
-    stack.length = depth + 1
-  }
-  if (nodeLines.length <= 1) return null // 只有根 → 无结构可画
-  return `graph TD\n    ${nodeLines.join('\n    ')}\n    ${edgeLines.join('\n    ')}`
-}
-
-/** 目录树 → 精简树图 PNG（mermaid 渲染 + SVG→PNG 复用 svgToDocxImage） */
-async function renderTreeImage(code: string): Promise<DocxImageResult | null> {
-  try {
-    const mermaidCode = dirTreeToMermaid(code, 2)
-    if (!mermaidCode) return null
-    // 树图用浅色主题 + 纯 text 节点（htmlLabels:false），白底可读、canvas 绘制无 foreignObject 问题
-    try {
-      mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'default', flowchart: { htmlLabels: false } })
-    } catch {
-      // 忽略初始化失败，用现有配置
-    }
-    const { svg } = await mermaid.render(`tree-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`, mermaidCode)
-    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml')
-    const svgEl = parsed.documentElement as unknown as SVGSVGElement
-    if (!svgEl) return null
-    return await svgToDocxImage(svgEl)
-  } catch (e) {
-    warnImage(`项目结构转图失败，保持文本: ${e instanceof Error ? e.message : e}`)
-    return null
-  }
 }
 
 /** 图片转换过程日志（控制台可观测：用户通过日志判断图片是否插入成功） */
@@ -479,23 +416,27 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
         case 'h5':
         case 'h6': {
           // 自定义标题样式：黑体加粗、深色、逐级字号（不用 Word 默认蓝色 Heading）
-          const HEADING_STYLES: Record<string, { size: number; before: number; after: number }> = {
-            h1: { size: 32, before: 360, after: 200 },
-            h2: { size: 28, before: 300, after: 160 },
-            h3: { size: 24, before: 240, after: 120 },
-            h4: { size: 22, before: 200, after: 100 },
-            h5: { size: 22, before: 160, after: 80 },
-            h6: { size: 22, before: 120, after: 60 },
+          // 严格公文化（GB/T 9704 精神，2026-08-18）：
+          // h1=文档大标题 2 号黑体居中；h2=一级标题「一、」3 号黑体；
+          // h3=二级标题「（一）」3 号楷体；h4+=三级及以下 3 号仿宋加粗；
+          // 标题顶格不缩进、行距固定 28 磅（与正文一致）
+          const HEADING_STYLES: Record<string, { size: number; before: number; after: number; font: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] }> = {
+            h1: { size: 44, before: 0, after: 280, font: '黑体', align: AlignmentType.CENTER },
+            h2: { size: 32, before: 280, after: 140, font: '黑体' },
+            h3: { size: 32, before: 140, after: 70, font: '楷体' },
+            h4: { size: 32, before: 140, after: 70, font: '仿宋' },
+            h5: { size: 32, before: 140, after: 70, font: '仿宋' },
+            h6: { size: 32, before: 140, after: 70, font: '仿宋' },
           }
           const hs = HEADING_STYLES[tag]
           result.push(new Paragraph({
-            spacing: { before: hs.before, after: hs.after, line: 300, lineRule: LineRuleType.AUTO },
+            alignment: hs.align,
+            spacing: { before: hs.before, after: hs.after, line: 560, lineRule: LineRuleType.EXACT },
             keepNext: true,
             children: extractRuns(el, {
-              bold: true,
               size: hs.size,
-              color: '1D1D1F',
-              font: { ascii: 'Calibri', eastAsia: '黑体' },
+              bold: tag === 'h4' || tag === 'h5' || tag === 'h6',
+              font: { ascii: 'Times New Roman', eastAsia: hs.font },
             }),
           }))
           break
@@ -504,8 +445,8 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
           result.push(new Paragraph({
             children: extractRuns(el),
             alignment: AlignmentType.JUSTIFIED,
-            indent: { firstLine: 480 }, // 首行缩进 2 字符
-            spacing: { line: 320, lineRule: LineRuleType.AUTO, before: 60, after: 60 },
+            indent: { firstLine: 640 }, // 首行缩进 2 字符（3 号=16pt，2 字符=32pt=640twips）
+            spacing: { line: 560, lineRule: LineRuleType.EXACT, before: 0, after: 0 }, // 行距固定 28 磅、段前段后 0（公文）
           }))
           break
         case 'ul':
@@ -519,7 +460,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             result.push(new Paragraph({
               children: [new TextRun(prefix), ...extractRuns(li as HTMLElement)],
               indent: { left: 360 },
-              spacing: { after: 60, line: 300, lineRule: LineRuleType.AUTO },
+              spacing: { line: 560, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
             }))
           }
           break
@@ -534,9 +475,10 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
                     const isHead = td.tagName.toLowerCase() === 'th'
                     return new TableCell({
                       // 表头加粗 + 浅灰底；正文单元格正常
+                      // 表格字号 12pt（小四）：公文正文 16pt 下表格过大会拥挤
                       children: isHead
-                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true }) })]
-                        : convertInlineBlock(td as HTMLElement),
+                        ? [new Paragraph({ children: extractRuns(td as HTMLElement, { bold: true, size: 24 }), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
+                        : convertInlineBlock(td as HTMLElement, { size: 24 }),
                       shading: { type: ShadingType.CLEAR, fill: isHead ? 'EDEDF2' : 'FFFFFF' },
                       margins: { top: 80, bottom: 80, left: 120, right: 120 },
                       verticalAlign: 'center',
@@ -569,22 +511,8 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             docxImgSeq++
             warnImage(`⚠️ 图表代码块（${codeLang || 'mermaid'}）未渲染为图，以代码导出 —— 页面渲染失败或未渲染，Word 中为代码而非图片：${codeText.slice(0, 60).replace(/\n/g, ' ')}...`)
           }
-          // 目录树（README 项目结构等）→ 生成精简树图（前 2 层），完整文本仍保留供查细节
-          if (/[├└]──/.test(codeText)) {
-            const treeImg = await renderTreeImage(codeText)
-            if (treeImg) {
-              docxImgSeq++
-              logImage(`✅ 项目结构已生成精简树图（前 2 层）${treeImg.width}x${treeImg.height}`)
-              result.push(new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 120, after: 120, line: 240, lineRule: LineRuleType.AUTO },
-                children: [new ImageRun({ data: treeImg.data, transformation: { width: treeImg.width, height: treeImg.height }, type: treeImg.type })],
-              }))
-              break // 目录树只要图，不再输出完整文本
-            } else {
-              logImage('目录树转图失败 → 保持文本')
-            }
-          }
+          // 目录树（README 项目结构等）→ 按代码区块文本输出（2026-08-18 B 方案）：
+          // 等宽字体灰底代码区，完整层级可读可搜索；不再转 mermaid 精简图（前 2 层会丢深层细节）
           // 多行代码拆成多个 run + break（docx TextRun 不渲染 \n，否则整块代码挤成一行）
           const codeLines = (el.textContent || '').split('\n')
           const codeRuns: TextRun[] = []
@@ -596,7 +524,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             const wrapped = wrapLongLine(cleaned, 70)
             wrapped.forEach((seg, j) => {
               if (i > 0 || j > 0) codeRuns.push(new TextRun({ break: 1 }))
-              codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 20 }))
+              codeRuns.push(new TextRun({ text: seg, font: { ascii: 'Consolas', eastAsia: '等线' }, size: 24 }))
             })
           })
           result.push(new Paragraph({
@@ -613,7 +541,7 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
             indent: { left: 360 },
             border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E9FFF' } },
             shading: { type: ShadingType.CLEAR, fill: 'F0F7FF' },
-            spacing: { before: 120, after: 120, line: 300, lineRule: LineRuleType.AUTO },
+            spacing: { before: 120, after: 120, line: 560, lineRule: LineRuleType.EXACT },
           }))
           break
         case 'img': {
@@ -682,9 +610,9 @@ async function convertChildren(parent: HTMLElement): Promise<Array<Paragraph | T
 }
 
 /** 表格单元格内容（可能含多个段落） */
-function convertInlineBlock(el: HTMLElement): Paragraph[] {
+function convertInlineBlock(el: HTMLElement, overrides: RunOverrides = {}): Paragraph[] {
   const blocks = Array.from(el.querySelectorAll(':scope > p, :scope > div, :scope > ul, :scope > ol'))
-  if (blocks.length === 0) return [new Paragraph({ children: extractRuns(el) })]
+  if (blocks.length === 0) return [new Paragraph({ children: extractRuns(el, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } })]
   const result: Paragraph[] = []
   for (const b of blocks) {
     const t = b.tagName.toLowerCase()
@@ -693,10 +621,10 @@ function convertInlineBlock(el: HTMLElement): Paragraph[] {
       for (const li of Array.from(b.children)) {
         if (li.tagName.toLowerCase() !== 'li') continue
         i++
-        result.push(new Paragraph({ children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement)] }))
+        result.push(new Paragraph({ children: [new TextRun(`${t === 'ol' ? `${i}. ` : '• '}`), ...extractRuns(li as HTMLElement, overrides)], spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
       }
     } else {
-      result.push(new Paragraph({ children: extractRuns(b as HTMLElement) }))
+      result.push(new Paragraph({ children: extractRuns(b as HTMLElement, overrides), spacing: { line: 240, lineRule: LineRuleType.AUTO } }))
     }
   }
   return result
@@ -712,20 +640,31 @@ export async function htmlToDocx(html: string): Promise<Blob> {
       default: {
         document: {
           run: {
-            font: { ascii: 'Calibri', hAnsi: 'Calibri', eastAsia: '宋体' },
-            size: 22, // 11pt
-          },
-          paragraph: {
-            spacing: { line: 300, lineRule: LineRuleType.AUTO },
+            // 严格公文化：正文 3 号仿宋（16pt），数字/字母 Times New Roman
+            font: { ascii: 'Times New Roman', hAnsi: 'Times New Roman', eastAsia: '仿宋' },
+            size: 32, // 16pt = 3 号
           },
         },
       },
     },
     sections: [{
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.CENTER,
+            // 页码：公文规范 4 号半角宋体，格式「— 1 —」
+            children: [
+              new TextRun({ text: '— ', font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
+              new TextRun({ children: [PageNumber.CURRENT], font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
+              new TextRun({ text: ' —', font: { ascii: 'Times New Roman', eastAsia: '宋体' }, size: 28 }),
+            ],
+          })],
+        }),
+      },
       properties: {
         page: {
-          // 0.5 英寸边距：页面可用宽度更大，长行能容纳、换行少、内容紧凑
-          margin: { top: 720, bottom: 720, left: 720, right: 720 },
+          // 公文版面边距（GB/T 9704）：上 3.7cm / 下 3.5cm / 左 2.8cm / 右 2.6cm
+          margin: { top: 2098, right: 1474, bottom: 1984, left: 1587 },
         },
       },
       children,
